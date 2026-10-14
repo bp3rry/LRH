@@ -800,7 +800,7 @@ def main():
     derived = lrh.ROOT / "out/derived"
     for path in ("naip_site_rgb.png", "naip_regional_rgb.jpg", "cleared_drone_mask.png",
                  "cover_site_drone.tif", "cover_regional.tif", "lidar_trees.npz",
-                 "lidar_coverage.json"):
+                 "lidar_coverage.json", "fwh_zone_lsmp.geojson"):
         if not (derived / path).is_file():
             lrh.fail(f"missing out/derived/{path}; run the imagery and lidar steps in "
                      "README first")
@@ -819,7 +819,15 @@ def main():
     build_bridge(context, colls["Landmarks"], sampler)
     lots = build_overlays(context, colls["Overlays_Review"], sampler)
     check_lot_areas(lots)
-    zone, timber_zone = preservation_zone(context, grid, pooled, colls["Masks"])
+    zone, _ = preservation_zone(context, grid, pooled, colls["Masks"])
+    # Flooded timber follows UTRWD's mapped Fish and Wildlife Habitat zone (draft LSMP
+    # Appendix A, digitized by scripts/digitize_fwh_zone.py; approximate).
+    fwh = json.loads((lrh.ROOT / "out/derived/fwh_zone_lsmp.geojson").read_text())
+    timber_zone = shapely.geometry.shape(fwh["features"][0]["geometry"])
+    record("fwh_zone_loaded", timber_zone.area > 10 * SQM_PER_ACRE,
+           area_acres=round(timber_zone.area / SQM_PER_ACRE, 1),
+           source=fwh["features"][0]["properties"]["source"],
+           status=fwh["features"][0]["properties"]["status"])
     (out / "creek_preservation_zone.geojson").write_text(json.dumps({
         "type": "FeatureCollection",
         "crs_note": "LRH local metres (origin.json); add origin to recover EPSG:6344",

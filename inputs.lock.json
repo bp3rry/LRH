@@ -1,6 +1,6 @@
 {
   "schema": "lrh.inputs-lock/1",
-  "imported_utc": "2026-10-14T16:37:46Z",
+  "imported_utc": "2026-10-14T19:51:17Z",
   "sources": {
     "ptm": {
       "path": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline",
@@ -68,6 +68,16 @@
       "source": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline/out/handoff/CURRENT-DRONE-PHOTO-PREVIEW.png",
       "sha256": "628ba60ad4d6f560ff43e0ec3fbab895b6ca229b0e3fa846ad3a4e758a28f649",
       "bytes": 4193196
+    },
+    "reference/lsmp-comment-draft-2025-10-16.pdf": {
+      "source": "/Users/bperry/Documents/Projects/Ladonia/Reference/Lake-Ralph-Hall/COMMENT-DRAFT_Lake-Ralph-Hall-LSMP_October-16-2025.pdf",
+      "sha256": "fc63be8c894a4169fff04d5fdbf0c0aaf66366cb7cb1109978bb7333d4bf1fb9",
+      "bytes": 35147408
+    },
+    "geometry/utrwd-road-plan-cr3640-new-alignment-epsg6344.geojson": {
+      "source": "/Users/bperry/Documents/Projects/Ladonia/Reference/Spatial-Control/utrwd-road-plan-cr3640-new-alignment-epsg6344.geojson",
+      "sha256": "102031cbac2935f0b7d38cc74abd7329449433783c8877e033c98376c02a2ac3",
+      "bytes": 586
     },
     "reference/benchmark-cam02-sunset.jpg": {
       "source": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline/properties/ladonia/Sketchup/444-perry_lakehouse_exterior_cam_02.jpg",

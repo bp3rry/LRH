@@ -213,10 +213,13 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record):
     z[far] = [sampler(a, b) or np.nan for a, b in zip(x[far], y[far])]
     dry = ~np.isnan(z) & (z > lrh.POOL_M + 0.3)
     lstats["lidar_below_pool"] = int((~dry).sum())
-    # Below pool but inside the preservation zone: standing flooded timber.
-    wet = ~np.isnan(z) & ~dry & shapely.contains_xy(timber_zone, x, y) & \
-        (height > (lrh.POOL_M - z) + 1.5)
-    timber_rows = np.column_stack([x[wet], y[wet], z[wet], height[wet], crown[wet],
+    # Below pool inside the Fish and Wildlife Habitat zone: standing flooded timber. Depth
+    # uses the lidar's own ground (the 50 m regional mesh is too coarse in the side arm).
+    lidar_ground = lidar[keep, 2]
+    wet = shapely.contains_xy(timber_zone, x, y) & (lidar_ground < lrh.POOL_M - 0.3) & \
+        (height > (lrh.POOL_M - lidar_ground) + 1.5)
+    dry &= ~wet
+    timber_rows = np.column_stack([x[wet], y[wet], lidar_ground[wet], height[wet], crown[wet],
                                    evergreen[wet]]).tolist()
     lstats["lidar_flooded_timber"] = int(wet.sum())
     for i in np.flatnonzero(dry):

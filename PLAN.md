@@ -202,13 +202,18 @@ Owner direction (14 Oct 2026):
 - Cleared lots show as green grass in marketing shots (`cleared_ground: grassed`); check
   views keep the soil as photographed.
 - Accurate flooded timber in the Fish and Wildlife zone matters more than tree realism.
-  The 903 StratMap lidar trees below pool inside the zone (median water depth 1.9 m,
-  maximum 5.2 m) stand in the water. They are built as two switchable layers: `snags`,
-  the default and the long-term look (permanently flooded oaks and elms die within a few
-  seasons), and `leafy`, the first season after flooding.
-- The zone's extent over the water is owner-derived: the creek arm west of the parcels,
-  bounded by the parcels' north and south lines. The straight north edge of the stand
-  comes from that assumption and needs the real boundary.
+  The zone is UTRWD's mapped "Fish and Wildlife Habitat" water-surface classification
+  from the draft LSMP (16 Oct 2025, Appendix A). The plan states that timber in it "was
+  left in place as fish and wildlife habitat". It covers the creek arm from CR 3640 to
+  the main lake, plus a western side arm, about 51 ac. It was digitized by
+  `scripts/digitize_fwh_zone.py`, registered to UTRWD's CR 3640 and TxDOT's CR 3635
+  with about 8 m residuals. It is approximate: the map is a planning graphic, and UTRWD
+  holds the official georeferenced version.
+- 1,935 StratMap lidar trees below pool inside the zone (median water depth 2.7 m,
+  maximum 11.4 m in the old channel) stand in the water. They are built as two
+  switchable layers: `snags`, the default and the long-term look (permanently flooded
+  oaks and elms die within a few seasons), and `leafy`, the first season after
+  flooding.
 
 Draft timing on the M4: H1 1920 × 1080, 96 samples, 15 s; H3 19 s. A first estimate for an
 8K final (16× the pixels, 1024 samples) is about 40 min per frame, to be confirmed with a
@@ -271,6 +276,6 @@ foreground trees fall short of `cam_02`.
 | Item | Owner | Needed by |
 | --- | --- | --- |
 | Section 7 decisions 2–6 | Owner | Before any publication |
-| Extent of the Fish and Wildlife (flooded timber) zone over the water: a map, UTRWD exhibit, or description of its north and south limits | Owner | H1/H3 finals |
+| Optional: UTRWD's official georeferenced water-surface classification map, to replace the digitized draft LSMP outline | Owner (request from UTRWD) | Before publication |
 | Flooded timber look for marketing: snags (long term, default) or leafy (first season) | Owner | H1/H3 finals |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |

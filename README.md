@@ -40,6 +40,7 @@ $BPY scripts/observed_cover_drone.py           # drone-photo clearing -> out/der
 clang -O2 -I/opt/homebrew/include/laszip -L/opt/homebrew/lib -llaszip_api \
       scripts/native/laz_dump.c -o .build/laz_dump
 $BPY scripts/lidar_trees.py                   # measured trees -> out/derived/lidar_trees.npz
+$BPY scripts/digitize_fwh_zone.py             # LSMP habitat zone -> out/derived/fwh_zone_lsmp.geojson
 $B -b --python scripts/blender/build_baseline.py          # -> out/<date>/lrh_baseline.blend
 $B -b --python scripts/blender/render.py -- --shot all --kind check
 ```
