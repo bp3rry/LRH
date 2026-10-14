@@ -132,8 +132,8 @@ scripts/render.py --shot <name> --res draft|final  ->  out/<date>/<shot>.png + .
 - Owner: the drone-match view, seen side by side with the drone photo, reads as the
   same place (tree masses, clearings, roads).
 
-**Status (14 Oct 2026): first baseline built; automated checks pass; owner review
-pending.** Build products are in `out/2026-10-14/` (`lrh_baseline.blend`,
+**Status (14 Oct 2026): accepted.** Automated checks pass. The owner reviewed the
+drone-match side-by-side and accepted it. Build products are in `out/2026-10-14/` (`lrh_baseline.blend`,
 `baseline_checks.json`, three check views with sidecars, and
 `check_drone_match_side_by_side.jpg`).
 
