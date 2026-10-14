@@ -1,9 +1,11 @@
-"""Tree scatter from the imagery ground-cover masks (PLAN.md Phase 1 step 4).
+"""Trees for the baseline (PLAN.md Phase 1 step 4).
 
-Positions come from out/derived/ cover rasters: the 0.6 m site raster updated with the
-2026 drone-photo clearing, and the 3 m regional raster beyond it. Heights are
-species-random within each species' range (canopy source (c)) until a measured canopy
-height source is available. Trees are instances on point clouds via Geometry Nodes.
+Inside the StratMap 2025 lidar coverage (canopy source (a)), every tree is a measured
+one from scripts/lidar_trees.py: position, height and crown radius, with red cedar where
+the leaf-off evergreen score is high. Trees on ground the 2026 drone photo shows
+cleared, on roads, or below pool are dropped. Outside the coverage, trees are scattered
+from the imagery cover masks with species-random heights (canopy source (c)).
+Trees are instances on point clouds via Geometry Nodes, never realised geometry.
 """
 
 import json
@@ -25,6 +27,8 @@ TIERS = [(1500.0, 4.5, 1.0), (5000.0, 8.0, 1.3)]
 SITE_CENTRE = (0.0, 35.0)
 WOODS_MIX = {"post_oak": 0.45, "cedar_elm": 0.30, "red_cedar": 0.15, "bois_darc": 0.10}
 EDGE_MIX = {"post_oak": 0.25, "cedar_elm": 0.15, "red_cedar": 0.35, "bois_darc": 0.25}
+DECIDUOUS_MIX = {"post_oak": 0.53, "cedar_elm": 0.35, "bois_darc": 0.12}
+EVERGREEN_SCORE_MIN = 0.8  # leaf-off lidar: dense crowns are red cedar
 
 
 def read_raster(path):
@@ -143,10 +147,40 @@ def scatter(coll, site_grid, sampler, road_lines, zone, record):
                        regional_cover.array.shape[0],
                        regional_cover.gt[0] + regional_cover.gt[1] * regional_cover.array.shape[1],
                        regional_cover.gt[3])
-    placed = {s: [] for s in trees.SPECIES}
+    placed = {s: [] for s in trees.SPECIES}  # rows: x, y, z, height or nan, crown or nan, boost
+    coverage = shapely.union_all([shapely.box(*b) for b in json.loads(
+        (DERIVED / "lidar_coverage.json").read_text())["tiles_local_m_bounds"].values()])
+    lidar = np.load(DERIVED / "lidar_trees.npz")["trees"]
+    x, y, height, crown, evergreen = lidar[:, 0], lidar[:, 1], lidar[:, 3], lidar[:, 4], lidar[:, 5]
+    cls, in_site = site_cover.lookup(x, y)
+    # The drone-photo clearing is registered to ~10 m, the lidar to well under 1 m, so a
+    # measured tree is dropped as cleared only if the photo shows no woods within 8 m.
+    near_woods = np.zeros(len(x), bool)
+    for dx in np.arange(-8.0, 8.1, 2.0):
+        for dy in np.arange(-8.0, 8.1, 2.0):
+            if dx * dx + dy * dy <= 64:
+                near_woods |= site_cover.lookup(x + dx, y + dy)[0] == WOODS
+    cleared = in_site & (cls == CLEARED) & ~near_woods
+    keep = ~cleared & ~shapely.contains_xy(road_buffer, x, y)
+    lstats = {"lidar_detected": len(lidar), "lidar_on_2026_clearing": int(cleared.sum())}
+    x, y, height, crown, evergreen = (a[keep] for a in (x, y, height, crown, evergreen))
+    z = site_grid.heights(x, y)
+    far = np.isnan(z)
+    z[far] = [sampler(a, b) or np.nan for a, b in zip(x[far], y[far])]
+    dry = ~np.isnan(z) & (z > lrh.POOL_M + 0.3)
+    lstats["lidar_below_pool"] = int((~dry).sum())
+    for i in np.flatnonzero(dry):
+        if evergreen[i] >= EVERGREEN_SCORE_MIN:
+            species = "red_cedar"
+        else:
+            species = rng.choice(list(DECIDUOUS_MIX), p=list(DECIDUOUS_MIX.values()))
+        placed[species].append((x[i], y[i], z[i], height[i], crown[i], 1.0))
+    lstats["lidar_placed"] = int(dry.sum())
+
     stats = {"candidates": 0, "woods": 0, "pasture_cedars": 0, "underwater": 0, "on_road": 0,
              "no_terrain": 0}
     for pts, spacing, boost in candidates(rng, regional_extent):
+        pts = pts[~shapely.contains_xy(coverage, pts[:, 0], pts[:, 1])]
         x, y = pts[:, 0], pts[:, 1]
         stats["candidates"] += len(pts)
         cls, in_site = site_cover.lookup(x, y)
@@ -178,7 +212,7 @@ def scatter(coll, site_grid, sampler, road_lines, zone, record):
             else:
                 mix = EDGE_MIX if frac[i] < 0.6 else WOODS_MIX
                 species = rng.choice(list(mix), p=list(mix.values()))
-            placed[species].append((x[i], y[i], z[i], boost))
+            placed[species].append((x[i], y[i], z[i], np.nan, np.nan, boost))
 
     counts = {}
     for species, rows in placed.items():
@@ -187,14 +221,19 @@ def scatter(coll, site_grid, sampler, road_lines, zone, record):
         arr = np.array(rows)
         spec = trees.SPECIES[species]
         lo, hi = spec["heights"]
-        heights = rng.uniform(lo, hi, len(arr))
+        measured = ~np.isnan(arr[:, 3])
+        heights = np.where(measured, arr[:, 3], rng.uniform(lo, hi, len(arr)))
         variant = rng.integers(0, trees.VARIANTS, len(arr))
         for v in range(trees.VARIANTS):
             sel = variant == v
             if not sel.any():
                 continue
             s = heights[sel] / spec["height"]
-            widen = arr[sel, 3] * rng.uniform(0.85, 1.15, sel.sum())
+            # Measured crowns set the width directly; scattered trees keep the
+            # prototype's proportions (widened by the distance-tier boost).
+            widen = np.where(measured[sel],
+                             np.clip(arr[sel, 4] / spec["crown_radius"] / s, 0.5, 2.0),
+                             arr[sel, 5]) * rng.uniform(0.9, 1.1, sel.sum())
             scales = np.column_stack([s * widen, s * widen * rng.uniform(0.9, 1.1, sel.sum()), s])
             rotations = np.column_stack([np.zeros(sel.sum()), np.zeros(sel.sum()),
                                          rng.uniform(0, 2 * math.pi, sel.sum())])
@@ -203,8 +242,10 @@ def scatter(coll, site_grid, sampler, road_lines, zone, record):
         counts[species] = len(arr)
 
     total = sum(counts.values())
-    record("trees_placed", total > 1000, total=total, by_species=counts, **stats,
-           height_source="species-random ranges (canopy source c); measured heights pending")
+    record("trees_placed", total > 1000 and lstats["lidar_placed"] > 10000, total=total,
+           by_species=counts, **lstats, mask_scatter=stats,
+           height_source="StratMap 2025 lidar inside its coverage (source a); "
+                         "species-random ranges outside it (source c)")
     # Preservation zone: trees present, and no zone cell was reclassified as cleared.
     x0, y0, x1, y1 = zone.bounds
     gx, gy = np.meshgrid(np.arange(x0, x1, 2.0), np.arange(y0, y1, 2.0))

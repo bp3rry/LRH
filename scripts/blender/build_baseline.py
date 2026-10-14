@@ -752,10 +752,11 @@ def main():
     imagery = {role: lock["products"][name] for role, name in lock["use"].items()}
     derived = lrh.ROOT / "out/derived"
     for path in ("naip_site_rgb.png", "naip_regional_rgb.jpg", "cleared_2026_mask.png",
-                 "cover_site_2026.tif", "cover_regional.tif"):
+                 "cover_site_2026.tif", "cover_regional.tif", "lidar_trees.npz",
+                 "lidar_coverage.json"):
         if not (derived / path).is_file():
-            lrh.fail(f"missing out/derived/{path}; run classify_ground_cover.py and "
-                     "observed_cover_2026.py first")
+            lrh.fail(f"missing out/derived/{path}; run the imagery and lidar steps in "
+                     "README first")
     terrain.data.materials.append(imagery_ground_material(
         "Ground_Site", imagery["site"], derived / "naip_site_rgb.png",
         cleared_mask=derived / "cleared_2026_mask.png"))

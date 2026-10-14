@@ -26,3 +26,4 @@ out/
 *.jpeg
 *.mp4
 .blender-site/
+.build/

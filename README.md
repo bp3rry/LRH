@@ -36,6 +36,10 @@ python3 scripts/fetch_imagery.py              # NAIP 2022 -> inputs/imagery/, im
 python3 scripts/decode_naip2024.py            # NAIP 2024 from owner download (MrSID SDK)
 python3 scripts/classify_ground_cover.py      # cover masks -> out/derived/
 $BPY scripts/observed_cover_2026.py           # drone-photo clearing -> out/derived/
+# lidar: owner-downloaded LAZ tiles unzipped into inputs/lidar/; LASzip 3.5 (brew install laszip)
+clang -O2 -I/opt/homebrew/include/laszip -L/opt/homebrew/lib -llaszip_api \
+      scripts/native/laz_dump.c -o .build/laz_dump
+$BPY scripts/lidar_trees.py                   # measured trees -> out/derived/lidar_trees.npz
 $B -b --python scripts/blender/build_baseline.py          # -> out/<date>/lrh_baseline.blend
 $B -b --python scripts/blender/render.py -- --shot all --kind check
 ```

@@ -152,9 +152,11 @@ pending.** Build products are in `out/2026-10-14/` (`lrh_baseline.blend`,
       woods, with per-year thresholds.
       Inside the parcels, the 2026 clearing comes from the drone photo, projected through
       the solved camera: 69% cleared, 22% woods, 9% pasture.
-- [x] Trees: 106,827 instances of procedural post oak, cedar elm, red cedar and bois
-      d'arc, out to 5 km. Heights use source (c), species ranges. The creek preservation
-      zone (15.2 ac, owner-derived) has no cleared cells and 969 trees.
+- [x] Trees: 90,990 instances. 30,128 are measured StratMap 2025 lidar trees (source (a);
+      position, height, crown radius; red cedar where the leaf-off evergreen score is
+      ≥ 0.8) over the six near tiles. The rest are mask-scattered outside lidar coverage
+      (source (c)). 19,374 lidar trees in the creek bottom are below pool and omitted. The
+      creek preservation zone has no cleared cells and 555 measured trees.
 - [x] Roads: CR 3635 (1.46 km of TxDOT centreline on terrain) and relocated CR 3640.
       SH 34 bridge marker.
 - [x] Overlays: parcel and lot lines and labels in `Overlays_Review`. Scene lot areas
@@ -162,9 +164,12 @@ pending.** Build products are in `out/2026-10-14/` (`lrh_baseline.blend`,
 - [x] Check views: north-up lot plan, drone match, lake oblique. The drone camera was
       solved against PTM's survey-registered outline (29 px RMS at 2048 px); the roads
       line up with the photo.
-- [ ] Measured canopy heights. StratMap 2025 classified LAZ is now listed (tile
-      `3395332c4`). The TxGIO host refuses scripted clients, so the owner downloads it in
-      a browser (§9).
+- [ ] Photo vs lidar inside the parcels. 75 lidar trees (flown 9 Dec 2025) stand where
+      the drone photo shows clearing or brush piles, so they are removed as felled after
+      the flight. The photo also shows more retained interior clumps than the lidar
+      places. The camera pose is confirmed to about 10 m (`scripts/refine_drone_camera.py`
+      against isolated lidar trees), so the gap is in the data. Owner: what date was the
+      drone photo taken?
 - [ ] Known visual gaps for owner review: tree crowns are rounder and more uniform than
       real oaks; there are fewer small pasture cedars than the photo shows; pastures read
       beige rather than the photo's yellow-green.
@@ -240,5 +245,5 @@ surveyor model did not have. Default behaviour is shown in **bold**; the owner d
 | --- | --- | --- |
 | Asset budget: CC0-only (current default), or allow paid tree packs (e.g. Botaniq) | Owner | Phase 1 step 4 |
 | Section 7 decisions 2–6 | Owner | Before any publication |
-| Download StratMap 2025 classified LAZ (`stratmap25-50cm-ralph-hall_3395332_lpc.zip`) into `inputs/downloads/`; the TxGIO host refuses scripted clients | Owner | Measured tree heights |
+| Date of the drone photo (orders it against the 9 Dec 2025 lidar flight) | Owner | Retained trees in the clearing |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |
