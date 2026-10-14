@@ -24,6 +24,7 @@ from mathutils.geometry import delaunay_2d_cdt
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import lrh  # noqa: E402
+import vegetation  # noqa: E402
 
 import shapely  # noqa: E402  (from .blender-site, added to sys.path by lrh)
 import yaml  # noqa: E402
@@ -101,23 +102,66 @@ def principled(name, rgb, roughness=0.8, **inputs):
     return mat
 
 
-def ground_material(name, scale):
-    """Placeholder pasture/woodland-floor mix until the imagery masks drive it (step 3)."""
+def imagery_ground_material(name, product, image_path, cleared_mask=None):
+    """Ground albedo from NAIP, with the 2026 clearing and underwater ground overlaid."""
+    xmin, _, _, ymax = product["bbox_local_m"]
+    width = product["size_px"][0] * product["cell_m"]
+    height = product["size_px"][1] * product["cell_m"]
     mat = principled(name, (0.3, 0.3, 0.2), roughness=0.95)
     nodes, links = mat.node_tree.nodes, mat.node_tree.links
     bsdf = nodes["Principled BSDF"]
     coord = nodes.new("ShaderNodeTexCoord")  # object space = world metres here
-    noise = nodes.new("ShaderNodeTexNoise")
-    noise.inputs["Scale"].default_value = scale
-    noise.inputs["Detail"].default_value = 8.0
-    links.new(coord.outputs["Object"], noise.inputs["Vector"])
-    ramp = nodes.new("ShaderNodeValToRGB")
-    ramp.color_ramp.elements[0].position = 0.35
-    ramp.color_ramp.elements[0].color = (0.20, 0.25, 0.10, 1)  # green pasture
-    ramp.color_ramp.elements[1].position = 0.65
-    ramp.color_ramp.elements[1].color = (0.42, 0.36, 0.22, 1)  # dry grass / bare soil
-    links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
-    links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
+    to_uv = nodes.new("ShaderNodeMapping")
+    to_uv.inputs["Scale"].default_value = (1 / width, 1 / height, 1)
+    to_uv.inputs["Location"].default_value = (-xmin / width, -(ymax - height) / height, 0)
+    links.new(coord.outputs["Object"], to_uv.inputs["Vector"])
+
+    def image_node(path, colour):
+        node = nodes.new("ShaderNodeTexImage")
+        node.image = bpy.data.images.load(str(path))
+        node.image.colorspace_settings.name = colour
+        node.extension = "EXTEND"
+        node.interpolation = "Cubic"
+        links.new(to_uv.outputs["Vector"], node.inputs["Vector"])
+        return node
+
+    naip = image_node(image_path, "sRGB")
+    # NAIP July 2022 was a drought summer; nudge toward the greener drone-photo season.
+    grade = nodes.new("ShaderNodeHueSaturation")
+    grade.inputs["Saturation"].default_value = 1.3
+    grade.inputs["Value"].default_value = 0.8
+    links.new(naip.outputs["Color"], grade.inputs["Color"])
+    colour = grade.outputs["Color"]
+    if cleared_mask is not None:
+        mask = image_node(cleared_mask, "Non-Color")
+        soil = nodes.new("ShaderNodeTexNoise")
+        soil.inputs["Scale"].default_value = 0.6
+        soil.inputs["Detail"].default_value = 10.0
+        links.new(coord.outputs["Object"], soil.inputs["Vector"])
+        soil_ramp = nodes.new("ShaderNodeValToRGB")
+        # Linear albedo: scraped clay-loam ~0.15-0.2, dry stubble ~0.25-0.3.
+        soil_ramp.color_ramp.elements[0].color = (0.17, 0.12, 0.075, 1)
+        soil_ramp.color_ramp.elements[1].color = (0.28, 0.22, 0.13, 1)
+        links.new(soil.outputs["Fac"], soil_ramp.inputs["Fac"])
+        cleared = nodes.new("ShaderNodeMix")
+        cleared.data_type = "RGBA"
+        links.new(mask.outputs["Color"], cleared.inputs["Factor"])
+        links.new(colour, cleared.inputs["A"])
+        links.new(soil_ramp.outputs["Color"], cleared.inputs["B"])
+        colour = cleared.outputs["Result"]
+    # Ground below pool is lake bed: dark silt, blended over 0.5 m.
+    position = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(coord.outputs["Object"], position.inputs["Vector"])
+    below = nodes.new("ShaderNodeMapRange")
+    below.inputs["From Min"].default_value = lrh.POOL_M
+    below.inputs["From Max"].default_value = lrh.POOL_M - 0.5
+    links.new(position.outputs["Z"], below.inputs["Value"])
+    silt = nodes.new("ShaderNodeMix")
+    silt.data_type = "RGBA"
+    silt.inputs["B"].default_value = (0.10, 0.085, 0.06, 1)
+    links.new(below.outputs["Result"], silt.inputs["Factor"])
+    links.new(colour, silt.inputs["A"])
+    links.new(silt.outputs["Result"], bsdf.inputs["Base Color"])
     return mat
 
 
@@ -181,6 +225,19 @@ class SiteGrid:
         self.index[gy, gx] = np.arange(len(coords))
         self.xmax, self.ymax = self.xmin + self.nx - 1, self.ymin + self.ny - 1
         self.rect = box(self.xmin, self.ymin, self.xmax, self.ymax)
+
+    def heights(self, x, y):
+        """Bilinear terrain heights at many points; NaN outside the site grid."""
+        fx, fy = np.asarray(x) - self.xmin, np.asarray(y) - self.ymin
+        inside = (fx >= 0) & (fx <= self.nx - 1) & (fy >= 0) & (fy <= self.ny - 1)
+        out = np.full(len(fx), np.nan)
+        cx = np.clip(np.floor(fx[inside]).astype(int), 0, self.nx - 2)
+        cy = np.clip(np.floor(fy[inside]).astype(int), 0, self.ny - 2)
+        tx, ty = fx[inside] - cx, fy[inside] - cy
+        z = self.z
+        out[inside] = (z[cy, cx] * (1 - tx) * (1 - ty) + z[cy, cx + 1] * tx * (1 - ty)
+                       + z[cy + 1, cx] * (1 - tx) * ty + z[cy + 1, cx + 1] * tx * ty)
+        return out
 
     def perimeter_indices(self):
         """Vertex indices around the grid boundary, counter-clockwise, no repeat."""
@@ -467,10 +524,11 @@ def build_roads(context, coll, sampler):
                        ROAD_LIFT_M - 0.04, shoulder, coll, step=2.0, min_z=grade))
     made.append(ribbon("CR3640_Surface", dense, spec["road_width_m"], sampler, ROAD_LIFT_M,
                        gravel, coll, step=2.0, min_z=grade))
+    centrelines = [list(p.coords) for p in parts] + [dense.tolist()]
     record("roads_built", len(made) >= 4, objects=[o.name for o in made],
            cr3635_length_m=round(sum(p.length for p in parts), 1),
            cr3635_source_length_m=round(LineString(line).length, 1))
-    return made
+    return centrelines
 
 
 def build_bridge(context, coll, sampler):
@@ -570,7 +628,7 @@ def build_overlays(context, coll, sampler):
         text.align_y = "CENTER"
         label = bpy.data.objects.new(f"{lot['label'].replace(' ', '_')}_Label", text)
         cx, cy = Polygon(lot["polygon_local_m"]).representative_point().coords[0]
-        label.location = (cx, cy, (sampler(cx, cy) or lrh.POOL_M) + 3.0)
+        label.location = (cx, cy, (sampler(cx, cy) or lrh.POOL_M) + 30.0)  # above canopy
         label.data.materials.append(label_mat)
         coll.objects.link(label)
     return lots
@@ -682,21 +740,32 @@ def main():
     scene.unit_settings.system = "METRIC"
 
     colls = {name: collection(name) for name in
-             ("Terrain", "Water", "Roads", "Landmarks", "Overlays_Review", "Masks", "Cameras")}
+             ("Terrain", "Water", "Roads", "Landmarks", "Vegetation", "Overlays_Review", "Masks",
+              "Cameras")}
 
     terrain = import_site_terrain(colls["Terrain"])
     site_coords = mesh_vertices(terrain)
     grid = SiteGrid(site_coords)
     check_terrain_against_raster(grid)
     regional = stitch_regional_terrain(grid, site_coords, colls["Terrain"])
-    terrain.data.materials.append(ground_material("Ground_Site", 0.08))
-    regional.data.materials.append(ground_material("Ground_Regional", 0.004))
+    imagery = json.loads((lrh.ROOT / "imagery.lock.json").read_text())["products"]
+    derived = lrh.ROOT / "out/derived"
+    for path in ("naip_site_rgb.png", "naip_regional_rgb.jpg", "cleared_2026_mask.png",
+                 "cover_site_2026.tif", "cover_regional.tif"):
+        if not (derived / path).is_file():
+            lrh.fail(f"missing out/derived/{path}; run classify_ground_cover.py and "
+                     "observed_cover_2026.py first")
+    terrain.data.materials.append(imagery_ground_material(
+        "Ground_Site", imagery["naip_site_0p6m"], derived / "naip_site_rgb.png",
+        cleared_mask=derived / "cleared_2026_mask.png"))
+    regional.data.materials.append(imagery_ground_material(
+        "Ground_Regional", imagery["naip_regional_3m"], derived / "naip_regional_rgb.jpg"))
 
     context = lrh.load_context()
     dam = build_dam(context, colls["Landmarks"])
     sampler = HeightSampler([terrain, regional, dam])
     _, _, pooled = build_water(grid, context, colls["Water"], sampler)
-    build_roads(context, colls["Roads"], sampler)
+    road_lines = build_roads(context, colls["Roads"], sampler)
     build_bridge(context, colls["Landmarks"], sampler)
     lots = build_overlays(context, colls["Overlays_Review"], sampler)
     check_lot_areas(lots)
@@ -708,6 +777,7 @@ def main():
                                                         "basis": "owner-provided, derived"},
                       "geometry": mapping(zone)}]}))
     colls["Masks"].hide_render = True
+    vegetation.scatter(colls["Vegetation"], grid, sampler, road_lines, zone, record)
     build_cameras(shots, colls["Cameras"])
     default_world(scene)
 

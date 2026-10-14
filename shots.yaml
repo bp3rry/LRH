@@ -8,7 +8,7 @@
 # collections: the collections rendered; every other collection is excluded.
 
 render:
-  exposure: -3.0   # AgX exposure for the physical sky; a shot may override it
+  exposure: -4.0   # AgX exposure for the physical sky; a shot may override it
   draft: {resolution: [1920, 1080], samples: 96}
   final: {resolution: [7680, 4320], samples: 1024, tile_size: 2048}
   caption: "Artist's conception. Lake shown at conservation pool. Lot lines approximate, subject to survey and plat."
@@ -20,7 +20,7 @@ shots:
     camera: {type: ortho, center: [0.0, 35.0], ortho_scale_m: 600.0}
     resolution: [1200, 1500]
     sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
-    collections: [Terrain, Water, Roads, Overlays_Review]
+    collections: [Terrain, Water, Roads, Vegetation, Overlays_Review]
 
   check_drone_match:
     kind: check
@@ -30,11 +30,11 @@ shots:
     camera: {position: [398.80, -454.22, 430.18], target: [-91.03, -24.76, 175.00], lens_mm: 28.883, roll_deg: -3.739}
     resolution: [2016, 1134]
     sun: {datetime: "2026-08-20T11:30", utc_offset_h: -5}
-    collections: [Terrain, Water, Roads, Landmarks, Overlays_Review]
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation, Overlays_Review]
 
   check_lake_oblique:
     kind: check
     description: Lake-facing oblique from above the lots.
     camera: {position: [260.0, 10.0, 260.0], target: [-420.0, 60.0, 168.0], lens_mm: 28.0}
     sun: {datetime: "2026-10-14T16:00", utc_offset_h: -5}
-    collections: [Terrain, Water, Roads, Landmarks]
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]

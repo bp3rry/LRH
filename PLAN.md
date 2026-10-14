@@ -132,6 +132,41 @@ scripts/render.py --shot <name> --res draft|final  ->  out/<date>/<shot>.png + .
 - Owner: the drone-match view, seen side by side with the drone photo, reads as the
   same place (tree masses, clearings, roads).
 
+**Status (14 Oct 2026): first baseline built; automated checks pass; owner review
+pending.** Build products are in `out/2026-10-14/` (`lrh_baseline.blend`,
+`baseline_checks.json`, three check views with sidecars, and
+`check_drone_match_side_by_side.jpg`).
+
+- [x] Terrain. The site mesh is unaltered: its 3×3 block means reproduce `terrain_site.tif`
+      to 7×10⁻⁵ m (the tif is exactly that aggregate). Regional faces within 120 m are
+      replaced by a constrained-Delaunay ring that shares every 1 m site edge vertex.
+- [x] Water, with two deviations for the owner to note. (a) The published polygon is
+      generalised: 40% of its edge lies over ground below pool. So the water mask is the
+      official polygon plus PTM's terrain-connected pool, buffered 60 m, and the visible
+      shoreline is the 551 ft terrain contour. Edge exposure: 17 of 12,824 samples, 3 near
+      the site. (b) The 2025 regional terrain has no dam embankment, so a schematic
+      embankment sits on PTM's dam marker. Without it the lake ends in a water wall.
+- [x] Ground cover from imagery. TxGIO and USGS both offer NAIP 2022 (0.6 m, 5 Jul 2022)
+      as the newest openly downloadable imagery. Classes: water, bare, pasture, woods.
+      Inside the parcels, the 2026 clearing comes from the drone photo, projected through
+      the solved camera: 69% cleared, 22% woods, 9% pasture.
+- [x] Trees: 98,394 instances of procedural post oak, cedar elm, red cedar and bois
+      d'arc, out to 5 km. Heights use source (c), species ranges. The creek preservation
+      zone (15.2 ac, owner-derived) has no cleared cells and 1,055 trees.
+- [x] Roads: CR 3635 (1.46 km of TxDOT centreline on terrain) and relocated CR 3640.
+      SH 34 bridge marker.
+- [x] Overlays: parcel and lot lines and labels in `Overlays_Review`. Scene lot areas
+      match PTM within 0.0009 ac.
+- [x] Check views: north-up lot plan, drone match, lake oblique. The drone camera was
+      solved against PTM's survey-registered outline (29 px RMS at 2048 px); the roads
+      line up with the photo.
+- [ ] Measured canopy heights. StratMap 2025 classified LAZ is now listed (tile
+      `3395332c4`), as is NAIP Nov 2024. The TxGIO host refuses non-browser clients (HTTP
+      403), so this waits on an owner decision (§9).
+- [ ] Known visual gaps for owner review: tree crowns are rounder and more uniform than
+      real oaks; there are fewer small pasture cedars than the photo shows; ground colour
+      is from the drought summer of 2022.
+
 ### Phase 2 — Hero stills (first release)
 
 Three compositions; the owner may swap any of them:
@@ -203,5 +238,5 @@ surveyor model did not have. Default behaviour is shown in **bold**; the owner d
 | --- | --- | --- |
 | Asset budget: CC0-only (current default), or allow paid tree packs (e.g. Botaniq) | Owner | Phase 1 step 4 |
 | Section 7 decisions 2–6 | Owner | Before any publication |
-| Retry for StratMap 2025 classified LAZ | Claude | Phase 1 step 4 |
+| StratMap 2025 classified LAZ and NAIP 2024: now listed on TxGIO, but the host returns 403 to scripted downloads. Owner downloads them in a browser, or approves a browser user agent | Owner | Measured tree heights |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |

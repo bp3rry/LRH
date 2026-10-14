@@ -1,0 +1,152 @@
+{
+  "schema": "lrh.imagery-lock/1",
+  "retrieved_utc": "2026-10-14T16:48:25Z",
+  "service": "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer",
+  "licence": "Public domain (USDA NAIP via USGS The National Map)",
+  "crs": "EPSG:6344; bbox_local_m is relative to inputs/terrain/origin.json",
+  "products": {
+    "naip_site_0p6m": {
+      "file": "inputs/imagery/naip_site_0p6m.tif",
+      "sha256": "e9bd955b24d8e420ba585152e8002fb4727aaaf8e02481c7aab92e5e5bf95055",
+      "bbox_local_m": [
+        -390.0,
+        -480.0,
+        390.0,
+        550.0
+      ],
+      "cell_m": 0.6,
+      "size_px": [
+        1300,
+        1717
+      ],
+      "bands": [
+        "red",
+        "green",
+        "blue",
+        "nir"
+      ],
+      "requests": [
+        "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage?bbox=228422.806%2C3703878.602%2C229202.806%2C3704908.802&bboxSR=6344&imageSR=6344&size=1300%2C1717&format=tiff&pixelType=U8&interpolation=RSP_BilinearInterpolation&bandIds=0%2C1%2C2%2C3&f=image"
+      ],
+      "source_scenes": [
+        {
+          "name": "m_3309533_ne_15_060_20220705",
+          "year": 2022,
+          "acquisition_date": "2022-07-05",
+          "resolution_m": 0.6
+        },
+        {
+          "name": "m_3309533_se_15_060_20220705",
+          "year": 2022,
+          "acquisition_date": "2022-07-05",
+          "resolution_m": 0.6
+        }
+      ]
+    },
+    "naip_regional_3m": {
+      "file": "inputs/imagery/naip_regional_3m.tif",
+      "sha256": "d5589499c1e8433dae5866860603f4266c7a072fde66e3f62783724f6f6da560",
+      "bbox_local_m": [
+        -15690.0,
+        -2316.0,
+        2826.0,
+        8046.0
+      ],
+      "cell_m": 3.0,
+      "size_px": [
+        6172,
+        3454
+      ],
+      "bands": [
+        "red",
+        "green",
+        "blue",
+        "nir"
+      ],
+      "requests": [
+        "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage?bbox=213122.806%2C3706404.802%2C219122.806%2C3712404.802&bboxSR=6344&imageSR=6344&size=2000%2C2000&format=tiff&pixelType=U8&interpolation=RSP_BilinearInterpolation&bandIds=0%2C1%2C2%2C3&f=image",
+        "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage?bbox=219122.806%2C3706404.802%2C225122.806%2C3712404.802&bboxSR=6344&imageSR=6344&size=2000%2C2000&format=tiff&pixelType=U8&interpolation=RSP_BilinearInterpolation&bandIds=0%2C1%2C2%2C3&f=image",
+        "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage?bbox=225122.806%2C3706404.802%2C231122.806%2C3712404.802&bboxSR=6344&imageSR=6344&size=2000%2C2000&format=tiff&pixelType=U8&interpolation=RSP_BilinearInterpolation&bandIds=0%2C1%2C2%2C3&f=image",
+        "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage?bbox=231122.806%2C3706404.802%2C231638.806%2C3712404.802&bboxSR=6344&imageSR=6344&size=172%2C2000&format=tiff&pixelType=U8&interpolation=RSP_BilinearInterpolation&bandIds=0%2C1%2C2%2C3&f=image",
+        "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage?bbox=213122.806%2C3702042.802%2C219122.806%2C3706404.802&bboxSR=6344&imageSR=6344&size=2000%2C1454&format=tiff&pixelType=U8&interpolation=RSP_BilinearInterpolation&bandIds=0%2C1%2C2%2C3&f=image",
+        "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage?bbox=219122.806%2C3702042.802%2C225122.806%2C3706404.802&bboxSR=6344&imageSR=6344&size=2000%2C1454&format=tiff&pixelType=U8&interpolation=RSP_BilinearInterpolation&bandIds=0%2C1%2C2%2C3&f=image",
+        "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage?bbox=225122.806%2C3702042.802%2C231122.806%2C3706404.802&bboxSR=6344&imageSR=6344&size=2000%2C1454&format=tiff&pixelType=U8&interpolation=RSP_BilinearInterpolation&bandIds=0%2C1%2C2%2C3&f=image",
+        "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage?bbox=231122.806%2C3702042.802%2C231638.806%2C3706404.802&bboxSR=6344&imageSR=6344&size=172%2C1454&format=tiff&pixelType=U8&interpolation=RSP_BilinearInterpolation&bandIds=0%2C1%2C2%2C3&f=image"
+      ],
+      "source_scenes": [
+        {
+          "name": "m_3309525_se_15_060_20220705",
+          "year": 2022,
+          "acquisition_date": "2022-07-05",
+          "resolution_m": 0.6
+        },
+        {
+          "name": "m_3309525_sw_15_060_20220705",
+          "year": 2022,
+          "acquisition_date": "2022-07-05",
+          "resolution_m": 0.6
+        },
+        {
+          "name": "m_3309533_ne_15_060_20220705",
+          "year": 2022,
+          "acquisition_date": "2022-07-05",
+          "resolution_m": 0.6
+        },
+        {
+          "name": "m_3309533_nw_15_060_20220705",
+          "year": 2022,
+          "acquisition_date": "2022-07-05",
+          "resolution_m": 0.6
+        },
+        {
+          "name": "m_3309533_se_15_060_20220705",
+          "year": 2022,
+          "acquisition_date": "2022-07-05",
+          "resolution_m": 0.6
+        },
+        {
+          "name": "m_3309533_sw_15_060_20220705",
+          "year": 2022,
+          "acquisition_date": "2022-07-05",
+          "resolution_m": 0.6
+        },
+        {
+          "name": "m_3309632_se_14_060_20220705",
+          "year": 2022,
+          "acquisition_date": "2022-07-05",
+          "resolution_m": 0.6
+        },
+        {
+          "name": "m_3309632_sw_14_060_20220705",
+          "year": 2022,
+          "acquisition_date": "2022-07-05",
+          "resolution_m": 0.6
+        },
+        {
+          "name": "m_3309640_ne_14_060_20220705",
+          "year": 2022,
+          "acquisition_date": "2022-07-05",
+          "resolution_m": 0.6
+        },
+        {
+          "name": "m_3309640_nw_14_060_20220705",
+          "year": 2022,
+          "acquisition_date": "2022-07-05",
+          "resolution_m": 0.6
+        },
+        {
+          "name": "m_3309640_se_14_060_20220705",
+          "year": 2022,
+          "acquisition_date": "2022-07-05",
+          "resolution_m": 0.6
+        },
+        {
+          "name": "m_3309640_sw_14_060_20220705",
+          "year": 2022,
+          "acquisition_date": "2022-07-05",
+          "resolution_m": 0.6
+        }
+      ]
+    }
+  }
+}
