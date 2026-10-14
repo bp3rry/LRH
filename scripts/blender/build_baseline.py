@@ -24,6 +24,7 @@ from mathutils.geometry import delaunay_2d_cdt
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import infrastructure  # noqa: E402
+import lotplan  # noqa: E402
 import lrh  # noqa: E402
 import vegetation  # noqa: E402
 
@@ -794,7 +795,17 @@ def main():
                                                         "basis": "owner-provided, derived"},
                       "geometry": mapping(zone)}]}))
     colls["Masks"].hide_render = True
-    vegetation.scatter(colls["Vegetation"], grid, sampler, road_lines, zone, timber_zone, record)
+    # Phase 2b lot plan: redlines, driveways, docks and paths (switchable per shot).
+    for name in ("Redline", "Driveways", "Docks"):
+        colls[name] = collection(name)
+    lotplan.build_redline(context, sampler, colls["Redline"])
+    drives = lotplan.driveway_lines(context, road_lines[:-1])
+    lotplan.build_driveways(drives, sampler, colls["Driveways"])
+    docks = lotplan.dock_layout(context, pooled, grid, sampler, record)
+    dock_area = lotplan.build_docks(docks, sampler, colls["Docks"], keep_wooded=zone)
+    cleared = unary_union([LineString(l).buffer(3.0) for l in drives.values()] + [dock_area])
+    vegetation.scatter(colls["Vegetation"], grid, sampler, road_lines, zone, timber_zone, record,
+                       clear=cleared)
     build_cameras(shots, colls["Cameras"])
     default_world(scene)
 

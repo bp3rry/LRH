@@ -211,6 +211,9 @@ def render_shot(name, shot, config, args, out):
         bool(shot.get("spanish_moss", config.get("spanish_moss", False)))
     if moss and timber in ("dying", "snags"):
         wanted.add("Spanish_Moss")
+    for layer in ("redline", "driveways", "docks"):
+        if shot.get(layer, config.get(layer, False)):
+            wanted.add(layer.capitalize())
     cleared = args.cleared_ground or shot.get("cleared_ground", config.get("cleared_ground", "soil"))
     node = bpy.data.materials["Ground_Site"].node_tree.nodes["LRH_Cleared_Grassed"]
     node.outputs[0].default_value = 1.0 if cleared == "grassed" else 0.0
@@ -231,6 +234,12 @@ def render_shot(name, shot, config, args, out):
     if camera is None:
         lrh.fail(f"{name}: no camera CAM_{name} in the .blend; rebuild the baseline")
     scene.camera = camera
+    # Flat lot numbers read upright from this camera: text +Y along the view heading.
+    forward = camera.matrix_world.to_quaternion() @ Vector((0, 0, -1))
+    if abs(forward.x) + abs(forward.y) > 1e-3:
+        for obj in bpy.data.objects:
+            if obj.name.startswith("Redline_") and obj.name.endswith("_Number"):
+                obj.rotation_euler = (0, 0, math.atan2(-forward.x, forward.y))
     sun = configure_sky(scene, shot["sun"])
     with tempfile.TemporaryDirectory() as scratch:
         haze = configure_haze(scene, camera, shot.get("haze_visibility_km",
@@ -250,9 +259,12 @@ def render_shot(name, shot, config, args, out):
     except lrh.CheckFailed as error:
         lrh.fail(str(error))
     deliverable = master
+    text = config["caption"]
+    if "Docks" in wanted:
+        text += " " + config["caption_docks"]
     if kind == "marketing":
         deliverable = out / f"{stem}.png"
-        caption(master, deliverable, config["caption"])
+        caption(master, deliverable, text)
 
     cam = camera.data
     sidecar = {
@@ -265,7 +277,7 @@ def render_shot(name, shot, config, args, out):
         "shots_yaml_sha256": lrh.file_sha256(lrh.ROOT / "shots.yaml"),
         "blend": str(args.blend),
         "image": str(deliverable),
-        "caption": config["caption"] if kind == "marketing" else None,
+        "caption": text if kind == "marketing" else None,
         "camera": {
             "type": cam.type, "location": list(camera.location),
             "rotation_euler": list(camera.rotation_euler), "lens_mm": cam.lens,

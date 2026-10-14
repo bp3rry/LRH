@@ -12,16 +12,21 @@ render:
   haze_visibility_km: 25   # compositor aerial perspective; a shot may override (0 = off)
   flooded_timber: dying    # habitat-zone trees below pool: leafy | dying | snags | none
   spanish_moss: false      # off until its range at Lake Ralph Hall is confirmed (PLAN 2a)
+  redline: false           # parcel/lot redlines and lot numbers (Phase 2b)
+  driveways: false         # one gravel driveway per lot off CR 3635
+  docks: false             # one dock per lot pair + shoreline paths (UTRWD permit required)
   cleared_ground: soil     # the parcels' cleared ground: soil (as photographed) | grassed
   draft: {resolution: [1920, 1080], samples: 96}
   final: {resolution: [7680, 4320], samples: 1024, tile_size: 2048}
   caption: "Artist's conception. Lake shown at conservation pool. Lot lines approximate, subject to survey and plat."
+  caption_docks: "Docks conceptual, subject to UTRWD Shoreline Use Permit."
 
 shots:
   check_lotplan_ortho:
     kind: check
     description: North-up ortho matching the PTM lot plan.
     camera: {type: ortho, center: [0.0, 35.0], ortho_scale_m: 600.0}
+    haze_visibility_km: 0
     resolution: [1200, 1500]
     sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
     collections: [Terrain, Water, Roads, Vegetation, Overlays_Review]
@@ -74,6 +79,19 @@ shots:
     haze_visibility_km: 40
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
 
+  check_lotplan_features:
+    kind: check
+    description: North-up plan with redlines, driveways, docks and shoreline paths (Phase 2b review).
+    camera: {type: ortho, center: [20.0, 120.0], ortho_scale_m: 820.0}
+    haze_visibility_km: 0
+    resolution: [1400, 1500]
+    sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
+    cleared_ground: grassed
+    redline: true
+    driveways: true
+    docks: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
   # --- Phase 2 hero stills (marketing: no overlays or docks; caption added) ---
   H1_arrival:
     kind: marketing
@@ -89,4 +107,15 @@ shots:
     camera: {position: [-560.0, 860.0, 330.0], target: [0.0, 0.0, 176.0], lens_mm: 32.0}
     sun: {datetime: "2026-10-14T15:00", utc_offset_h: -5}
     cleared_ground: grassed  # owner, 14 Oct 2026
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  H1_arrival_lotplan:
+    kind: marketing
+    description: H1 with redlines, driveways and docks (Phase 2b).
+    camera: {position: [360.0, -470.0, 340.0], target: [-420.0, 260.0, 168.0], lens_mm: 24.0}
+    sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
+    cleared_ground: grassed
+    redline: true
+    driveways: true
+    docks: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]

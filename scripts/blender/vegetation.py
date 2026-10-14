@@ -195,7 +195,8 @@ def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record):
                  "Wildlife Habitat zone; crowns must clear the water by 1.5 m")
 
 
-def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record):
+def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, clear=None):
+    """`clear`: footprints (driveways, dock paths and docks) where no tree may stand."""
     """Place trees; returns counts by species and records the vegetation checks."""
     import shapely  # from .blender-site via lrh
 
@@ -205,6 +206,8 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record):
     regional_cover = Raster(DERIVED / "cover_regional.tif")
     regional_frac = Raster(DERIVED / "tree_fraction_regional.tif")
     road_buffer = shapely.union_all([shapely.LineString(l).buffer(7.0) for l in road_lines])
+    if clear is not None:
+        road_buffer = road_buffer.union(clear)
 
     proto_coll = bpy.data.collections.new("Tree_Prototypes")
     coll.children.link(proto_coll)

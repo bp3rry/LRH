@@ -244,22 +244,49 @@ These go into the baseline so later stills, per-lot views and the flyover can al
 
 ### Phase 2b — Lot plan features (after Phase 2a)
 
-- [ ] **Redline overlays.** Parcel and lot lines as a marketing-grade layer (red lines,
-      lot numbers), switchable per shot. The §7 caption already says "Lot lines
-      approximate".
-- [ ] **Driveways.** One per lot from CR 3635, gravel, placed where the road-side tree line
-      allows.
-- [ ] **Docks, one per pair of lots** (Lots 1–2, 3–4, 5–6, 7–8, 9–10; each pair sold as one
-      ~4 ac property under one owner). Each dock gets a 5 ft path across UTRWD land. Draft
-      LSMP rules to check and report for each layout:
-      - at least 300 ft between docks, including across the cove;
-      - at most 120 ft long, and no more than ⅓ of the cove width;
-      - only on Shoreline Management Zone shoreline;
-      - the owner must have an occupied residence;
-      - the water in front is the no-wake, timbered Fish and Wildlife Habitat zone.
-- [ ] **North-point dock.** A path from the northernmost point of the parcels east across
-      UTRWD land to a dock at the deepest nearby water of the main lake, checked against
-      the same rules. Assumed to be the dock for the Lots 1–2 pair; owner to confirm.
+Built 14 Oct 2026 as switchable layers (`redline`, `driveways`, `docks` in `shots.yaml`).
+Review renders: `out/2026-10-14/check_lotplan_features_draft.png` (north-up) and
+`H1_arrival_lotplan_draft.png`.
+
+- [x] **Redline overlays.** Each CAD parcel outline in red, so the shared line between
+      Lots 5 and 6 shows. Lot lines in white. Lot numbers sit on each lot's most open
+      ground and turn to read upright from each shot's camera.
+- [x] **Driveways.** One 4 m gravel driveway per lot, square to CR 3635, with trees cleared
+      only on the driveway. Lot 1 has no frontage on the mapped CR 3635: the TxDOT
+      centreline stops at the bend south of it, though UTRWD maps show the road continuing
+      north-west. Its driveway therefore runs from the mapped road end. **Owner to
+      confirm Lot 1 access.**
+- [x] **Docks, one per lot pair**, each with a 5 ft path. All pass the draft LSMP spacing
+      and length rules (`docks_lsmp` in `baseline_checks.json`):
+
+      | Pair | Length | Cove width | Depth at end (full pool) | Nearest dock | Path |
+      | --- | --- | --- | --- | --- | --- |
+      | 1–2 (north point) | 81 ft | 74 m | 2.2 m | 1,427 ft | 286 m |
+      | 3–4 | 120 ft | 192 m | 1.7 m | 314 ft | 70 m |
+      | 5–6 | 120 ft | 206 m | 1.2 m | 314 ft | 64 m |
+      | 7–8 | 103 ft | 94 m | 1.0 m | 411 ft | 99 m |
+      | 9–10 | — | — | — | — | — |
+
+      **Lots 9–10 have no workable boat-dock site.** The arm in front of them is narrow and
+      shallow: no point has both a cove at least 60 m wide and 1 m of water at the dock
+      end (widest 68 m; deepest 3.1 m, but not at the same place). Options for the
+      owner:
+      - a fishing/patio dock (33 ft maximum);
+      - pair Lots 9–10's access with Lots 7–8;
+      - re-pair the lots.
+
+      The arm docks stand in the no-wake, timbered habitat zone at 1.0–1.7 m depth at full
+      pool, so they suit shallow-draft boats and get shallower as the lake drops. Paths
+      through the creek preservation woods clear no trees: a 5 ft trail under the canopy,
+      as §7.7 requires. Not checked: the Shoreline Management Zone classification at each
+      site (the draft map shows SMZ on the arm's east shore and the north shore), the
+      occupied-residence rule, and the UTRWD permit itself.
+- [x] **North-point dock.** The path runs from the parcels' northernmost point
+      (−61, 298) east-north-east across UTRWD land, staying 3 m clear of the excluded
+      cemetery parcel. It ends at a cove of the main lake, and the dock points toward the
+      deepest water within 150 m. Taken as the Lots 1–2 dock (owner to confirm). Dock
+      images add "Docks conceptual, subject to UTRWD Shoreline Use Permit." to the
+      caption.
 
 ### Phase 3+ — Later releases (planned after Phase 2 is accepted)
 
@@ -321,5 +348,7 @@ foreground trees fall short of `cam_02`.
 | --- | --- | --- |
 | Section 7 decisions 2–6 | Owner | Before any publication |
 | Optional: UTRWD's official georeferenced water-surface classification map, to replace the digitized draft LSMP outline | Owner (request from UTRWD) | Before publication |
-| Flooded timber look for marketing: snags (long term, default) or leafy (first season) | Owner | H1/H3 finals |
+| Flooded timber look for marketing: dying (default, a season or two), snags (long term) or leafy (first season) | Owner | H1/H3 finals |
+| Spanish moss: confirm it occurs at Lake Ralph Hall before enabling it in published frames | Owner | Before publication |
+| Lots 9–10 dock alternative (fishing dock, share with 7–8, or re-pair); Lot 1 access; north-point dock as the Lots 1–2 dock | Owner | Phase 2b finals |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |
