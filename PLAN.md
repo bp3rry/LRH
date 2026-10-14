@@ -354,5 +354,6 @@ owner was told its natural range at Lake Ralph Hall is unconfirmed).
 | --- | --- | --- |
 | Section 7 decisions 2–6 | Owner | Before any publication |
 | Optional: UTRWD's official georeferenced water-surface classification map, to replace the digitized draft LSMP outline | Owner (request from UTRWD) | Before publication |
-| Lots 9–10 dock alternative (share 7–8, fishing dock, or re-pair); Lot 1 driveway access | Owner | Phase 2b finals |
+| Lots 9–10 dock: **deferred by owner (14 Oct 2026), no action**; options remain share 7–8, fishing dock, or re-pair | Owner | When the owner revisits |
+| Lot 1 driveway access (connects at the mapped CR 3635 end) | Owner | Phase 2b finals |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |
