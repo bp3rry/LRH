@@ -25,3 +25,4 @@ out/
 *.jpg
 *.jpeg
 *.mp4
+.blender-site/

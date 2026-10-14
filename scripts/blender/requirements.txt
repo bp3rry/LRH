@@ -1,0 +1,5 @@
+# Extra pure-Python/wheel packages for Blender's bundled Python 3.11.
+# Installed --no-deps into .blender-site/ so Blender's own numpy is used.
+pyyaml==6.0.2
+shapely==2.1.1
+pillow==11.3.0

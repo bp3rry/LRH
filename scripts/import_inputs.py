@@ -37,6 +37,8 @@ FILES = [
     ("geometry/txdot-sh34-crossing-segment-epsg6344.geojson",
      PTM / "properties/ladonia/geometry/txdot-sh34-crossing-segment-epsg6344.geojson"),
     ("reference/drone-ladonia-arial-1.jpeg", PTM / "properties/ladonia/Sketchup/Ladonia Arial 1.jpeg"),
+    ("reference/ptm-drone-photo-registration.png",
+     PTM / "out/handoff/CURRENT-DRONE-PHOTO-PREVIEW.png"),
     ("reference/benchmark-cam02-sunset.jpg",
      PTM / "properties/ladonia/Sketchup/444-perry_lakehouse_exterior_cam_02.jpg"),
     ("reference/benchmark-cam03-oblique.jpg",
