@@ -94,9 +94,12 @@ scripts/render.py --shot <name> --res draft|final  ->  out/<date>/<shot>.png + .
 ### Phase 0 — Scaffold (today)
 
 - [x] Repo, README, this plan.
-- [ ] `scripts/import_inputs.py` and the first `inputs.lock.json`.
-- [ ] Blender smoke test: import terrain and water, place a camera, render one frame,
-      and check pixel statistics so a blank frame fails loudly.
+- [x] `scripts/import_inputs.py` and the first `inputs.lock.json` (11 files; PTM
+      sibling-hash consistency checks pass).
+- [x] Blender smoke test (`scripts/blender/smoke_test.py`): 1 m site terrain
+      (630,360 vertices, matching `origin.json`), 50 m regional terrain, and the UTRWD lake
+      render in one frame. Blank, clipped, or black frames fail the check. A 960 × 540
+      frame at 32 samples takes about 1 minute end to end on Metal.
 
 ### Phase 1 — Baseline model
 

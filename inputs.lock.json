@@ -1,0 +1,78 @@
+{
+  "schema": "lrh.inputs-lock/1",
+  "imported_utc": "2026-10-14T16:08:33Z",
+  "sources": {
+    "ptm": {
+      "path": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline",
+      "head": "b94c52ee57ead96cd337c254fbaa6627bd82bd2d",
+      "dirty": true
+    },
+    "ladonia": {
+      "path": "/Users/bperry/Documents/Projects/Ladonia",
+      "head": "e38ecfbf397f791714ca242e41a54bd0b8317543",
+      "dirty": true
+    }
+  },
+  "consistency_checks": [
+    "origin.json \u2192 terrain_design.obj",
+    "context \u2192 origin.json",
+    "context \u2192 terrain_site.tif"
+  ],
+  "files": {
+    "terrain/terrain_design.obj": {
+      "source": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline/out/terrain_design.obj",
+      "sha256": "2b433479df3055185033e90e43d394a7ef9959de946c6a744574a23f5a5e50a8",
+      "bytes": 46845404
+    },
+    "terrain/terrain_site.tif": {
+      "source": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline/out/terrain_site.tif",
+      "sha256": "ebcc00f2e5ec41c281eb5a7c14c7eb2b19b6737d233aa70d19dcbc2d06d2784f",
+      "bytes": 190703
+    },
+    "terrain/origin.json": {
+      "source": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline/out/origin.json",
+      "sha256": "d14625a9cb5aa7647a234aa7691a093a899045954da664f2b2484f473362d310",
+      "bytes": 7214
+    },
+    "context/site-review-context-regional.json": {
+      "source": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline/out/site-review-context-regional.json",
+      "sha256": "9c49789457497047b5f8faf52f906da187cbbead74e8ea993880335cff1b7c2c",
+      "bytes": 164348
+    },
+    "geometry/lake-ralph-hall-50m-terrain-551ft-reference.dae": {
+      "source": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline/properties/ladonia/geometry/lake-ralph-hall-50m-terrain-551ft-reference.dae",
+      "sha256": "69071c660a46555f10a36f3f1a11c2cd1bf749640c56a8fc69df2fa0488b74d6",
+      "bytes": 4105131
+    },
+    "geometry/parcel.geojson": {
+      "source": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline/properties/ladonia/geometry/parcel.geojson",
+      "sha256": "9373d3fad316668984412109acfd3b45bb21fb76ac74d4020683543a13ec3bda",
+      "bytes": 7298
+    },
+    "geometry/txdot-fannin-cr-3635-epsg6344.geojson": {
+      "source": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline/properties/ladonia/geometry/txdot-fannin-cr-3635-epsg6344.geojson",
+      "sha256": "824f314bb88221a70ed55532202083e8c07025b3adc5bb443e3dd8c67552b967",
+      "bytes": 1391
+    },
+    "geometry/txdot-sh34-crossing-segment-epsg6344.geojson": {
+      "source": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline/properties/ladonia/geometry/txdot-sh34-crossing-segment-epsg6344.geojson",
+      "sha256": "76ac644ca5b75ad84651728e704d023e8395a9f3cda734252327271e82916283",
+      "bytes": 389
+    },
+    "reference/drone-ladonia-arial-1.jpeg": {
+      "source": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline/properties/ladonia/Sketchup/Ladonia Arial 1.jpeg",
+      "sha256": "d5cd98bf063fd2163a50d9b8aca2d8e0c54e099e531287461acb2db998f3d433",
+      "bytes": 2040175
+    },
+    "reference/benchmark-cam02-sunset.jpg": {
+      "source": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline/properties/ladonia/Sketchup/444-perry_lakehouse_exterior_cam_02.jpg",
+      "sha256": "558a921f5aeacf118a14da207c4fe5b56647b7299eaeac64bc88fd7a95ff10ae",
+      "bytes": 32269466
+    },
+    "reference/benchmark-cam03-oblique.jpg": {
+      "source": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline/properties/ladonia/Sketchup/444-perry_lakehouse_exterior_cam_03 (1).jpg",
+      "sha256": "4dc8b96ef7b20fa2c37f731d96f23ea96006f822cf237835559b896aec826bf0",
+      "bytes": 33583174
+    }
+  }
+}
