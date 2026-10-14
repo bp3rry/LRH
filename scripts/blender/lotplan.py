@@ -220,19 +220,35 @@ def dock_layout(context, water, grid, sampler, record):
                 "deepest_end_m": round(max((float(c["end_depth_m"]) for c in seen), default=0.0), 2)})
             continue
         cands.append(options)
-    # Lots 1-2 (owner, 14 Oct 2026): a path due west from Lot 1's south-east corner,
-    # across the lot and UTRWD land to the arm, and a dock continuing due west.
-    ring = np.array(lots["Lot 1"].exterior.coords)
-    se = tuple(ring[np.argmax(ring[:, 0] - ring[:, 1])])
+    # Lots 1-2 (owner, 14 Oct 2026, revised): the path starts at the middle of Lot 1's
+    # north-west-facing edge and runs north-west (315 deg) into the creek arm; the dock
+    # continues in the same direction. Square to the edge (333 deg) the line slips past a
+    # narrow inlet to a 0.3 m-deep reach; north-west gives a 272 m-wide reach and 1.2 m.
+    lot1 = shapely.geometry.polygon.orient(lots["Lot 1"])  # counter-clockwise
+    ring = np.array(lot1.exterior.coords)
+    edges = []
+    for a, b in zip(ring[:-1], ring[1:]):
+        d = b - a
+        length = float(np.hypot(*d))
+        if length >= 30.0:
+            normal = np.array([d[1], -d[0]]) / length  # outward for a CCW ring
+            facing = math.degrees(math.atan2(normal[0], normal[1])) % 360
+            edges.append((abs((facing - 315 + 180) % 360 - 180), a, b, normal, facing))
+    _, a, b, _, facing = min(edges, key=lambda e: e[0])
+    start = tuple((a + b) / 2)
+    direction = np.array([math.sin(math.radians(LOT1_DOCK_AZIMUTH_DEG)),
+                          math.cos(math.radians(LOT1_DOCK_AZIMUTH_DEG))])
     base = None
-    for x in np.arange(parcels.bounds[0], parcels.bounds[0] - 600.0, -1.0):
-        if arm.contains(Point(x, se[1])):
-            base = (x + 1.0, se[1])
+    for t in np.arange(1.0, 600.0, 1.0):
+        p = np.array(start) + direction * t
+        if arm.contains(Point(*p)):
+            base = tuple(p - direction)
             break
     if base is None:
-        lrh.fail("no water due west of Lot 1's south-east corner")
-    first = dock_candidate(base, arm, grid, sampler, prefer=(base[0] - 100.0, base[1]))
-    first["pair"], first["path_from"] = PAIRS[0], se
+        lrh.fail("no water off Lot 1's north-west-facing edge")
+    first = dock_candidate(base, arm, grid, sampler, prefer=tuple(np.array(base) + direction * 100))
+    first["pair"], first["path_from"] = PAIRS[0], start
+    first["edge_facing_deg"], first["azimuth_deg"] = round(facing, 1), LOT1_DOCK_AZIMUTH_DEG
     docks.append(first)
 
     # Arm pairs: search every combination of candidate sites for one that keeps 300 ft
@@ -270,8 +286,8 @@ def dock_layout(context, water, grid, sampler, record):
     for level, i in enumerate(best):
         if i is None:
             infeasible.append({"pair": keys[level],
-                               "reason": "no site keeps 300 ft from the Lots 1-2 dock (due west "
-                                         "of Lot 1's south-east corner) and the other docks"})
+                               "reason": "no site keeps 300 ft from the Lots 1-2 dock and the "
+                                         "other docks"})
         else:
             docks.append(cands[level][i])
 
@@ -341,6 +357,7 @@ def dock_mesh(name, length, coll, wood, roof):
 
 
 MOWN_CORRIDOR_M = 4.0
+LOT1_DOCK_AZIMUTH_DEG = 315.0  # owner: north-west from Lot 1's north-west-facing edge
 
 
 def build_docks(docks, sampler, coll):
@@ -351,7 +368,7 @@ def build_docks(docks, sampler, coll):
     roof = material("Dock_Roof", (0.42, 0.45, 0.43), 0.45)
     mown = material("Path_Mown_Grass", (0.09, 0.15, 0.04), 1.0)
     gravel = material("Path_Gravel_Grey", (0.46, 0.46, 0.44), 0.95)
-    footprints = []
+    footprints, paths = [], []
     for i, d in enumerate(docks):
         name = f"Dock_Lots_{'_'.join(p.split()[-1] for p in d['pair'])}"
         obj = dock_mesh(name, d["length"], coll, wood, roof)
@@ -363,4 +380,6 @@ def build_docks(docks, sampler, coll):
         strip(f"Path_Lots_{label}_Gravel", line, PATH_WIDTH_M, sampler, 0.10, gravel, coll)
         footprints.append(LineString([d["base"], d["end"]]).buffer(6.5))
         footprints.append(LineString(line).buffer(MOWN_CORRIDOR_M / 2 + 1.0))
-    return unary_union(footprints)
+        paths.append(LineString(line))
+    # Paths are also returned so the scatter can keep crowns from closing over them.
+    return unary_union(footprints), unary_union(paths)

@@ -257,36 +257,31 @@ Review renders: `out/2026-10-14/check_lotplan_features_draft.png` (north-up) and
       north-west. Its driveway therefore runs from the mapped road end. **Owner to
       confirm Lot 1 access.**
 - [x] **Docks, one per lot pair.** Revised per owner direction (14 Oct 2026):
-      - The Lots 1–2 dock is reached by a path running due west from Lot 1's south-east
-        corner (46, 192), along the Lot 1/2 line, to the creek arm. The dock continues due
-        west. This replaces the north-point dock.
-      - Each access path is a 4 m mown-grass corridor cleared of trees, with a 5 ft grey
-        gravel trail down the centre. This includes corridors through the creek
-        preservation woods (owner-approved; the LSMP allows 5 ft paths and 6 ft
-        trimming by permit).
+      - The Lots 1–2 path starts at the middle of Lot 1's north-west-facing edge
+        (63 m long, facing 333°) and runs north-west (315°) to the creek arm, with the
+        dock continuing the same way. Square to the edge (333°), the line slips past a
+        narrow inlet to water only 0.3 m deep; at 315° the arm is 272 m wide.
+      - Each access path is a 4 m mown-grass corridor with a 5 ft grey gravel trail. No
+        tree stands in the corridor and no measured crown overhangs it (32 lidar trees
+        removed), including through the creek preservation woods (owner-approved).
 
-      Result: all placed docks pass the draft LSMP spacing and length rules (`docks_lsmp`
-      in `baseline_checks.json`).
+      Result: four docks, all passing the draft LSMP spacing and length rules
+      (`docks_lsmp` in `baseline_checks.json`).
 
       | Pair | Length | Cove width | Depth at end (full pool) | Nearest dock | Path |
       | --- | --- | --- | --- | --- | --- |
-      | 1–2 (due west of Lot 1 SE corner) | 120 ft | 176 m | 1.8 m | 536 ft | 213 m |
-      | 3–4 | — | — | — | — | — |
-      | 5–6 | 120 ft | 206 m | 1.2 m | 411 ft | 64 m |
+      | 1–2 (NW from Lot 1's north-west edge) | 120 ft | 272 m | 1.0 m | 397 ft | 72 m |
+      | 3–4 | 120 ft | 192 m | 1.7 m | 314 ft | 70 m |
+      | 5–6 | 120 ft | 206 m | 1.2 m | 314 ft | 64 m |
       | 7–8 | 103 ft | 94 m | 1.0 m | 411 ft | 99 m |
       | 9–10 | — | — | — | — | — |
 
-      **Lots 3–4:** with the Lots 1–2 dock at y = 192, no Lots 3–4 site keeps 300 ft from
-      its neighbours. An exhaustive search found no four-dock arrangement on the arm.
-      **Lots 9–10:** the arm in front of them is too narrow and shallow (unchanged).
-      Options for the owner:
-      - Lots 3–4 share the Lots 1–2 dock (a four-lot group);
-      - a fishing/patio dock for 3–4 and/or 9–10;
-      - re-pair the lots.
-
-      The arm docks stand in the no-wake, timbered habitat zone at 1.0–1.8 m depth at full
-      pool. Not checked: the Shoreline Management Zone classification at each site, the
-      occupied-residence rule, and the UTRWD permit itself.
+      **Lots 9–10:** the arm in front of them is too narrow and shallow for a boat dock.
+      Options: share the Lots 7–8 dock, a fishing/patio dock (33 ft maximum), or
+      re-pair the lots. The docks stand in the no-wake, timbered habitat zone at
+      1.0–1.7 m depth at full pool. Not checked: the Shoreline Management Zone
+      classification at each site, the occupied-residence rule, and the UTRWD permit
+      itself.
 
 ### Phase 3+ — Later releases (planned after Phase 2 is accepted)
 
@@ -352,5 +347,5 @@ owner was told its natural range at Lake Ralph Hall is unconfirmed).
 | --- | --- | --- |
 | Section 7 decisions 2–6 | Owner | Before any publication |
 | Optional: UTRWD's official georeferenced water-surface classification map, to replace the digitized draft LSMP outline | Owner (request from UTRWD) | Before publication |
-| Lots 3–4 and 9–10 dock alternatives (share, fishing dock, or re-pair); Lot 1 driveway access | Owner | Phase 2b finals |
+| Lots 9–10 dock alternative (share 7–8, fishing dock, or re-pair); Lot 1 driveway access | Owner | Phase 2b finals |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |

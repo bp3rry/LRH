@@ -195,8 +195,11 @@ def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record):
                  "Wildlife Habitat zone; crowns must clear the water by 1.5 m")
 
 
-def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, clear=None):
-    """`clear`: footprints (driveways, dock paths and docks) where no tree may stand."""
+def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, clear=None,
+            open_sky=None):
+    """`clear`: footprints (driveways, dock paths and docks) where no tree may stand.
+    `open_sky`: (lines, half width): no crown may overhang these corridors, so cleared
+    dock paths read from the air (owner, 14 Oct 2026)."""
     """Place trees; returns counts by species and records the vegetation checks."""
     import shapely  # from .blender-site via lrh
 
@@ -236,7 +239,15 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
                 near_woods |= site_cover.lookup(x + dx, y + dy)[0] == WOODS
     brush_piles = in_site & (cls == CLEARED) & ~near_woods
     keep = ~brush_piles & ~shapely.contains_xy(road_buffer, x, y)
-    lstats = {"lidar_detected": len(lidar), "lidar_brush_piles_omitted": int(brush_piles.sum())}
+    if open_sky is not None:
+        lines, half = open_sky
+        overhang = shapely.distance(shapely.points(x, y), lines) < half + 0.8 * crown
+        lstats_overhang = int((keep & overhang).sum())
+        keep &= ~overhang
+    else:
+        lstats_overhang = 0
+    lstats = {"lidar_detected": len(lidar), "lidar_brush_piles_omitted": int(brush_piles.sum()),
+              "lidar_cleared_for_paths": lstats_overhang}
     x, y, height, crown, evergreen = (a[keep] for a in (x, y, height, crown, evergreen))
     z = site_grid.heights(x, y)
     far = np.isnan(z)
@@ -278,6 +289,8 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
         keep = woods | cedar
         x, y, frac, cedar = x[keep], y[keep], frac[keep], cedar[keep]
         on_road = shapely.contains_xy(road_buffer, x, y)
+        if open_sky is not None:  # scattered trees: assume a 4 m crown
+            on_road |= shapely.distance(shapely.points(x, y), open_sky[0]) < open_sky[1] + 4.0
         stats["on_road"] += int(on_road.sum())
         x, y, frac, cedar = x[~on_road], y[~on_road], frac[~on_road], cedar[~on_road]
         z = site_grid.heights(x, y)
