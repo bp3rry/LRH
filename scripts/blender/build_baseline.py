@@ -802,7 +802,7 @@ def main():
     drives = lotplan.driveway_lines(context, road_lines[:-1])
     lotplan.build_driveways(drives, sampler, colls["Driveways"])
     docks = lotplan.dock_layout(context, pooled, grid, sampler, record)
-    dock_area = lotplan.build_docks(docks, sampler, colls["Docks"], keep_wooded=zone)
+    dock_area = lotplan.build_docks(docks, sampler, colls["Docks"])
     cleared = unary_union([LineString(l).buffer(3.0) for l in drives.values()] + [dock_area])
     vegetation.scatter(colls["Vegetation"], grid, sampler, road_lines, zone, timber_zone, record,
                        clear=cleared)

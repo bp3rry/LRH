@@ -220,54 +220,60 @@ def dock_layout(context, water, grid, sampler, record):
                 "deepest_end_m": round(max((float(c["end_depth_m"]) for c in seen), default=0.0), 2)})
             continue
         cands.append(options)
-    # Spread the docks: targets evenly spaced between the northernmost option of the first
-    # pair and the southernmost option of the last.
-    top = max(c["base"][1] for c in cands[0])
-    bottom = min(c["base"][1] for c in cands[-1])
-    for k, options in enumerate(cands):
-        target = top + (bottom - top) * k / (len(cands) - 1)
-        docks.append(min(options, key=lambda c: abs(c["base"][1] - target)))
+    # Lots 1-2 (owner, 14 Oct 2026): a path due west from Lot 1's south-east corner,
+    # across the lot and UTRWD land to the arm, and a dock continuing due west.
+    ring = np.array(lots["Lot 1"].exterior.coords)
+    se = tuple(ring[np.argmax(ring[:, 0] - ring[:, 1])])
+    base = None
+    for x in np.arange(parcels.bounds[0], parcels.bounds[0] - 600.0, -1.0):
+        if arm.contains(Point(x, se[1])):
+            base = (x + 1.0, se[1])
+            break
+    if base is None:
+        lrh.fail("no water due west of Lot 1's south-east corner")
+    first = dock_candidate(base, arm, grid, sampler, prefer=(base[0] - 100.0, base[1]))
+    first["pair"], first["path_from"] = PAIRS[0], se
+    docks.append(first)
 
-    # Lots 1-2: from the parcels' northernmost point east across UTRWD land to the deepest
-    # nearby water of the main lake.
-    ring = np.array(parcels.exterior.coords)
-    north = tuple(ring[np.argmax(ring[:, 1])])
-    # Other private land the path must not cross (the excluded Ladonia Cemetery parcel).
-    private = unary_union([Polygon(np.array(b["lines_local_m"][0])[:, :2])
-                           for b in context["boundaries"] if b["kind"] != "owner_parcel_boundary"])
-    best = None
-    parts = list(water.geoms) if water.geom_type == "MultiPolygon" else [water]
-    north_pts = [(part, part.exterior.interpolate(d).coords[0]) for part in parts
-                 for d in np.arange(0, part.exterior.length, 2.0)]
-    for part, (x, y) in north_pts:
-        if x <= north[0] or math.hypot(x - north[0], y - north[1]) > 450 or \
-                not real_shore.contains(Point(x, y)):
-            continue
-        path = LineString([north, (x, y)])
-        if path.crosses(parcels) or path.intersects(private.buffer(3.0)) or \
-                any(path.crosses(q.buffer(-1.0)) for q in parts):
-            continue
-        # Aim at the deepest water within 150 m of this shore point.
-        deepest, depth = None, -1
-        for a in np.linspace(0, 2 * math.pi, 48, endpoint=False):
-            for r in (40, 80, 120, 150):
-                p = (x + math.cos(a) * r, y + math.sin(a) * r)
-                if part.contains(Point(p)):
-                    dd = water_depth(grid, sampler, *p)
-                    if dd > depth:
-                        deepest, depth = p, dd
-        if deepest is None:
-            continue
-        c = dock_candidate((x, y), part, grid, sampler, prefer=deepest)
-        if c is None or c["end_depth_m"] < MIN_END_DEPTH_M:
-            continue
-        score = c["end_depth_m"] - 0.004 * path.length
-        if best is None or score > best[0]:
-            c["pair"], c["path_from"], c["aimed_depth_m"] = PAIRS[0], north, depth
-            best = (score, c)
-    if best is None:
-        lrh.fail("no north-point dock site found")
-    docks.insert(0, best[1])
+    # Arm pairs: search every combination of candidate sites for one that keeps 300 ft
+    # between all docks, preferring the sites closest to the owner-reviewed layout.
+    approved_y = {"3-4": 136.2, "5-6": 6.0, "7-8": -124.1}  # reviewed 14 Oct 2026
+    shapes = [[LineString([c["base"], c["end"]]).buffer(5.0) for c in options] for options in cands]
+    first_shape = LineString([first["base"], first["end"]]).buffer(5.0)
+    keys = ["-".join(p.split()[-1] for p in options[0]["pair"]) for options in cands]
+    order = [sorted(range(len(options)),
+                    key=lambda i, o=options, k=k: abs(o[i]["base"][1] - approved_y.get(k, o[i]["base"][1])))
+             for options, k in zip(cands, keys)]
+    best, best_cost = None, float("inf")
+
+    SKIP_COST = 10000.0  # leaving a pair without a dock is the last resort
+
+    def search(level, chosen, cost):
+        nonlocal best, best_cost
+        if cost >= best_cost:
+            return
+        if level == len(cands):
+            best, best_cost = list(chosen), cost
+            return
+        for i in order[level]:
+            shape = shapes[level][i]
+            if shape.distance(first_shape) < DOCK_SEPARATION_M or any(
+                    j is not None and shape.distance(shapes[lv][j]) < DOCK_SEPARATION_M
+                    for lv, j in enumerate(chosen)):
+                continue
+            c = cands[level][i]
+            search(level + 1, chosen + [i],
+                   cost + abs(c["base"][1] - approved_y.get(keys[level], c["base"][1])))
+        search(level + 1, chosen + [None], cost + SKIP_COST)
+
+    search(0, [], 0.0)
+    for level, i in enumerate(best):
+        if i is None:
+            infeasible.append({"pair": keys[level],
+                               "reason": "no site keeps 300 ft from the Lots 1-2 dock (due west "
+                                         "of Lot 1's south-east corner) and the other docks"})
+        else:
+            docks.append(cands[level][i])
 
     # LSMP checks.
     segs = [LineString([d["base"], d["end"]]).buffer(5.0) for d in docks]  # incl. slip head
@@ -334,21 +340,27 @@ def dock_mesh(name, length, coll, wood, roof):
     return obj
 
 
-def build_docks(docks, sampler, coll, keep_wooded=None):
-    """Returns the footprint where trees are removed. Paths through `keep_wooded` (the
-    creek preservation woods) clear nothing: a 5 ft trail runs under the canopy."""
+MOWN_CORRIDOR_M = 4.0
+
+
+def build_docks(docks, sampler, coll):
+    """Docks plus access paths: a mown-grass corridor cleared of trees, with a 5 ft grey
+    gravel trail down its centre (owner, 14 Oct 2026; the LSMP allows 5 ft paths and
+    6 ft vegetation trimming by permit). Returns the footprint where trees are removed."""
     wood = material("Dock_Wood", (0.30, 0.24, 0.17), 0.85)
     roof = material("Dock_Roof", (0.42, 0.45, 0.43), 0.45)
-    path_mat = material("Shoreline_Path", (0.42, 0.36, 0.26), 1.0)  # mulch/gravel tread
+    mown = material("Path_Mown_Grass", (0.09, 0.15, 0.04), 1.0)
+    gravel = material("Path_Gravel_Grey", (0.46, 0.46, 0.44), 0.95)
     footprints = []
     for i, d in enumerate(docks):
         name = f"Dock_Lots_{'_'.join(p.split()[-1] for p in d['pair'])}"
         obj = dock_mesh(name, d["length"], coll, wood, roof)
         obj.location = (d["base"][0], d["base"][1], lrh.POOL_M)
         obj.rotation_euler = (0, 0, math.atan2(d["dir"][1], d["dir"][0]))
-        strip(f"Path_Lots_{'_'.join(p.split()[-1] for p in d['pair'])}",
-              [d["path_from"], d["base"]], PATH_WIDTH_M, sampler, 0.08, path_mat, coll)
+        label = "_".join(p.split()[-1] for p in d["pair"])
+        line = [d["path_from"], d["base"]]
+        strip(f"Path_Lots_{label}_Mown", line, MOWN_CORRIDOR_M, sampler, 0.06, mown, coll)
+        strip(f"Path_Lots_{label}_Gravel", line, PATH_WIDTH_M, sampler, 0.10, gravel, coll)
         footprints.append(LineString([d["base"], d["end"]]).buffer(6.5))
-        path = LineString([d["path_from"], d["base"]]).buffer(1.0)
-        footprints.append(path.difference(keep_wooded) if keep_wooded is not None else path)
+        footprints.append(LineString(line).buffer(MOWN_CORRIDOR_M / 2 + 1.0))
     return unary_union(footprints)
