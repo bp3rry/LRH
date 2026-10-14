@@ -145,11 +145,24 @@ def imagery_ground_material(name, product, image_path, cleared_mask=None):
         soil_ramp.color_ramp.elements[0].color = (0.17, 0.12, 0.075, 1)
         soil_ramp.color_ramp.elements[1].color = (0.28, 0.22, 0.13, 1)
         links.new(soil.outputs["Fac"], soil_ramp.inputs["Fac"])
+        # Marketing variant: the cleared ground grassed over (render.py sets this value).
+        grass_ramp = nodes.new("ShaderNodeValToRGB")
+        grass_ramp.color_ramp.elements[0].color = (0.055, 0.10, 0.025, 1)  # mown pasture
+        grass_ramp.color_ramp.elements[1].color = (0.11, 0.16, 0.045, 1)
+        links.new(soil.outputs["Fac"], grass_ramp.inputs["Fac"])
+        grassed = nodes.new("ShaderNodeValue")
+        grassed.name = "LRH_Cleared_Grassed"
+        grassed.outputs[0].default_value = 0.0
+        surface = nodes.new("ShaderNodeMix")
+        surface.data_type = "RGBA"
+        links.new(grassed.outputs[0], surface.inputs["Factor"])
+        links.new(soil_ramp.outputs["Color"], surface.inputs["A"])
+        links.new(grass_ramp.outputs["Color"], surface.inputs["B"])
         cleared = nodes.new("ShaderNodeMix")
         cleared.data_type = "RGBA"
         links.new(mask.outputs["Color"], cleared.inputs["Factor"])
         links.new(colour, cleared.inputs["A"])
-        links.new(soil_ramp.outputs["Color"], cleared.inputs["B"])
+        links.new(surface.outputs["Result"], cleared.inputs["B"])
         colour = cleared.outputs["Result"]
     # Ground below pool is lake bed: dark silt, blended over 0.5 m.
     position = nodes.new("ShaderNodeSeparateXYZ")
@@ -683,16 +696,19 @@ def check_lot_areas(lots):
 # --------------------------------------------------------------------------- masks
 
 def preservation_zone(context, grid, pooled, coll):
-    """Owner-provided creek preservation zone: all land west of the owner parcels, inside
-    the site mesh, that is not lake. Recorded as owner-derived until an official FWPZ
-    polygon exists. Vegetation scatter must keep it fully wooded."""
+    """Owner-provided creek Fish and Wildlife preservation zone, west of the owner parcels
+    within the site mesh. Returns (land, timber): the land part must stay fully wooded;
+    the timber part also includes the water, where trees are not cleared before
+    impoundment and stand as flooded timber. Owner-derived until an official FWPZ
+    polygon exists."""
     parcels = unary_union([Polygon(np.array(b["lines_local_m"][0])[:, :2])
                            for b in context["boundaries"] if b["kind"] == "owner_parcel_boundary"])
     shift = np.array([-2000.0, 0.0])
     ring = np.array(parcels.exterior.coords)
     sweeps = [Polygon([a, b, b + shift, a + shift]) for a, b in zip(ring[:-1], ring[1:])]
     west = unary_union(sweeps + [parcels]).difference(parcels)
-    zone = west.intersection(grid.rect).difference(pooled)
+    timber = west.intersection(grid.rect)
+    zone = timber.difference(pooled)
     if zone.geom_type == "MultiPolygon":
         zone = shapely.MultiPolygon([g for g in zone.geoms if g.area > 400])
     tris = shapely.constrained_delaunay_triangles(zone)
@@ -707,8 +723,9 @@ def preservation_zone(context, grid, pooled, coll):
     obj["basis"] = ("Owner-provided: land west of the owner parcels within the site mesh, "
                     "excluding lake. No official FWPZ polygon yet.")
     record("preservation_zone_defined", zone.area > 5 * SQM_PER_ACRE,
-           area_acres=round(zone.area / SQM_PER_ACRE, 2))
-    return zone
+           land_area_acres=round(zone.area / SQM_PER_ACRE, 2),
+           with_water_area_acres=round(timber.area / SQM_PER_ACRE, 2))
+    return zone, timber
 
 
 # --------------------------------------------------------------------------- cameras
@@ -802,7 +819,7 @@ def main():
     build_bridge(context, colls["Landmarks"], sampler)
     lots = build_overlays(context, colls["Overlays_Review"], sampler)
     check_lot_areas(lots)
-    zone = preservation_zone(context, grid, pooled, colls["Masks"])
+    zone, timber_zone = preservation_zone(context, grid, pooled, colls["Masks"])
     (out / "creek_preservation_zone.geojson").write_text(json.dumps({
         "type": "FeatureCollection",
         "crs_note": "LRH local metres (origin.json); add origin to recover EPSG:6344",
@@ -810,7 +827,7 @@ def main():
                                                         "basis": "owner-provided, derived"},
                       "geometry": mapping(zone)}]}))
     colls["Masks"].hide_render = True
-    vegetation.scatter(colls["Vegetation"], grid, sampler, road_lines, zone, record)
+    vegetation.scatter(colls["Vegetation"], grid, sampler, road_lines, zone, timber_zone, record)
     build_cameras(shots, colls["Cameras"])
     default_world(scene)
 

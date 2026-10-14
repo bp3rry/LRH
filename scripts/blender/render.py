@@ -39,6 +39,10 @@ def parse_args():
     parser.add_argument("--res", choices=["draft", "final"], default="draft")
     parser.add_argument("--blend", type=Path)
     parser.add_argument("--samples", type=int)
+    parser.add_argument("--flooded-timber", choices=["snags", "leafy", "none"],
+                        help="override the shot's flooded_timber")
+    parser.add_argument("--cleared-ground", choices=["soil", "grassed"],
+                        help="override the shot's cleared_ground")
     return parser.parse_args(argv)
 
 
@@ -197,6 +201,12 @@ def render_shot(name, shot, config, args, out):
     scene = bpy.context.scene
     kind = shot["kind"]
     wanted = set(shot["collections"])
+    timber = args.flooded_timber or shot.get("flooded_timber", config.get("flooded_timber", "snags"))
+    if timber != "none":
+        wanted.add({"snags": "Flooded_Timber_Snags", "leafy": "Flooded_Timber_Leafy"}[timber])
+    cleared = args.cleared_ground or shot.get("cleared_ground", config.get("cleared_ground", "soil"))
+    node = bpy.data.materials["Ground_Site"].node_tree.nodes["LRH_Cleared_Grassed"]
+    node.outputs[0].default_value = 1.0 if cleared == "grassed" else 0.0
     if kind == "marketing" and wanted & MARKETING_FORBIDDEN:
         lrh.fail(f"{name}: marketing shots may not show {sorted(wanted & MARKETING_FORBIDDEN)}")
     res = config[args.res]
@@ -221,6 +231,8 @@ def render_shot(name, shot, config, args, out):
     apply_collections(scene, wanted)
 
     stem = f"{name}_{args.res}"
+    if args.flooded_timber or args.cleared_ground:
+        stem += f"_{timber}_{cleared}"
     master = out / (f"{stem}_master_uncaptioned.png" if kind == "marketing" else f"{stem}.png")
     scene.render.filepath = str(master)
     started = time.time()
@@ -261,6 +273,8 @@ def render_shot(name, shot, config, args, out):
                    "view_transform": scene.view_settings.view_transform,
                    "seconds": round(seconds, 1)},
         "collections": sorted(wanted),
+        "flooded_timber": timber,
+        "cleared_ground": cleared,
         "luminance": stats,
     }
     (out / f"{stem}.json").write_text(json.dumps(sidecar, indent=2) + "\n")

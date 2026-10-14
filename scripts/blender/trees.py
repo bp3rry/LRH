@@ -145,6 +145,56 @@ def make_prototype(species, variant, collection):
     return obj
 
 
+def snag_material():
+    mat = bpy.data.materials.get("Snag_Bark")
+    if mat:
+        return mat
+    mat = bpy.data.materials.new("Snag_Bark")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.22, 0.21, 0.19, 1)  # weathered grey
+    bsdf.inputs["Roughness"].default_value = 0.95
+    return mat
+
+
+def make_snag(variant, collection, height=12.0):
+    """A dead, leafless hardwood: trunk, scaffold limbs and a second order of branches.
+    Permanently flooded post oak and elm die within a few seasons and stand as snags."""
+    rng = random.Random(f"snag-{variant}")
+    bm = bmesh.new()
+    trunk_r = 0.035 * height
+    trunk_top = height * rng.uniform(0.55, 0.7)
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=7, radius1=trunk_r, radius2=trunk_r * 0.45,
+                          depth=trunk_top, matrix=Matrix.Translation((0, 0, trunk_top / 2)))
+    for i in range(rng.randint(5, 7)):
+        angle = i * 2 * math.pi / 6 + rng.uniform(-0.5, 0.5)
+        tilt = rng.uniform(0.35, 1.0)
+        length = height * rng.uniform(0.25, 0.45)
+        start = trunk_top * rng.uniform(0.55, 1.0)
+        rot = Matrix.Rotation(angle, 4, "Z") @ Matrix.Rotation(tilt, 4, "Y")
+        bmesh.ops.create_cone(bm, cap_ends=True, segments=5, radius1=trunk_r * 0.4,
+                              radius2=trunk_r * 0.08, depth=length,
+                              matrix=Matrix.Translation((0, 0, start)) @ rot @
+                              Matrix.Translation((0, 0, length / 2)))
+        tip = Matrix.Translation((0, 0, start)) @ rot @ Vector((0, 0, length * 0.7))
+        for _ in range(2):
+            sub = Matrix.Rotation(angle + rng.uniform(-1, 1), 4, "Z") @ \
+                Matrix.Rotation(rng.uniform(0.2, 0.9), 4, "Y")
+            sub_len = length * rng.uniform(0.35, 0.55)
+            bmesh.ops.create_cone(bm, cap_ends=True, segments=4, radius1=trunk_r * 0.12,
+                                  radius2=trunk_r * 0.03, depth=sub_len,
+                                  matrix=Matrix.Translation(tip) @ sub @
+                                  Matrix.Translation((0, 0, sub_len / 2)))
+    mesh = bpy.data.meshes.new(f"Snag_{variant}")
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.materials.append(snag_material())
+    obj = bpy.data.objects.new(mesh.name, mesh)
+    collection.objects.link(obj)
+    obj["prototype_height_m"] = height
+    return obj
+
+
 def make_prototypes(collection):
     return {species: [make_prototype(species, v, collection) for v in range(VARIANTS)]
             for species in SPECIES}

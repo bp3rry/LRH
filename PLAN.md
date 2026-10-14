@@ -198,6 +198,18 @@ sidecars). Look development so far:
 - compositor aerial perspective (25 km visibility, fading toward the measured horizon
   sky colour).
 
+Owner direction (14 Oct 2026):
+- Cleared lots show as green grass in marketing shots (`cleared_ground: grassed`); check
+  views keep the soil as photographed.
+- Accurate flooded timber in the Fish and Wildlife zone matters more than tree realism.
+  The 903 StratMap lidar trees below pool inside the zone (median water depth 1.9 m,
+  maximum 5.2 m) stand in the water. They are built as two switchable layers: `snags`,
+  the default and the long-term look (permanently flooded oaks and elms die within a few
+  seasons), and `leafy`, the first season after flooding.
+- The zone's extent over the water is owner-derived: the creek arm west of the parcels,
+  bounded by the parcels' north and south lines. The straight north edge of the stand
+  comes from that assumption and needs the real boundary.
+
 Draft timing on the M4: H1 1920 × 1080, 96 samples, 15 s; H3 19 s. A first estimate for an
 8K final (16× the pixels, 1024 samples) is about 40 min per frame, to be confirmed with a
 tiled test render. H2 waits on foreground trees (free assets only, decided 14 Oct).
@@ -259,4 +271,6 @@ foreground trees fall short of `cam_02`.
 | Item | Owner | Needed by |
 | --- | --- | --- |
 | Section 7 decisions 2–6 | Owner | Before any publication |
+| Extent of the Fish and Wildlife (flooded timber) zone over the water: a map, UTRWD exhibit, or description of its north and south limits | Owner | H1/H3 finals |
+| Flooded timber look for marketing: snags (long term, default) or leafy (first season) | Owner | H1/H3 finals |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |

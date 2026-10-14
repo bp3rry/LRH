@@ -128,7 +128,47 @@ def candidates(rng, extent):
     return out
 
 
-def scatter(coll, site_grid, sampler, road_lines, zone, record):
+def flooded_timber(rng, lidar_rows, prototypes, snags, record):
+    """Lidar trees below pool inside the preservation zone stay standing in the water.
+    Two variants are built as separate top-level collections so shots can choose:
+    leafy (first season after flooding) and snags (the long-term look, since permanently
+    flooded oaks and elms die within a few growing seasons)."""
+    scene = bpy.context.scene
+    made = {}
+    for name in ("Flooded_Timber_Leafy", "Flooded_Timber_Snags"):
+        coll = bpy.data.collections.new(name)
+        scene.collection.children.link(coll)
+        made[name] = coll
+    rows = np.array(lidar_rows) if lidar_rows else np.zeros((0, 6))
+    if len(rows):
+        x, y, z, height, crown, evergreen = rows.T
+        rot = np.column_stack([np.zeros(len(x)), np.zeros(len(x)), rng.uniform(0, 2 * math.pi, len(x))])
+        pts = np.column_stack([x, y, z - 0.15])
+        cedar = evergreen >= EVERGREEN_SCORE_MIN
+        for v in range(trees.VARIANTS):
+            sel = (rng.integers(0, trees.VARIANTS, len(x)) == v)
+            for is_cedar, species in ((True, "red_cedar"), (False, "post_oak")):
+                m = sel & (cedar == is_cedar)
+                if not m.any():
+                    continue
+                spec = trees.SPECIES[species]
+                s = height[m] / spec["height"]
+                widen = np.clip(crown[m] / spec["crown_radius"] / s, 0.5, 2.0)
+                point_cloud(f"Flooded_Leafy_{species}_{v}", pts[m],
+                            np.column_stack([s * widen, s * widen, s]), rot[m],
+                            prototypes[species][v], made["Flooded_Timber_Leafy"])
+            s = height[sel] / snags[v]["prototype_height_m"]
+            point_cloud(f"Flooded_Snags_{v}", pts[sel], np.column_stack([s, s, s]), rot[sel],
+                        snags[v], made["Flooded_Timber_Snags"])
+    depth = lrh.POOL_M - rows[:, 2] if len(rows) else np.zeros(0)
+    record("flooded_timber", len(rows) > 50, trees=len(rows),
+           water_depth_m_p50=round(float(np.median(depth)), 2) if len(rows) else None,
+           water_depth_m_max=round(float(depth.max()), 2) if len(rows) else None,
+           basis="StratMap 2025 lidar trees below the 551 ft pool inside the preservation "
+                 "zone; crowns must clear the water by 1.5 m")
+
+
+def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record):
     """Place trees; returns counts by species and records the vegetation checks."""
     import shapely  # from .blender-site via lrh
 
@@ -144,6 +184,7 @@ def scatter(coll, site_grid, sampler, road_lines, zone, record):
     proto_coll.hide_render = True
     proto_coll.hide_viewport = True
     prototypes = trees.make_prototypes(proto_coll)
+    snags = [trees.make_snag(v, proto_coll) for v in range(trees.VARIANTS)]
 
     regional_extent = (regional_cover.gt[0], regional_cover.gt[3] + regional_cover.gt[5] *
                        regional_cover.array.shape[0],
@@ -172,6 +213,12 @@ def scatter(coll, site_grid, sampler, road_lines, zone, record):
     z[far] = [sampler(a, b) or np.nan for a, b in zip(x[far], y[far])]
     dry = ~np.isnan(z) & (z > lrh.POOL_M + 0.3)
     lstats["lidar_below_pool"] = int((~dry).sum())
+    # Below pool but inside the preservation zone: standing flooded timber.
+    wet = ~np.isnan(z) & ~dry & shapely.contains_xy(timber_zone, x, y) & \
+        (height > (lrh.POOL_M - z) + 1.5)
+    timber_rows = np.column_stack([x[wet], y[wet], z[wet], height[wet], crown[wet],
+                                   evergreen[wet]]).tolist()
+    lstats["lidar_flooded_timber"] = int(wet.sum())
     for i in np.flatnonzero(dry):
         if evergreen[i] >= EVERGREEN_SCORE_MIN:
             species = "red_cedar"
@@ -244,6 +291,7 @@ def scatter(coll, site_grid, sampler, road_lines, zone, record):
             point_cloud(f"Trees_{species}_{v}", pts, scales, rotations, prototypes[species][v], coll)
         counts[species] = len(arr)
 
+    flooded_timber(rng, timber_rows, prototypes, snags, record)
     total = sum(counts.values())
     record("trees_placed", total > 1000 and lstats["lidar_placed"] > 10000, total=total,
            by_species=counts, **lstats, mask_scatter=stats,
