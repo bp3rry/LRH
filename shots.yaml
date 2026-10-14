@@ -9,6 +9,7 @@
 
 render:
   exposure: -4.0   # AgX exposure for the physical sky; a shot may override it
+  haze_visibility_km: 25   # world-volume aerial perspective; a shot may override (0 = off)
   draft: {resolution: [1920, 1080], samples: 96}
   final: {resolution: [7680, 4320], samples: 1024, tile_size: 2048}
   caption: "Artist's conception. Lake shown at conservation pool. Lot lines approximate, subject to survey and plat."
@@ -37,4 +38,19 @@ shots:
     description: Lake-facing oblique from above the lots.
     camera: {position: [260.0, 10.0, 260.0], target: [-420.0, 60.0, 168.0], lens_mm: 28.0}
     sun: {datetime: "2026-10-14T16:00", utc_offset_h: -5}
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  # --- Phase 2 hero stills (marketing: no overlays or docks; caption added) ---
+  H1_arrival:
+    kind: marketing
+    description: High oblique from the southeast over CR 3635, west-northwest across the lots to the lake and SH 34 bridge.
+    camera: {position: [360.0, -470.0, 340.0], target: [-420.0, 260.0, 168.0], lens_mm: 24.0}
+    sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  H3_from_lake:
+    kind: marketing
+    description: Elevated view from over the open lake north-west of the lots, looking back south-east at the lot frontage, mid-afternoon.
+    camera: {position: [-560.0, 860.0, 330.0], target: [0.0, 0.0, 176.0], lens_mm: 32.0}
+    sun: {datetime: "2026-10-14T15:00", utc_offset_h: -5}
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]

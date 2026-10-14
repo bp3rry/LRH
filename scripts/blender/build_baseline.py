@@ -126,10 +126,12 @@ def imagery_ground_material(name, product, image_path, cleared_mask=None):
         return node
 
     naip = image_node(image_path, "sRGB")
-    # Light grade toward the drone photo (NAIP 2024 is already a green July image).
+    # Grade toward the drone photo's yellow-green pasture: under strong sun AgX
+    # desaturates NAIP's olive tones, so push hue slightly green and lift saturation.
     grade = nodes.new("ShaderNodeHueSaturation")
-    grade.inputs["Saturation"].default_value = 1.2
-    grade.inputs["Value"].default_value = 1.0
+    grade.inputs["Hue"].default_value = 0.52
+    grade.inputs["Saturation"].default_value = 1.55
+    grade.inputs["Value"].default_value = 1.05
     links.new(naip.outputs["Color"], grade.inputs["Color"])
     colour = grade.outputs["Color"]
     if cleared_mask is not None:
@@ -586,6 +588,34 @@ def build_dam(context, coll):
     return obj
 
 
+def build_far_ground(coll, regional):
+    """A 60 km disc below the regional terrain so the horizon is land, not a terrain edge
+    with sky beneath it. It sits 3 m under the lowest regional ground near the edges and
+    is hidden wherever the regional mesh exists; haze blends the transition."""
+    z = float(np.percentile(mesh_vertices(regional)[:, 2], 20)) - 3.0
+    bpy.ops.mesh.primitive_circle_add(vertices=128, radius=30000.0, fill_type="TRIFAN",
+                                      location=(-6000.0, 3000.0, z))
+    disc = bpy.context.active_object
+    disc.name = "Far_Ground"
+    for user in list(disc.users_collection):
+        user.objects.unlink(disc)
+    coll.objects.link(disc)
+    mat = principled("Far_Ground", (0.13, 0.15, 0.07), roughness=1.0)
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    coord = nodes.new("ShaderNodeTexCoord")
+    noise = nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 0.0004
+    noise.inputs["Detail"].default_value = 6.0
+    links.new(coord.outputs["Object"], noise.inputs["Vector"])
+    ramp = nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].color = (0.05, 0.08, 0.03, 1)  # woods
+    ramp.color_ramp.elements[1].color = (0.20, 0.20, 0.09, 1)  # pasture
+    links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
+    links.new(ramp.outputs["Color"], nodes["Principled BSDF"].inputs["Base Color"])
+    disc.data.materials.append(mat)
+    return disc
+
+
 # --------------------------------------------------------------------------- overlays
 
 def polyline_curve(name, points, coll, material, bevel=0.35, closed=False):
@@ -764,6 +794,7 @@ def main():
         "Ground_Regional", imagery["regional"], derived / "naip_regional_rgb.jpg"))
 
     context = lrh.load_context()
+    build_far_ground(colls["Terrain"], regional)
     dam = build_dam(context, colls["Landmarks"])
     sampler = HeightSampler([terrain, regional, dam])
     _, _, pooled = build_water(grid, context, colls["Water"], sampler)

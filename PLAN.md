@@ -190,6 +190,18 @@ denoised, with a light colour grade. Each final ships with its JSON sidecar.
 **Acceptance:** owner side-by-side review against `cam_02` and `cam_03` for realism,
 lighting, materials, vegetation, and composition.
 
+**Status (14 Oct 2026):** H1 and H3 first drafts rendered
+(`out/2026-10-14/H1_arrival_draft.png`, `H3_from_lake_draft.png`, captioned, with
+sidecars). Look development so far:
+- pasture grade toward the drone photo;
+- a far-ground disc beyond the regional terrain;
+- compositor aerial perspective (25 km visibility, fading toward the measured horizon
+  sky colour).
+
+Draft timing on the M4: H1 1920 × 1080, 96 samples, 15 s; H3 19 s. A first estimate for an
+8K final (16× the pixels, 1024 samples) is about 40 min per frame, to be confirmed with a
+tiled test render. H2 waits on foreground trees (free assets only, decided 14 Oct).
+
 ### Phase 3+ — Later releases (planned after Phase 2 is accepted)
 
 - **Per-lot stills:** templated cameras for each lot (lot-to-lake, lot-from-water,
@@ -239,10 +251,12 @@ surveyor model did not have. Default behaviour is shown in **bold**; the owner d
 - Never modify files in `../property-terrain-modeling-pipeline` or `../Ladonia` from
   this project.
 
+Decided 14 Oct 2026: assets stay free/CC0 for now (no paid tree packs); revisit if H2
+foreground trees fall short of `cam_02`.
+
 ## 9. Open Items
 
 | Item | Owner | Needed by |
 | --- | --- | --- |
-| Asset budget: CC0-only (current default), or allow paid tree packs (e.g. Botaniq) | Owner | Phase 1 step 4 |
 | Section 7 decisions 2–6 | Owner | Before any publication |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |

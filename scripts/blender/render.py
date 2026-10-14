@@ -15,11 +15,13 @@ import argparse
 import json
 import math
 import sys
+import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
 
 import bpy
+import numpy as np
 from mathutils import Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -83,6 +85,91 @@ def configure_sky(scene, sun_spec):
             "elevation_deg": round(elevation, 2), "azimuth_deg": round(azimuth, 2)}
 
 
+def horizon_colour(scene, camera, scratch):
+    """Scene-linear sky colour 4-10 degrees above the horizon, around the view heading,
+    from a tiny world-only equirectangular render at the camera position."""
+    layer = bpy.context.view_layer.layer_collection
+    excluded = {c.name: c.exclude for c in layer.children}
+    for child in layer.children:
+        child.exclude = True
+    saved = (scene.camera, scene.render.resolution_x, scene.render.resolution_y,
+             scene.cycles.samples, scene.render.filepath,
+             scene.render.image_settings.file_format, scene.cycles.use_denoising)
+    pano = bpy.data.objects.new("LRH_Pano", bpy.data.cameras.new("LRH_Pano"))
+    scene.collection.objects.link(pano)
+    pano.data.type = "PANO"
+    pano.data.panorama_type = "EQUIRECTANGULAR"
+    forward = camera.matrix_world.to_quaternion() @ Vector((0, 0, -1))
+    heading = math.atan2(forward.x, forward.y)
+    pano.location = camera.location
+    pano.rotation_euler = (math.pi / 2, 0, -heading)  # look horizontally along heading
+    scene.camera = pano
+    scene.render.resolution_x, scene.render.resolution_y = 360, 180
+    scene.cycles.samples, scene.cycles.use_denoising = 16, False
+    scene.render.image_settings.file_format = "OPEN_EXR"
+    scene.render.filepath = str(Path(scratch) / "horizon.exr")
+    bpy.ops.render.render(write_still=True)
+    image = bpy.data.images.load(scene.render.filepath, check_existing=False)
+    px = np.array(image.pixels[:]).reshape(180, 360, 4)[:, :, :3]  # row 0 = bottom
+    bpy.data.images.remove(image)
+    # Below ~3 degrees an elevated camera sees the sky model's dark ground.
+    band = px[90 + 4:90 + 10, 180 - 40:180 + 40].reshape(-1, 3)
+    (scene.camera, scene.render.resolution_x, scene.render.resolution_y, scene.cycles.samples,
+     scene.render.filepath, scene.render.image_settings.file_format,
+     scene.cycles.use_denoising) = saved
+    bpy.data.objects.remove(pano, do_unlink=True)
+    for child in layer.children:
+        child.exclude = excluded[child.name]
+    colour = band.mean(axis=0)
+    if colour.max() < 0.01:
+        lrh.fail(f"horizon sky colour measured as {colour}; haze would darken the horizon")
+    return colour
+
+
+def configure_haze(scene, camera, visibility_km, scratch):
+    """Aerial perspective in the compositor: each pixel fades toward the measured horizon
+    sky colour by 1 - exp(-k d), with k from the meteorological visibility (contrast 2%
+    at that range, Koschmieder). The sky itself (no depth) is left untouched."""
+    # Measure the horizon first: the pano render must not pass through this compositor.
+    scene.render.use_compositing = False
+    colour = horizon_colour(scene, camera, scratch) if visibility_km else None
+    scene.render.use_compositing = True
+    tree = bpy.data.node_groups.new("LRH_Haze", "CompositorNodeTree")
+    scene.compositing_node_group = tree
+    nodes, links = tree.nodes, tree.links
+    layers = nodes.new("CompositorNodeRLayers")
+    out = nodes.new("NodeGroupOutput")
+    tree.interface.new_socket("Image", in_out="OUTPUT", socket_type="NodeSocketColor")
+    if not visibility_km:
+        links.new(layers.outputs["Image"], out.inputs[0])
+        return None
+    bpy.context.view_layer.use_pass_z = True
+    k = 3.912 / (visibility_km * 1000.0)
+
+    def math_node(op, a=None, b=None):
+        node = nodes.new("ShaderNodeMath")
+        node.operation = op
+        for socket, value in ((0, a), (1, b)):
+            if isinstance(value, (int, float)):
+                node.inputs[socket].default_value = value
+            elif value is not None:
+                links.new(value, node.inputs[socket])
+        return node.outputs[0]
+
+    depth = layers.outputs["Depth"]
+    transmit = math_node("EXPONENT", math_node("MULTIPLY", depth, -k))
+    factor = math_node("SUBTRACT", 1.0, transmit)
+    factor = math_node("MULTIPLY", factor, math_node("LESS_THAN", depth, 1.0e6))
+    mix = nodes.new("ShaderNodeMix")
+    mix.data_type = "RGBA"
+    links.new(factor, mix.inputs["Factor"])
+    links.new(layers.outputs["Image"], mix.inputs["A"])
+    mix.inputs["B"].default_value = (*colour, 1.0)
+    links.new(mix.outputs["Result"], out.inputs[0])
+    return {"visibility_km": visibility_km, "extinction_per_m": k,
+            "horizon_colour_linear": [round(float(c), 4) for c in colour]}
+
+
 def apply_collections(scene, wanted):
     layer = bpy.context.view_layer.layer_collection
     known = {c.name for c in layer.children}
@@ -128,6 +215,9 @@ def render_shot(name, shot, config, args, out):
         lrh.fail(f"{name}: no camera CAM_{name} in the .blend; rebuild the baseline")
     scene.camera = camera
     sun = configure_sky(scene, shot["sun"])
+    with tempfile.TemporaryDirectory() as scratch:
+        haze = configure_haze(scene, camera, shot.get("haze_visibility_km",
+                                                      config.get("haze_visibility_km")), scratch)
     apply_collections(scene, wanted)
 
     stem = f"{name}_{args.res}"
@@ -164,6 +254,7 @@ def render_shot(name, shot, config, args, out):
             "clip_end": cam.clip_end,
         },
         "sun": sun,
+        "haze": haze,
         "render": {"res": args.res, "resolution": [width, height], "samples": scene.cycles.samples,
                    "engine": scene.render.engine, "device": scene.cycles.device,
                    "exposure": scene.view_settings.exposure,
