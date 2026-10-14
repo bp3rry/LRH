@@ -19,9 +19,14 @@ import lrh
 
 import shapely  # noqa: E402
 from shapely.geometry import LineString, Point, Polygon  # noqa: E402
+import shapely.ops  # noqa: E402
 from shapely.ops import unary_union  # noqa: E402
 
 FT = 0.3048
+DRIVEWAY_TO_CENTRE = {"Lot 2"}  # owner, 14 Oct 2026
+# Proposed east-west boundary between parcels 116505 and 135089 (owner considering a
+# re-survey): y chosen so each parcel keeps its CAD acreage; lots 5 and 6 keep their areas.
+PROPOSED_PARCEL_LINE_Y = -9.6
 DOCK_SEPARATION_M = 300 * FT
 DOCK_MAX_LENGTH_M = 120 * FT
 PATH_WIDTH_M = 5 * FT
@@ -82,6 +87,17 @@ def build_redline(context, sampler, coll):
         if b["kind"] == "owner_parcel_boundary":
             strip(f"Redline_Parcel_{b['prop_id']}", np.array(b["lines_local_m"][0])[:, :2], 1.6,
                   sampler, 0.35, red, coll)
+    # Proposed east-west parcel boundary, dashed (6 m dash, 4 m gap).
+    union = unary_union([Polygon(np.array(b["lines_local_m"][0])[:, :2])
+                         for b in context["boundaries"] if b["kind"] == "owner_parcel_boundary"])
+    across = LineString([(-1000, PROPOSED_PARCEL_LINE_Y), (1000, PROPOSED_PARCEL_LINE_Y)]).intersection(union)
+    parts = [across] if across.geom_type == "LineString" else list(across.geoms)
+    k = 0
+    for part in parts:
+        for d0 in np.arange(0, part.length, 10.0):
+            seg = shapely.ops.substring(part, d0, min(part.length, d0 + 6.0))
+            strip(f"Redline_Proposed_{k:03d}", list(seg.coords), 1.2, sampler, 0.36, red, coll)
+            k += 1
     for i, line in enumerate(context["conceptual_lots"]["division_lines_local_m"]):
         strip(f"Redline_LotLine_{i}", np.array(line)[:, :2], 0.9, sampler, 0.3, white, coll)
     trees = np.load(lrh.ROOT / "out/derived/lidar_trees.npz")["trees"][:, :2]
@@ -132,6 +148,23 @@ def driveway_lines(context, cr3635_lines, depth_m=32.0):
             continue
         mid = frontage.interpolate(0.5, normalized=True) if frontage.geom_type == "LineString" \
             else frontage.centroid
+        if label in DRIVEWAY_TO_CENTRE:
+            # Owner: enter at the middle of the lot's east (road-facing) frontage, then head
+            # for the lot's centre. Lot 2's frontage runs past the mapped road end, so the
+            # driveway angles there from the nearest point of the road.
+            ring = np.array(shapely.geometry.polygon.orient(poly).exterior.coords)
+            segs = [LineString([p0, p1]) for p0, p1 in zip(ring[:-1], ring[1:])
+                    if np.hypot(*(p1 - p0)) > 0 and (p1 - p0)[1] / np.hypot(*(p1 - p0)) > 0.5]
+            east = shapely.ops.linemerge(shapely.MultiLineString(segs))  # CCW: faces east
+            if east.geom_type != "LineString":
+                east = max(east.geoms, key=lambda g: g.length)
+            entry = east.interpolate(0.5, normalized=True)
+            on_road = road.interpolate(road.project(entry))
+            toward = np.array(poly.representative_point().coords[0]) - np.array(entry.coords[0])
+            toward /= np.linalg.norm(toward)
+            lines[label] = [on_road.coords[0], entry.coords[0],
+                            tuple(np.array(entry.coords[0]) + toward * (depth_m - 8.0))]
+            continue
         on_road = road.interpolate(road.project(mid))
         inward = np.array(mid.coords[0]) - np.array(on_road.coords[0])
         inward /= np.linalg.norm(inward)
@@ -220,35 +253,71 @@ def dock_layout(context, water, grid, sampler, record):
                 "deepest_end_m": round(max((float(c["end_depth_m"]) for c in seen), default=0.0), 2)})
             continue
         cands.append(options)
-    # Lots 1-2 (owner, 14 Oct 2026, revised): the path starts at the middle of Lot 1's
-    # north-west-facing edge and runs north-west (315 deg) into the creek arm; the dock
-    # continues in the same direction. Square to the edge (333 deg) the line slips past a
-    # narrow inlet to a 0.3 m-deep reach; north-west gives a 272 m-wide reach and 1.2 m.
+    # Lots 1-2 (owner, 14 Oct 2026, second revision): the path may start anywhere east of
+    # the middle of Lot 1's north-west-facing edge on its north-facing boundary, leaves
+    # square to the boundary and curves (quadratic Bezier) to the shore; the dock aims at
+    # the deepest water within 150 m. Best = deepest dock end, then shortest path, keeping
+    # 300 ft from the reviewed Lots 3-4 site.
     lot1 = shapely.geometry.polygon.orient(lots["Lot 1"])  # counter-clockwise
-    ring = np.array(lot1.exterior.coords)
-    edges = []
-    for a, b in zip(ring[:-1], ring[1:]):
-        d = b - a
-        length = float(np.hypot(*d))
-        if length >= 30.0:
-            normal = np.array([d[1], -d[0]]) / length  # outward for a CCW ring
-            facing = math.degrees(math.atan2(normal[0], normal[1])) % 360
-            edges.append((abs((facing - 315 + 180) % 360 - 180), a, b, normal, facing))
-    _, a, b, _, facing = min(edges, key=lambda e: e[0])
-    start = tuple((a + b) / 2)
-    direction = np.array([math.sin(math.radians(LOT1_DOCK_AZIMUTH_DEG)),
-                          math.cos(math.radians(LOT1_DOCK_AZIMUTH_DEG))])
-    base = None
-    for t in np.arange(1.0, 600.0, 1.0):
-        p = np.array(start) + direction * t
-        if arm.contains(Point(*p)):
-            base = tuple(p - direction)
-            break
-    if base is None:
-        lrh.fail("no water off Lot 1's north-west-facing edge")
-    first = dock_candidate(base, arm, grid, sampler, prefer=tuple(np.array(base) + direction * 100))
-    first["pair"], first["path_from"] = PAIRS[0], start
-    first["edge_facing_deg"], first["azimuth_deg"] = round(facing, 1), LOT1_DOCK_AZIMUTH_DEG
+    others = unary_union([poly for label, poly in lots.items() if label != "Lot 1"])
+    ring = LineString(lot1.exterior.coords)
+    ref = shapely.geometry.polygon.orient(lots["Lot 1"]).exterior
+    nw_mid_x = -98.6  # middle of the north-west-facing edge (previous start)
+    starts = []
+    for d in np.arange(0, ring.length, 3.0):
+        p0 = np.array(ring.interpolate(d).coords[0])
+        p1 = np.array(ring.interpolate(min(ring.length, d + 1.0)).coords[0])
+        t = p1 - p0
+        if not np.any(t):
+            continue
+        n = np.array([t[1], -t[0]]) / np.linalg.norm(t)  # outward
+        if n[1] > 0.2 and p0[0] >= nw_mid_x and p0[0] < 0:
+            starts.append((p0, n))
+    reviewed_34 = LineString([(-152.8, 136.2), (-152.8 - DOCK_MAX_LENGTH_M, 136.2)]).buffer(5.0)
+    targets = {}
+
+    def deepest_near(pt):
+        key = (round(pt[0]), round(pt[1]))
+        if key not in targets:
+            best_t, depth = None, -1.0
+            for a in np.linspace(0, 2 * math.pi, 36, endpoint=False):
+                for r in (40, 80, 120, 150):
+                    q = (pt[0] + math.cos(a) * r, pt[1] + math.sin(a) * r)
+                    if arm.contains(Point(q)):
+                        dd = water_depth(grid, sampler, *q)
+                        if dd > depth:
+                            best_t, depth = q, dd
+            targets[key] = best_t
+        return targets[key]
+
+    best = None
+    for p0, n0 in starts:
+        for sx, sy in shore_pts:
+            dist = math.hypot(sx - p0[0], sy - p0[1])
+            if dist > 280 or sy < 150:
+                continue
+            ctrl = p0 + n0 * min(40.0, 0.45 * dist)
+            ts = np.linspace(0, 1, 30)[:, None]
+            curve = (1 - ts) ** 2 * p0 + 2 * (1 - ts) * ts * ctrl + ts ** 2 * np.array([sx, sy])
+            line = LineString(curve)
+            if any(arm.contains(Point(q)) for q in curve[:-2]) or line.crosses(others) or \
+                    line.within(lot1):
+                continue
+            aim = deepest_near((sx, sy))
+            if aim is None:
+                continue
+            c = dock_candidate((sx, sy), arm, grid, sampler, prefer=aim)
+            if c is None or c["end_depth_m"] < MIN_END_DEPTH_M:
+                continue
+            if LineString([c["base"], c["end"]]).buffer(5.0).distance(reviewed_34) < DOCK_SEPARATION_M:
+                continue
+            score = float(c["end_depth_m"]) - 0.004 * line.length
+            if best is None or score > best[0]:
+                c["pair"], c["path_from"], c["path_line"] = PAIRS[0], tuple(p0), [tuple(q) for q in curve]
+                best = (score, c)
+    if best is None:
+        lrh.fail("no curved Lots 1-2 dock path found")
+    first = best[1]
     docks.append(first)
 
     # Arm pairs: search every combination of candidate sites for one that keeps 300 ft
@@ -304,7 +373,7 @@ def dock_layout(context, water, grid, sampler, record):
                      "length_ft": round(float(d["length"]) / FT),
                      "cove_width_m": round(float(d["cove_width_m"]), 1),
                      "end_depth_m": round(float(d["end_depth_m"]), 2),
-                     "path_length_m": round(float(LineString([d["path_from"], d["base"]]).length), 1),
+                     "path_length_m": round(float(LineString(d.get("path_line", [d["path_from"], d["base"]])).length), 1),
                      "nearest_dock_m": float(near), "nearest_dock_ft": round(float(near) / FT),
                      "meets_300ft": bool(near >= DOCK_SEPARATION_M),
                      "meets_length": bool(d["length"] <= DOCK_MAX_LENGTH_M + 0.01 and
@@ -375,7 +444,7 @@ def build_docks(docks, sampler, coll):
         obj.location = (d["base"][0], d["base"][1], lrh.POOL_M)
         obj.rotation_euler = (0, 0, math.atan2(d["dir"][1], d["dir"][0]))
         label = "_".join(p.split()[-1] for p in d["pair"])
-        line = [d["path_from"], d["base"]]
+        line = d.get("path_line", [d["path_from"], d["base"]])
         strip(f"Path_Lots_{label}_Mown", line, MOWN_CORRIDOR_M, sampler, 0.06, mown, coll)
         strip(f"Path_Lots_{label}_Gravel", line, PATH_WIDTH_M, sampler, 0.10, gravel, coll)
         footprints.append(LineString([d["base"], d["end"]]).buffer(6.5))

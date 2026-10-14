@@ -249,18 +249,25 @@ Review renders: `out/2026-10-14/check_lotplan_features_draft.png` (north-up) and
 `H1_arrival_lotplan_draft.png`.
 
 - [x] **Redline overlays.** Each CAD parcel outline in red, so the shared line between
-      Lots 5 and 6 shows. Lot lines in white. Lot numbers sit on each lot's most open
+      Lots 5 and 6 shows. A dashed red line marks the **proposed east–west parcel
+      boundary** (owner is considering a re-survey with more regular lot shapes). It sits
+      at y = −9.6 m, where each parcel keeps its CAD acreage (9.831 / 10.034 ac) and
+      Lots 5 and 6 keep their areas (1.966 / 2.007 ac). Lot lines in white. Lot numbers sit on each lot's most open
       ground and turn to read upright from each shot's camera.
 - [x] **Driveways.** One 4 m gravel driveway per lot, square to CR 3635, with trees cleared
-      only on the driveway. Lot 1 has no frontage on the mapped CR 3635: the TxDOT
+      only on the driveway. Lot 2's frontage runs past the mapped road end, so its
+      driveway leaves the road end and enters at the middle of the east frontage, then
+      heads for the lot centre (owner). Lot 1 has no frontage on the mapped CR 3635: the TxDOT
       centreline stops at the bend south of it, though UTRWD maps show the road continuing
       north-west. Its driveway therefore runs from the mapped road end. **Owner to
       confirm Lot 1 access.**
 - [x] **Docks, one per lot pair.** Revised per owner direction (14 Oct 2026):
-      - The Lots 1–2 path starts at the middle of Lot 1's north-west-facing edge
-        (63 m long, facing 333°) and runs north-west (315°) to the creek arm, with the
-        dock continuing the same way. Square to the edge (333°), the line slips past a
-        narrow inlet to water only 0.3 m deep; at 315° the arm is 272 m wide.
+      - The Lots 1–2 path (second revision) may start anywhere on Lot 1's north-facing
+        boundary east of the middle of its north-west edge. It leaves square to the
+        boundary and curves (quadratic Bézier) to the shore, and the dock aims at the
+        deepest water within 150 m. The search keeps 300 ft from the Lots 3–4 site. The
+        result starts near the top of Lot 1's north-west edge: an 86 m path to a 120 ft
+        dock in 1.9 m of water.
       - Each access path is a 4 m mown-grass corridor with a 5 ft grey gravel trail. No
         tree stands in the corridor and no measured crown overhangs it (32 lidar trees
         removed), including through the creek preservation woods (owner-approved).
@@ -270,7 +277,7 @@ Review renders: `out/2026-10-14/check_lotplan_features_draft.png` (north-up) and
 
       | Pair | Length | Cove width | Depth at end (full pool) | Nearest dock | Path |
       | --- | --- | --- | --- | --- | --- |
-      | 1–2 (NW from Lot 1's north-west edge) | 120 ft | 272 m | 1.0 m | 397 ft | 72 m |
+      | 1–2 (curved path from Lot 1's north edge) | 120 ft | 182 m | 1.9 m | 355 ft | 86 m |
       | 3–4 | 120 ft | 192 m | 1.7 m | 314 ft | 70 m |
       | 5–6 | 120 ft | 206 m | 1.2 m | 314 ft | 64 m |
       | 7–8 | 103 ft | 94 m | 1.0 m | 411 ft | 99 m |
