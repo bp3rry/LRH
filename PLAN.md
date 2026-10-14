@@ -150,9 +150,9 @@ pending.** Build products are in `out/2026-10-14/` (`lrh_baseline.blend`,
       the TxGIO county MrSID mosaic with LizardTech's SDK; it aligns with NAIP 2022 to
       within a pixel. NAIP 2022 is kept as a fallback. Classes: water, bare, pasture,
       woods, with per-year thresholds.
-      Inside the parcels, the 2026 clearing comes from the drone photo, projected through
+      Inside the parcels, the late-2024 clearing comes from the drone photo, projected through
       the solved camera: 69% cleared, 22% woods, 9% pasture.
-- [x] Trees: 90,990 instances. 30,128 are measured StratMap 2025 lidar trees (source (a);
+- [x] Trees: 90,838 instances. 30,152 are measured StratMap 2025 lidar trees (source (a);
       position, height, crown radius; red cedar where the leaf-off evergreen score is
       ≥ 0.8) over the six near tiles. The rest are mask-scattered outside lidar coverage
       (source (c)). 19,374 lidar trees in the creek bottom are below pool and omitted. The
@@ -164,12 +164,12 @@ pending.** Build products are in `out/2026-10-14/` (`lrh_baseline.blend`,
 - [x] Check views: north-up lot plan, drone match, lake oblique. The drone camera was
       solved against PTM's survey-registered outline (29 px RMS at 2048 px); the roads
       line up with the photo.
-- [ ] Photo vs lidar inside the parcels. 75 lidar trees (flown 9 Dec 2025) stand where
-      the drone photo shows clearing or brush piles, so they are removed as felled after
-      the flight. The photo also shows more retained interior clumps than the lidar
-      places. The camera pose is confirmed to about 10 m (`scripts/refine_drone_camera.py`
-      against isolated lidar trees), so the gap is in the data. Owner: what date was the
-      drone photo taken?
+- [x] Photo vs lidar inside the parcels. The drone photo (late 2024, per the owner)
+      predates the lidar (9 Dec 2025). A lidar object on ground the photo already shows
+      cleared, with no woods within 15 m, cannot be a standing tree. These 51 objects sit
+      on the photo's brush piles and are omitted. Lidar trees within 15 m of the photo's
+      retained clumps are kept (the photo projection is registered to ~10 m; the camera
+      is confirmed by `scripts/refine_drone_camera.py`).
 - [ ] Known visual gaps for owner review: tree crowns are rounder and more uniform than
       real oaks; there are fewer small pasture cedars than the photo shows; pastures read
       beige rather than the photo's yellow-green.
@@ -245,5 +245,4 @@ surveyor model did not have. Default behaviour is shown in **bold**; the owner d
 | --- | --- | --- |
 | Asset budget: CC0-only (current default), or allow paid tree packs (e.g. Botaniq) | Owner | Phase 1 step 4 |
 | Section 7 decisions 2–6 | Owner | Before any publication |
-| Date of the drone photo (orders it against the 9 Dec 2025 lidar flight) | Owner | Retained trees in the clearing |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |

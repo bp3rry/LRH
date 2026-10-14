@@ -35,7 +35,7 @@ python3 scripts/import_inputs.py              # PTM/Ladonia inputs -> inputs/, i
 python3 scripts/fetch_imagery.py              # NAIP 2022 -> inputs/imagery/, imagery.lock.json
 python3 scripts/decode_naip2024.py            # NAIP 2024 from owner download (MrSID SDK)
 python3 scripts/classify_ground_cover.py      # cover masks -> out/derived/
-$BPY scripts/observed_cover_2026.py           # drone-photo clearing -> out/derived/
+$BPY scripts/observed_cover_drone.py           # drone-photo clearing -> out/derived/
 # lidar: owner-downloaded LAZ tiles unzipped into inputs/lidar/; LASzip 3.5 (brew install laszip)
 clang -O2 -I/opt/homebrew/include/laszip -L/opt/homebrew/lib -llaszip_api \
       scripts/native/laz_dump.c -o .build/laz_dump

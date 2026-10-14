@@ -2,8 +2,10 @@
 
 Inside the StratMap 2025 lidar coverage (canopy source (a)), every tree is a measured
 one from scripts/lidar_trees.py: position, height and crown radius, with red cedar where
-the leaf-off evergreen score is high. Trees on ground the 2026 drone photo shows
-cleared, on roads, or below pool are dropped. Outside the coverage, trees are scattered
+the leaf-off evergreen score is high. The drone photo (late 2024) predates the lidar
+flight (9 Dec 2025), so a lidar object on ground the photo already shows cleared, far
+from any woods, cannot be a standing tree: it is a brush pile and is omitted. Lidar
+objects on roads or below pool are dropped too. Outside the coverage, trees are scattered
 from the imagery cover masks with species-random heights (canopy source (c)).
 Trees are instances on point clouds via Geometry Nodes, never realised geometry.
 """
@@ -131,7 +133,7 @@ def scatter(coll, site_grid, sampler, road_lines, zone, record):
     import shapely  # from .blender-site via lrh
 
     rng = np.random.default_rng(20261014)
-    site_cover = Raster(DERIVED / "cover_site_2026.tif")
+    site_cover = Raster(DERIVED / "cover_site_drone.tif")
     site_frac = Raster(DERIVED / "tree_fraction_site.tif")
     regional_cover = Raster(DERIVED / "cover_regional.tif")
     regional_frac = Raster(DERIVED / "tree_fraction_regional.tif")
@@ -153,16 +155,17 @@ def scatter(coll, site_grid, sampler, road_lines, zone, record):
     lidar = np.load(DERIVED / "lidar_trees.npz")["trees"]
     x, y, height, crown, evergreen = lidar[:, 0], lidar[:, 1], lidar[:, 3], lidar[:, 4], lidar[:, 5]
     cls, in_site = site_cover.lookup(x, y)
-    # The drone-photo clearing is registered to ~10 m, the lidar to well under 1 m, so a
-    # measured tree is dropped as cleared only if the photo shows no woods within 8 m.
+    # The photo projection is registered to ~10 m along the view direction (the lidar to
+    # well under 1 m), so an object counts as a brush pile only if the photo shows no
+    # woods within 15 m; nearer ones are the photo's retained trees, displaced.
     near_woods = np.zeros(len(x), bool)
-    for dx in np.arange(-8.0, 8.1, 2.0):
-        for dy in np.arange(-8.0, 8.1, 2.0):
-            if dx * dx + dy * dy <= 64:
+    for dx in np.arange(-15.0, 15.1, 2.5):
+        for dy in np.arange(-15.0, 15.1, 2.5):
+            if dx * dx + dy * dy <= 225:
                 near_woods |= site_cover.lookup(x + dx, y + dy)[0] == WOODS
-    cleared = in_site & (cls == CLEARED) & ~near_woods
-    keep = ~cleared & ~shapely.contains_xy(road_buffer, x, y)
-    lstats = {"lidar_detected": len(lidar), "lidar_on_2026_clearing": int(cleared.sum())}
+    brush_piles = in_site & (cls == CLEARED) & ~near_woods
+    keep = ~brush_piles & ~shapely.contains_xy(road_buffer, x, y)
+    lstats = {"lidar_detected": len(lidar), "lidar_brush_piles_omitted": int(brush_piles.sum())}
     x, y, height, crown, evergreen = (a[keep] for a in (x, y, height, crown, evergreen))
     z = site_grid.heights(x, y)
     far = np.isnan(z)
