@@ -113,7 +113,7 @@ def main():
     updated = cover.copy()
     updated[inside] = observed
     shares = {}
-    for label, grid in (("naip_2022", cover[inside]), ("drone_2026", updated[inside])):
+    for label, grid in (("naip", cover[inside]), ("drone_2026", updated[inside])):
         shares[label] = {name: round(float((grid == value).mean()), 4) for value, name in
                          enumerate(["water", "bare", "pasture", "woods", "cleared"])}
     print(json.dumps(shares))

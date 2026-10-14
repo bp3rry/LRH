@@ -32,7 +32,8 @@ BPY=/Applications/Blender.app/Contents/Resources/5.0/python/bin/python3.11
 $BPY -m pip install --no-deps --target .blender-site -r scripts/blender/requirements.txt
 
 python3 scripts/import_inputs.py              # PTM/Ladonia inputs -> inputs/, inputs.lock.json
-python3 scripts/fetch_imagery.py              # NAIP -> inputs/imagery/, imagery.lock.json
+python3 scripts/fetch_imagery.py              # NAIP 2022 -> inputs/imagery/, imagery.lock.json
+python3 scripts/decode_naip2024.py            # NAIP 2024 from owner download (MrSID SDK)
 python3 scripts/classify_ground_cover.py      # cover masks -> out/derived/
 $BPY scripts/observed_cover_2026.py           # drone-photo clearing -> out/derived/
 $B -b --python scripts/blender/build_baseline.py          # -> out/<date>/lrh_baseline.blend

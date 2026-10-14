@@ -23,11 +23,15 @@ ROOT = Path(__file__).resolve().parent.parent
 LOCK = json.loads((ROOT / "imagery.lock.json").read_text())
 OUT = ROOT / "out/derived"
 
+# Per imagery year: radiometry differs between NAIP vintages. 2024 samples: woods NDVI
+# 0.37-0.44 / brightness ~75, pasture 0.22-0.30 / 77-102, ponds ~-0.48.
 THRESHOLDS = {
-    "water_ndvi_max": -0.30, "water_nir_max": 60,
-    "woods_ndvi_min": 0.40, "woods_brightness_max": 82,
-    "bare_ndvi_max": 0.02, "bare_brightness_min": 100,
-    "woods_majority": 0.5,
+    2022: {"water_ndvi_max": -0.30, "water_nir_max": 60,
+           "woods_ndvi_min": 0.40, "woods_brightness_max": 82,
+           "bare_ndvi_max": 0.02, "bare_brightness_min": 100, "woods_majority": 0.5},
+    2024: {"water_ndvi_max": -0.25, "water_nir_max": 70,
+           "woods_ndvi_min": 0.34, "woods_brightness_max": 85,
+           "bare_ndvi_max": 0.08, "bare_brightness_min": 105, "woods_majority": 0.5},
 }
 
 
@@ -73,7 +77,8 @@ def classify(name, product, scratch):
     ndvi = (nir - red) / (nir + red + 1e-6)
     brightness = (red + green + blue) / 3
     cell = product["cell_m"]
-    t = THRESHOLDS
+    year = product["source_scenes"][0]["year"]
+    t = THRESHOLDS[year]
 
     woods_raw = ((ndvi > t["woods_ndvi_min"]) & (brightness < t["woods_brightness_max"]))
     smooth_r = max(1, round(1.8 / cell))  # ~3.6 m window: a small tree crown
@@ -87,7 +92,7 @@ def classify(name, product, scratch):
     tree_fraction = box_mean(woods.astype(np.float32), max(1, round(3.0 / cell)))
     greenness = np.clip((ndvi + 0.1) / 0.7, 0, 1)
 
-    meta = {"source": product["file"], "thresholds": json.dumps(THRESHOLDS),
+    meta = {"source": product["file"], "thresholds": json.dumps(t),
             "classes": "0 water,1 bare/road,2 pasture/grass,3 woods"}
     OUT.mkdir(parents=True, exist_ok=True)
     write(classes, gt, OUT / f"cover_{name}.tif", meta, scratch)
@@ -101,15 +106,15 @@ def classify(name, product, scratch):
         sys.exit(1)
     preview = np.array([[90, 140, 200], [200, 190, 160], [170, 190, 110], [30, 80, 30]],
                        np.uint8)[classes]
-    return shares, preview, gt
+    return shares, preview, gt, year
 
 
 def main():
     report = {}
     with tempfile.TemporaryDirectory() as scratch:
-        for product_name, product in LOCK["products"].items():
-            name = product_name.replace("naip_", "").split("_")[0]  # site / regional
-            shares, preview, gt = classify(name, product, scratch)
+        for name, product_name in LOCK["use"].items():  # site / regional
+            product = LOCK["products"][product_name]
+            shares, preview, gt, year = classify(name, product, scratch)
             raw = Path(scratch) / f"preview_{name}.rgb"
             preview.tofile(raw)
             h, w, _ = preview.shape
@@ -124,11 +129,12 @@ def main():
                             "-of", "PNG" if name == "site" else "JPEG",
                             *([] if name == "site" else ["-co", "QUALITY=93"]),
                             str(ROOT / product["file"]), str(rgb)], check=True)
-            report[name] = {"shares": shares, "source": product["file"],
+            report[name] = {"shares": shares, "source": product["file"], "year": year,
                             "cell_m": product["cell_m"]}
             print(name, shares)
     (OUT / "ground_cover.json").write_text(json.dumps(
-        {"thresholds": THRESHOLDS, "products": report}, indent=2) + "\n")
+        {"thresholds": {str(k): v for k, v in THRESHOLDS.items()}, "products": report},
+        indent=2) + "\n")
 
 
 if __name__ == "__main__":

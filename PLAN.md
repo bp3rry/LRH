@@ -146,13 +146,15 @@ pending.** Build products are in `out/2026-10-14/` (`lrh_baseline.blend`,
       shoreline is the 551 ft terrain contour. Edge exposure: 17 of 12,824 samples, 3 near
       the site. (b) The 2025 regional terrain has no dam embankment, so a schematic
       embankment sits on PTM's dam marker. Without it the lake ends in a water wall.
-- [x] Ground cover from imagery. TxGIO and USGS both offer NAIP 2022 (0.6 m, 5 Jul 2022)
-      as the newest openly downloadable imagery. Classes: water, bare, pasture, woods.
+- [x] Ground cover from imagery. Uses NAIP 2024 (0.6 m, flown 3 Jul 2024), decoded from
+      the TxGIO county MrSID mosaic with LizardTech's SDK; it aligns with NAIP 2022 to
+      within a pixel. NAIP 2022 is kept as a fallback. Classes: water, bare, pasture,
+      woods, with per-year thresholds.
       Inside the parcels, the 2026 clearing comes from the drone photo, projected through
       the solved camera: 69% cleared, 22% woods, 9% pasture.
-- [x] Trees: 98,394 instances of procedural post oak, cedar elm, red cedar and bois
+- [x] Trees: 106,827 instances of procedural post oak, cedar elm, red cedar and bois
       d'arc, out to 5 km. Heights use source (c), species ranges. The creek preservation
-      zone (15.2 ac, owner-derived) has no cleared cells and 1,055 trees.
+      zone (15.2 ac, owner-derived) has no cleared cells and 969 trees.
 - [x] Roads: CR 3635 (1.46 km of TxDOT centreline on terrain) and relocated CR 3640.
       SH 34 bridge marker.
 - [x] Overlays: parcel and lot lines and labels in `Overlays_Review`. Scene lot areas
@@ -161,11 +163,11 @@ pending.** Build products are in `out/2026-10-14/` (`lrh_baseline.blend`,
       solved against PTM's survey-registered outline (29 px RMS at 2048 px); the roads
       line up with the photo.
 - [ ] Measured canopy heights. StratMap 2025 classified LAZ is now listed (tile
-      `3395332c4`), as is NAIP Nov 2024. The TxGIO host refuses non-browser clients (HTTP
-      403), so this waits on an owner decision (§9).
+      `3395332c4`). The TxGIO host refuses scripted clients, so the owner downloads it in
+      a browser (§9).
 - [ ] Known visual gaps for owner review: tree crowns are rounder and more uniform than
-      real oaks; there are fewer small pasture cedars than the photo shows; ground colour
-      is from the drought summer of 2022.
+      real oaks; there are fewer small pasture cedars than the photo shows; pastures read
+      beige rather than the photo's yellow-green.
 
 ### Phase 2 — Hero stills (first release)
 
@@ -238,5 +240,5 @@ surveyor model did not have. Default behaviour is shown in **bold**; the owner d
 | --- | --- | --- |
 | Asset budget: CC0-only (current default), or allow paid tree packs (e.g. Botaniq) | Owner | Phase 1 step 4 |
 | Section 7 decisions 2–6 | Owner | Before any publication |
-| StratMap 2025 classified LAZ and NAIP 2024: now listed on TxGIO, but the host returns 403 to scripted downloads. Owner downloads them in a browser, or approves a browser user agent | Owner | Measured tree heights |
+| Download StratMap 2025 classified LAZ (`stratmap25-50cm-ralph-hall_3395332_lpc.zip`) into `inputs/downloads/`; the TxGIO host refuses scripted clients | Owner | Measured tree heights |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |

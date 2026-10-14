@@ -147,6 +147,86 @@
           "resolution_m": 0.6
         }
       ]
+    },
+    "naip2024_site_0p6m": {
+      "file": "inputs/imagery/naip2024_site_0p6m.tif",
+      "sha256": "5b9ae5e3758a261f34106a23f4a8bf8722469f4cf278c201f41ec39ba36025a8",
+      "bbox_local_m": [
+        -390.0,
+        -480.0,
+        390.0,
+        550.0
+      ],
+      "cell_m": 0.6,
+      "size_px": [
+        1300,
+        1717
+      ],
+      "bands": [
+        "red",
+        "green",
+        "blue",
+        "nir"
+      ],
+      "source": {
+        "url": "https://data.geographic.texas.gov/7e795b90-d89d-42a0-8bc9-4a7ef9b99e93/resources/naip24-60cm_48147_nccir-ccm.zip",
+        "zip_sha256": "3f0579a389e3ccedfeea24f856c480303fe7bd501b45727647634828386713b7",
+        "sid": "naip24-nc-cir-60cm-fannin_48147.sid",
+        "sid_sha256": "4f6cef790dc0ea026c20af5d488c5772517b467ee0a1ca296e9fa47c46f9a718",
+        "crs": "EPSG:26914",
+        "decoder": "LizardTech MrSID Decode SDK 9.5.5.5244 mrsiddecode",
+        "mrsid_scale": 0
+      },
+      "source_scenes": [
+        {
+          "name": "naip24-nc-cir-60cm-fannin_48147",
+          "year": 2024,
+          "acquisition_date": "2024-07-03",
+          "resolution_m": 0.6
+        }
+      ]
+    },
+    "naip2024_regional_3m": {
+      "file": "inputs/imagery/naip2024_regional_3m.tif",
+      "sha256": "58eb823056ec800bfc8d10edd832415cab51e9a7eefa6131373c5c6a2c2f6074",
+      "bbox_local_m": [
+        -15690.0,
+        -2316.0,
+        2826.0,
+        8046.0
+      ],
+      "cell_m": 3.0,
+      "size_px": [
+        6172,
+        3454
+      ],
+      "bands": [
+        "red",
+        "green",
+        "blue",
+        "nir"
+      ],
+      "source": {
+        "url": "https://data.geographic.texas.gov/7e795b90-d89d-42a0-8bc9-4a7ef9b99e93/resources/naip24-60cm_48147_nccir-ccm.zip",
+        "zip_sha256": "3f0579a389e3ccedfeea24f856c480303fe7bd501b45727647634828386713b7",
+        "sid": "naip24-nc-cir-60cm-fannin_48147.sid",
+        "sid_sha256": "4f6cef790dc0ea026c20af5d488c5772517b467ee0a1ca296e9fa47c46f9a718",
+        "crs": "EPSG:26914",
+        "decoder": "LizardTech MrSID Decode SDK 9.5.5.5244 mrsiddecode",
+        "mrsid_scale": 2
+      },
+      "source_scenes": [
+        {
+          "name": "naip24-nc-cir-60cm-fannin_48147",
+          "year": 2024,
+          "acquisition_date": "2024-07-03",
+          "resolution_m": 0.6
+        }
+      ]
     }
+  },
+  "use": {
+    "site": "naip2024_site_0p6m",
+    "regional": "naip2024_regional_3m"
   }
 }

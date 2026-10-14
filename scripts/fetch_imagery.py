@@ -117,13 +117,17 @@ def main():
     for tile in scratch.iterdir():
         tile.unlink()
     scratch.rmdir()
+    # Keep products added by other scripts (decode_naip2024.py) and the "use" choice.
+    previous = json.loads(LOCK.read_text()) if LOCK.is_file() else {}
+    products = {**previous.get("products", {}), **entries}
     LOCK.write_text(json.dumps({
         "schema": "lrh.imagery-lock/1",
         "retrieved_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "service": SERVICE,
-        "licence": "Public domain (USDA NAIP via USGS The National Map)",
+        "licence": "Public domain (USDA NAIP via USGS The National Map and TxGIO)",
         "crs": "EPSG:6344; bbox_local_m is relative to inputs/terrain/origin.json",
-        "products": entries,
+        "use": previous.get("use", {"site": "naip_site_0p6m", "regional": "naip_regional_3m"}),
+        "products": products,
     }, indent=2) + "\n")
     print(f"wrote {LOCK.name}")
     return 0
