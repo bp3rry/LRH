@@ -1,0 +1,27 @@
+.DS_Store
+.env
+.env.*
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Source data, third-party assets, and build products are never committed.
+# inputs.lock.json and ASSETS.md record what they were.
+inputs/
+assets/
+out/
+*.blend
+*.blend1
+*.skp
+*.tif
+*.tiff
+*.laz
+*.las
+*.obj
+*.dae
+*.exr
+*.png
+*.jpg
+*.jpeg
+*.mp4
