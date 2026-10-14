@@ -1,6 +1,6 @@
 {
   "schema": "lrh.inputs-lock/1",
-  "imported_utc": "2026-10-14T19:51:17Z",
+  "imported_utc": "2026-10-14T20:26:49Z",
   "sources": {
     "ptm": {
       "path": "/Users/bperry/Documents/Projects/property-terrain-modeling-pipeline",
@@ -73,6 +73,16 @@
       "source": "/Users/bperry/Documents/Projects/Ladonia/Reference/Lake-Ralph-Hall/COMMENT-DRAFT_Lake-Ralph-Hall-LSMP_October-16-2025.pdf",
       "sha256": "fc63be8c894a4169fff04d5fdbf0c0aaf66366cb7cb1109978bb7333d4bf1fb9",
       "bytes": 35147408
+    },
+    "geometry/cr3640-composite-context-route-epsg6344.geojson": {
+      "source": "/Users/bperry/Documents/Projects/Ladonia/Reference/Spatial-Control/cr3640-composite-context-route-epsg6344.geojson",
+      "sha256": "e702e1f47f35f7710a82ed0a5773a7a2f356aa0e0fd2f371a298b9b4d2671c47",
+      "bytes": 1960
+    },
+    "geometry/txdot-fannin-sh34-roadway-inventory-epsg6344.geojson": {
+      "source": "/Users/bperry/Documents/Projects/Ladonia/Reference/Spatial-Control/txdot-fannin-sh34-roadway-inventory-epsg6344.geojson",
+      "sha256": "75dde6710e2ecfbe46784444c29f2335289e6c4689513fad44a0f254e0b1bd6b",
+      "bytes": 27425
     },
     "geometry/utrwd-road-plan-cr3640-new-alignment-epsg6344.geojson": {
       "source": "/Users/bperry/Documents/Projects/Ladonia/Reference/Spatial-Control/utrwd-road-plan-cr3640-new-alignment-epsg6344.geojson",

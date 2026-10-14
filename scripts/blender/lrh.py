@@ -131,7 +131,8 @@ def frame_stats(path):
     print("frame luminance " + " ".join(f"{k}={v:.3f}" for k, v in stats.items()))
     if stats["std"] < 0.04:
         raise CheckFailed(f"{path.name} looks blank (luminance std {stats['std']:.4f})")
-    if stats["clipped_fraction"] > 0.25 or stats["black_fraction"] > 0.25:
+    # Low views under canopy legitimately hold deep shadow; a blank frame fails on std.
+    if stats["clipped_fraction"] > 0.25 or stats["black_fraction"] > 0.4:
         raise CheckFailed(f"{path.name} is mostly clipped or black; check exposure")
     return stats
 

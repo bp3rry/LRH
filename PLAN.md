@@ -219,6 +219,48 @@ Draft timing on the M4: H1 1920 × 1080, 96 samples, 15 s; H3 19 s. A first esti
 8K final (16× the pixels, 1024 samples) is about 40 min per frame, to be confirmed with a
 tiled test render. H2 waits on foreground trees (free assets only, decided 14 Oct).
 
+### Phase 2a — Baseline extensions (owner direction, 14 Oct 2026)
+
+These go into the baseline so later stills, per-lot views and the flyover can all use them.
+
+- [x] **Flooded timber after a season or two.** A `dying` layer (the marketing default)
+      sits between `leafy` and `snags`: 974 of the 1,935 trees are dead snags and the rest
+      have thin, browning crowns. See `out/2026-10-14/flooded_timber_stages.jpg`.
+- [x] **Spanish moss** on 633 dead flooded trees, as a switchable layer
+      (`spanish_moss`, render `--spanish-moss on`). Its
+      native range in Fannin County is unconfirmed: Spanish moss is typical of East and
+      Southeast Texas lakes such as Caddo Lake. It stays **off in published frames** until
+      the owner confirms it occurs at Lake Ralph Hall. (Sphagnum is a ground and bog moss,
+      not a tree moss.)
+- [x] **SH 34 bridges.** Twin 13 m decks with parapets on the TxDOT SH 34 centreline,
+      2.23 km over the lake, on 110 bents, with the deck at 178.9 m for about 30 ft of
+      clearance. Approaches on grade. Schematic structure.
+- [x] **Leon Hurse Dam surface.** Grey rock riprap on the lake face, gravel crest,
+      grassed downstream face. The geometry stays schematic.
+- [x] **Relocated CR 3640 west to SH 34.** 2.44 km: the TxDOT western approach plus
+      UTRWD's Road Plan New Alignment, on grade with 2:1 fill slopes and a causeway over
+      the creek arm (never below 169.3 m). It replaces the owner-directed line, which
+      clipped 7.8 m into the parcels; UTRWD's line stays 6 m outside them.
+
+### Phase 2b — Lot plan features (after Phase 2a)
+
+- [ ] **Redline overlays.** Parcel and lot lines as a marketing-grade layer (red lines,
+      lot numbers), switchable per shot. The §7 caption already says "Lot lines
+      approximate".
+- [ ] **Driveways.** One per lot from CR 3635, gravel, placed where the road-side tree line
+      allows.
+- [ ] **Docks, one per pair of lots** (Lots 1–2, 3–4, 5–6, 7–8, 9–10; each pair sold as one
+      ~4 ac property under one owner). Each dock gets a 5 ft path across UTRWD land. Draft
+      LSMP rules to check and report for each layout:
+      - at least 300 ft between docks, including across the cove;
+      - at most 120 ft long, and no more than ⅓ of the cove width;
+      - only on Shoreline Management Zone shoreline;
+      - the owner must have an occupied residence;
+      - the water in front is the no-wake, timbered Fish and Wildlife Habitat zone.
+- [ ] **North-point dock.** A path from the northernmost point of the parcels east across
+      UTRWD land to a dock at the deepest nearby water of the main lake, checked against
+      the same rules. Assumed to be the dock for the Lots 1–2 pair; owner to confirm.
+
 ### Phase 3+ — Later releases (planned after Phase 2 is accepted)
 
 - **Per-lot stills:** templated cameras for each lot (lot-to-lake, lot-from-water,
@@ -246,8 +288,10 @@ surveyor model did not have. Default behaviour is shown in **bold**; the owner d
    status and decide whether the caption needs to say the lake is still filling.
 3. **Docks.** The draft LSMP requires 300 ft between docks and allows one per owner
    with an occupied residence. The PTM study found ten docks infeasible (126 ft minimum
-   spacing). **No docks in marketing frames.** Pedestrian shoreline paths (5 ft max)
-   are allowed.
+   spacing). **Owner decision, 14 Oct 2026: show one dock per pair of lots, plus the
+   north-point dock (Phase 2b), each checked against the LSMP rules.** Dock images need
+   a caption line such as "Docks subject to UTRWD Shoreline Use Permit". Pedestrian
+   shoreline paths (5 ft max) are allowed.
 4. **Homes.** **Empty, wooded, buildable lots.** Optional variant: the prior Perry
    lakehouse as one clearly labelled example home on one lot.
 5. **Acreage figures.** The CAD polygon for 116505 is 0.39 ac smaller than the

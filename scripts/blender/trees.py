@@ -161,15 +161,16 @@ def make_snag(variant, collection, height=12.0):
     """A dead, leafless hardwood: trunk, scaffold limbs and a second order of branches.
     Permanently flooded post oak and elm die within a few seasons and stand as snags."""
     rng = random.Random(f"snag-{variant}")
+    anchors = []  # points on the limbs where Spanish moss can hang
     bm = bmesh.new()
     trunk_r = 0.035 * height
-    trunk_top = height * rng.uniform(0.55, 0.7)
+    trunk_top = height * rng.uniform(0.45, 0.75)  # many drowned trees lose their tops
     bmesh.ops.create_cone(bm, cap_ends=True, segments=7, radius1=trunk_r, radius2=trunk_r * 0.45,
                           depth=trunk_top, matrix=Matrix.Translation((0, 0, trunk_top / 2)))
-    for i in range(rng.randint(5, 7)):
-        angle = i * 2 * math.pi / 6 + rng.uniform(-0.5, 0.5)
-        tilt = rng.uniform(0.35, 1.0)
-        length = height * rng.uniform(0.25, 0.45)
+    for i in range(rng.randint(4, 7)):
+        angle = i * 2 * math.pi / 6 + rng.uniform(-0.6, 0.6)
+        tilt = rng.uniform(0.55, 1.3)  # spreading, near-horizontal limbs
+        length = height * rng.uniform(0.15, 0.4) * (0.5 if rng.random() < 0.3 else 1.0)
         start = trunk_top * rng.uniform(0.55, 1.0)
         rot = Matrix.Rotation(angle, 4, "Z") @ Matrix.Rotation(tilt, 4, "Y")
         bmesh.ops.create_cone(bm, cap_ends=True, segments=5, radius1=trunk_r * 0.4,
@@ -177,6 +178,8 @@ def make_snag(variant, collection, height=12.0):
                               matrix=Matrix.Translation((0, 0, start)) @ rot @
                               Matrix.Translation((0, 0, length / 2)))
         tip = Matrix.Translation((0, 0, start)) @ rot @ Vector((0, 0, length * 0.7))
+        anchors += [tuple(Matrix.Translation((0, 0, start)) @ rot @ Vector((0, 0, length * f)))
+                    for f in (0.4, 0.7, 0.95)]
         for _ in range(2):
             sub = Matrix.Rotation(angle + rng.uniform(-1, 1), 4, "Z") @ \
                 Matrix.Rotation(rng.uniform(0.2, 0.9), 4, "Y")
@@ -185,6 +188,7 @@ def make_snag(variant, collection, height=12.0):
                                   radius2=trunk_r * 0.03, depth=sub_len,
                                   matrix=Matrix.Translation(tip) @ sub @
                                   Matrix.Translation((0, 0, sub_len / 2)))
+            anchors.append(tuple(Matrix.Translation(tip) @ sub @ Vector((0, 0, sub_len * 0.8))))
     mesh = bpy.data.meshes.new(f"Snag_{variant}")
     bm.to_mesh(mesh)
     bm.free()
@@ -192,6 +196,122 @@ def make_snag(variant, collection, height=12.0):
     obj = bpy.data.objects.new(mesh.name, mesh)
     collection.objects.link(obj)
     obj["prototype_height_m"] = height
+    obj["moss_anchors"] = [c for a in anchors for c in a]
+    return obj
+
+
+def moss_material():
+    mat = bpy.data.materials.get("Spanish_Moss")
+    if mat:
+        return mat
+    mat = bpy.data.materials.new("Spanish_Moss")
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    nodes.remove(nodes["Principled BSDF"])
+    out = nodes["Material Output"]
+    diffuse = nodes.new("ShaderNodeBsdfDiffuse")
+    diffuse.inputs["Color"].default_value = (0.42, 0.44, 0.38, 1)  # silver grey-green
+    translucent = nodes.new("ShaderNodeBsdfTranslucent")
+    translucent.inputs["Color"].default_value = (0.40, 0.43, 0.32, 1)
+    mix = nodes.new("ShaderNodeMixShader")
+    mix.inputs["Fac"].default_value = 0.3
+    links.new(diffuse.outputs[0], mix.inputs[1])
+    links.new(translucent.outputs[0], mix.inputs[2])
+    # Wispy strands: thin vertical bands cut out of each hanging card.
+    coord = nodes.new("ShaderNodeTexCoord")
+    wave = nodes.new("ShaderNodeTexWave")
+    wave.inputs["Scale"].default_value = 9.0
+    wave.inputs["Distortion"].default_value = 6.0
+    links.new(coord.outputs["UV"], wave.inputs["Vector"])
+    cut = nodes.new("ShaderNodeMath")
+    cut.operation = "GREATER_THAN"
+    cut.inputs[1].default_value = 0.3
+    links.new(wave.outputs["Fac"], cut.inputs[0])
+    # Ragged ends: strands stop at a noisy height, so cards do not end in straight edges.
+    stretch = nodes.new("ShaderNodeMapping")
+    stretch.inputs["Scale"].default_value = (14.0, 2.0, 1.0)
+    links.new(coord.outputs["UV"], stretch.inputs["Vector"])
+    ragged = nodes.new("ShaderNodeTexNoise")
+    ragged.inputs["Scale"].default_value = 1.0
+    links.new(stretch.outputs["Vector"], ragged.inputs["Vector"])
+    v = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(coord.outputs["UV"], v.inputs["Vector"])
+    reach = nodes.new("ShaderNodeMath")
+    reach.operation = "MULTIPLY"
+    reach.inputs[1].default_value = 0.9
+    links.new(ragged.outputs["Fac"], reach.inputs[0])
+    keep = nodes.new("ShaderNodeMath")
+    keep.operation = "GREATER_THAN"
+    links.new(v.outputs["Y"], keep.inputs[0])  # V = 1 at the limb, 0 at the tip
+    links.new(reach.outputs[0], keep.inputs[1])
+    both = nodes.new("ShaderNodeMath")
+    both.operation = "MULTIPLY"
+    links.new(cut.outputs[0], both.inputs[0])
+    links.new(keep.outputs[0], both.inputs[1])
+    cut = both
+    transparent = nodes.new("ShaderNodeBsdfTransparent")
+    final = nodes.new("ShaderNodeMixShader")
+    links.new(cut.outputs[0], final.inputs["Fac"])
+    links.new(transparent.outputs[0], final.inputs[1])
+    links.new(mix.outputs[0], final.inputs[2])
+    links.new(final.outputs[0], out.inputs["Surface"])
+    return mat
+
+
+def make_moss(snag, collection):
+    """Spanish moss (Tillandsia usneoides) beards hanging from a snag's limbs, built in the
+    snag's own space so it can be instanced with the same transforms."""
+    rng = random.Random(f"moss-{snag.name}")
+    a = snag["moss_anchors"]
+    anchors = [Vector(a[i:i + 3]) for i in range(0, len(a), 3)]
+    verts, faces, uvs = [], [], []
+    for anchor in anchors:
+        if rng.random() < 0.15:
+            continue
+        for _ in range(rng.randint(4, 7)):
+            length = rng.uniform(1.0, 2.6)
+            width = rng.uniform(0.3, 0.6)
+            angle = rng.uniform(0, math.pi)
+            dx, dy = math.cos(angle) * width / 2, math.sin(angle) * width / 2
+            sway = Vector((rng.uniform(-0.15, 0.15), rng.uniform(-0.15, 0.15), 0))
+            top = anchor + Vector((rng.uniform(-0.3, 0.3), rng.uniform(-0.3, 0.3), 0))
+            base = len(verts)
+            for k, f in enumerate((0.0, 0.5, 1.0)):
+                c = top + Vector((0, 0, -length * f)) + sway * f
+                taper = 1.0 - 0.6 * f
+                verts += [c + Vector((-dx, -dy, 0)) * taper, c + Vector((dx, dy, 0)) * taper]
+                uvs += [(0.0, 1 - f), (1.0, 1 - f)]
+            faces += [(base, base + 1, base + 3, base + 2), (base + 2, base + 3, base + 5, base + 4)]
+    mesh = bpy.data.meshes.new(f"Moss_{snag.name}")
+    mesh.from_pydata([tuple(v) for v in verts], [], faces)
+    uv = mesh.uv_layers.new(name="UVMap")
+    for loop in mesh.loops:
+        uv.data[loop.index].uv = uvs[loop.vertex_index]
+    mesh.materials.append(moss_material())
+    obj = bpy.data.objects.new(mesh.name, mesh)
+    collection.objects.link(obj)
+    return obj
+
+
+def make_dying(prototype, collection):
+    """A prototype copy with thin, yellow-brown foliage: a flooded hardwood in its first
+    or second season of decline."""
+    mat = bpy.data.materials.get("Foliage_dying")
+    if mat is None:
+        mat = prototype.data.materials[1].copy()
+        mat.name = "Foliage_dying"
+        nodes = mat.node_tree.nodes
+        ramp = next(n for n in nodes if n.bl_idname == "ShaderNodeValToRGB")
+        ramp.color_ramp.elements[0].color = (0.16, 0.12, 0.04, 1)
+        ramp.color_ramp.elements[1].color = (0.30, 0.24, 0.08, 1)
+        cut = next(n for n in nodes if n.bl_idname == "ShaderNodeMath")
+        cut.inputs[1].default_value = 0.6  # sparser crowns
+    mesh = prototype.data.copy()
+    mesh.name = f"{prototype.data.name}_dying"
+    mesh.materials[1] = mat
+    obj = bpy.data.objects.new(f"{prototype.name}_dying", mesh)
+    collection.objects.link(obj)
+    obj["prototype_height_m"] = prototype["prototype_height_m"]
     return obj
 
 

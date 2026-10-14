@@ -23,6 +23,7 @@ from mathutils.bvhtree import BVHTree
 from mathutils.geometry import delaunay_2d_cdt
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import infrastructure  # noqa: E402
 import lrh  # noqa: E402
 import vegetation  # noqa: E402
 
@@ -528,58 +529,14 @@ def build_roads(context, coll, sampler):
         made.append(ribbon(f"CR3635_Surface_{i}", part.coords, spec["road_width_m"], sampler,
                            ROAD_LIFT_M, gravel, coll))
 
-    # Relocated CR 3640: owner-directed alignment; the creek crossing keeps its raised grade.
-    spec = roads["Relocated CR 3640"]
-    pts = np.array(spec["line_local_m"])
-    dense = np.array(densify(pts[:, :2], 2.0))
-    along = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(pts[:, :2], axis=0), axis=1))])
-    dense_along = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(dense, axis=0), axis=1))])
-    grade = np.interp(dense_along, along, pts[:, 2]) - 0.3  # centreline z is road top
-    made.append(ribbon("CR3640_Shoulder", dense, spec["shoulder_width_m"], sampler,
-                       ROAD_LIFT_M - 0.04, shoulder, coll, step=2.0, min_z=grade))
-    made.append(ribbon("CR3640_Surface", dense, spec["road_width_m"], sampler, ROAD_LIFT_M,
-                       gravel, coll, step=2.0, min_z=grade))
-    centrelines = [list(p.coords) for p in parts] + [dense.tolist()]
-    record("roads_built", len(made) >= 4, objects=[o.name for o in made],
+    # Relocated CR 3640 (UTRWD Road Plan New Alignment, west to SH 34) is built by
+    # infrastructure.build_cr3640 on grade, with a causeway over the creek arm.
+    cr3640 = infrastructure.build_cr3640(coll, sampler, record)
+    centrelines = [list(p.coords) for p in parts] + [cr3640.tolist()]
+    record("roads_built", len(made) >= 2, objects=[o.name for o in made],
            cr3635_length_m=round(sum(p.length for p in parts), 1),
            cr3635_source_length_m=round(LineString(line).length, 1))
     return centrelines
-
-
-def build_bridge(context, coll, sampler):
-    spec = context["conceptual_regional_landmarks"]["bridge"]
-    (x0, y0, z), (x1, y1, _) = spec["line_local_m"]
-    concrete = principled("Bridge_Concrete", (0.62, 0.61, 0.58), roughness=0.7)
-    length = math.hypot(x1 - x0, y1 - y0)
-    angle = math.atan2(y1 - y0, x1 - x0)
-    bpy.ops.mesh.primitive_cube_add(size=1)
-    deck = bpy.context.active_object
-    deck.name = "SH34_Bridge_Deck"
-    deck.scale = (length, spec["deck_width_m"], 1.6)
-    deck.location = ((x0 + x1) / 2, (y0 + y1) / 2, z - 0.8)
-    deck.rotation_euler = (0, 0, angle)
-    for user in list(deck.users_collection):
-        user.objects.unlink(deck)
-    coll.objects.link(deck)
-    deck.data.materials.append(concrete)
-    piers = 0
-    for d in np.arange(20.0, length - 10.0, 40.0):
-        px, py = x0 + (x1 - x0) * d / length, y0 + (y1 - y0) * d / length
-        ground = sampler(px, py)
-        base = min(ground if ground is not None else lrh.POOL_M, lrh.POOL_M) - 2.0
-        height = (z - 1.6) - base
-        if height <= 0:
-            continue
-        bpy.ops.mesh.primitive_cylinder_add(radius=0.9, depth=height,
-                                            location=(px, py, base + height / 2))
-        pier = bpy.context.active_object
-        pier.name = f"SH34_Pier_{piers:02d}"
-        for user in list(pier.users_collection):
-            user.objects.unlink(pier)
-        coll.objects.link(pier)
-        pier.data.materials.append(concrete)
-        piers += 1
-    return deck
 
 
 def build_dam(context, coll):
@@ -813,10 +770,12 @@ def main():
     context = lrh.load_context()
     build_far_ground(colls["Terrain"], regional)
     dam = build_dam(context, colls["Landmarks"])
+    infrastructure.dam_materials(dam)
     sampler = HeightSampler([terrain, regional, dam])
-    _, _, pooled = build_water(grid, context, colls["Water"], sampler)
+    _, water_mask, pooled = build_water(grid, context, colls["Water"], sampler)
     road_lines = build_roads(context, colls["Roads"], sampler)
-    build_bridge(context, colls["Landmarks"], sampler)
+    # The water mask is buffered 60 m past the shore; pull it back to find the crossing.
+    infrastructure.build_sh34(colls["Landmarks"], sampler, water_mask.buffer(-55.0), record)
     lots = build_overlays(context, colls["Overlays_Review"], sampler)
     check_lot_areas(lots)
     zone, _ = preservation_zone(context, grid, pooled, colls["Masks"])

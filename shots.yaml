@@ -10,7 +10,8 @@
 render:
   exposure: -4.0   # AgX exposure for the physical sky; a shot may override it
   haze_visibility_km: 25   # compositor aerial perspective; a shot may override (0 = off)
-  flooded_timber: snags    # preservation-zone trees below pool: snags | leafy | none
+  flooded_timber: dying    # habitat-zone trees below pool: leafy | dying | snags | none
+  spanish_moss: false      # off until its range at Lake Ralph Hall is confirmed (PLAN 2a)
   cleared_ground: soil     # the parcels' cleared ground: soil (as photographed) | grassed
   draft: {resolution: [1920, 1080], samples: 96}
   final: {resolution: [7680, 4320], samples: 1024, tile_size: 2048}
@@ -40,6 +41,37 @@ shots:
     description: Lake-facing oblique from above the lots.
     camera: {position: [260.0, 10.0, 260.0], target: [-420.0, 60.0, 168.0], lens_mm: 28.0}
     sun: {datetime: "2026-10-14T16:00", utc_offset_h: -5}
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_bridge:
+    kind: check
+    description: SH 34 twin bridges from the south-east, low oblique.
+    camera: {position: [-1500.0, 300.0, 260.0], target: [-2300.0, 1450.0, 172.0], lens_mm: 35.0}
+    sun: {datetime: "2026-10-14T15:00", utc_offset_h: -5}
+    cleared_ground: grassed
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_dam:
+    kind: check
+    description: Leon Hurse Dam riprap face from over the lake, looking east.
+    camera: {position: [500.0, 1900.0, 260.0], target: [1199.0, 1600.0, 170.0], lens_mm: 30.0}
+    sun: {datetime: "2026-10-14T10:00", utc_offset_h: -5}
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_cr3640:
+    kind: check
+    description: Relocated CR 3640 causeway over the creek arm, looking north-west.
+    camera: {position: [0.0, -520.0, 230.0], target: [-420.0, -150.0, 168.0], lens_mm: 30.0}
+    sun: {datetime: "2026-10-14T15:00", utc_offset_h: -5}
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_timber_boat:
+    kind: check
+    description: Flooded timber from a boat in the creek arm, 2 m above the water, looking north (sun behind).
+    # Open water 16 m from the nearest tree, ~100 lidar trees ahead (side arm, west).
+    camera: {position: [-435.0, 135.0, 170.0], target: [-435.0, 235.0, 172.0], lens_mm: 28.0}
+    sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
+    haze_visibility_km: 40
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
 
   # --- Phase 2 hero stills (marketing: no overlays or docks; caption added) ---

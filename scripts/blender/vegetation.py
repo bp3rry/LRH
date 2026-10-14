@@ -128,44 +128,71 @@ def candidates(rng, extent):
     return out
 
 
-def flooded_timber(rng, lidar_rows, prototypes, snags, record):
-    """Lidar trees below pool inside the preservation zone stay standing in the water.
-    Two variants are built as separate top-level collections so shots can choose:
-    leafy (first season after flooding) and snags (the long-term look, since permanently
-    flooded oaks and elms die within a few growing seasons)."""
+def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record):
+    """Lidar trees below pool inside the Fish and Wildlife Habitat zone stay standing in
+    the water. Three stages are built as separate top-level collections so shots can
+    choose: leafy (first season after flooding), dying (a season or two: about half
+    dead, the rest thin and browning) and snags (long term: permanently flooded oaks and
+    elms die within a few seasons). Spanish moss on about a third of the dead trees is a
+    fourth, optional collection; it lines up with the snags in both the dying and snags
+    stages."""
     scene = bpy.context.scene
     made = {}
-    for name in ("Flooded_Timber_Leafy", "Flooded_Timber_Snags"):
+    for name in ("Flooded_Timber_Leafy", "Flooded_Timber_Dying", "Flooded_Timber_Snags",
+                 "Spanish_Moss"):
         coll = bpy.data.collections.new(name)
         scene.collection.children.link(coll)
         made[name] = coll
     rows = np.array(lidar_rows) if lidar_rows else np.zeros((0, 6))
     if len(rows):
         x, y, z, height, crown, evergreen = rows.T
-        rot = np.column_stack([np.zeros(len(x)), np.zeros(len(x)), rng.uniform(0, 2 * math.pi, len(x))])
+        n = len(x)
+        rot = np.column_stack([np.zeros(n), np.zeros(n), rng.uniform(0, 2 * math.pi, n)])
         pts = np.column_stack([x, y, z - 0.15])
         cedar = evergreen >= EVERGREEN_SCORE_MIN
+        variant = rng.integers(0, trees.VARIANTS, n)
+        dead_in_dying = rng.random(n) < 0.5
+        mossy = dead_in_dying & (rng.random(n) < 0.65)  # ~1/3 of all flooded trees
+        dying_protos = {sp: [trees.make_dying(p, proto_coll) for p in protos]
+                        for sp, protos in prototypes.items() if sp in ("red_cedar", "post_oak")}
+        moss_protos = [trees.make_moss(s, proto_coll) for s in snags]
+
+        def scales_for(sel, species):
+            spec = trees.SPECIES[species]
+            s = height[sel] / spec["height"]
+            widen = np.clip(crown[sel] / spec["crown_radius"] / s, 0.5, 2.0)
+            return np.column_stack([s * widen, s * widen, s])
+
         for v in range(trees.VARIANTS):
-            sel = (rng.integers(0, trees.VARIANTS, len(x)) == v)
+            in_v = variant == v
             for is_cedar, species in ((True, "red_cedar"), (False, "post_oak")):
-                m = sel & (cedar == is_cedar)
+                m = in_v & (cedar == is_cedar)
+                if m.any():
+                    point_cloud(f"Flooded_Leafy_{species}_{v}", pts[m], scales_for(m, species),
+                                rot[m], prototypes[species][v], made["Flooded_Timber_Leafy"])
+                m2 = m & ~dead_in_dying
+                if m2.any():
+                    point_cloud(f"Flooded_Dying_{species}_{v}", pts[m2], scales_for(m2, species),
+                                rot[m2], dying_protos[species][v], made["Flooded_Timber_Dying"])
+            snag_s = height / snags[v]["prototype_height_m"]
+            snag_scale = np.column_stack([snag_s, snag_s, snag_s])
+            for name, m in (("Flooded_Snags", in_v), ("Flooded_Dying_snags", in_v & dead_in_dying),
+                            ("Flooded_Moss", in_v & mossy)):
                 if not m.any():
                     continue
-                spec = trees.SPECIES[species]
-                s = height[m] / spec["height"]
-                widen = np.clip(crown[m] / spec["crown_radius"] / s, 0.5, 2.0)
-                point_cloud(f"Flooded_Leafy_{species}_{v}", pts[m],
-                            np.column_stack([s * widen, s * widen, s]), rot[m],
-                            prototypes[species][v], made["Flooded_Timber_Leafy"])
-            s = height[sel] / snags[v]["prototype_height_m"]
-            point_cloud(f"Flooded_Snags_{v}", pts[sel], np.column_stack([s, s, s]), rot[sel],
-                        snags[v], made["Flooded_Timber_Snags"])
+                proto = moss_protos[v] if name == "Flooded_Moss" else snags[v]
+                coll = {"Flooded_Snags": "Flooded_Timber_Snags",
+                        "Flooded_Dying_snags": "Flooded_Timber_Dying",
+                        "Flooded_Moss": "Spanish_Moss"}[name]
+                point_cloud(f"{name}_{v}", pts[m], snag_scale[m], rot[m], proto, made[coll])
     depth = lrh.POOL_M - rows[:, 2] if len(rows) else np.zeros(0)
     record("flooded_timber", len(rows) > 50, trees=len(rows),
+           dead_in_dying_stage=int(dead_in_dying.sum()) if len(rows) else 0,
+           with_spanish_moss=int(mossy.sum()) if len(rows) else 0,
            water_depth_m_p50=round(float(np.median(depth)), 2) if len(rows) else None,
            water_depth_m_max=round(float(depth.max()), 2) if len(rows) else None,
-           basis="StratMap 2025 lidar trees below the 551 ft pool inside the preservation "
-                 "zone; crowns must clear the water by 1.5 m")
+           basis="StratMap 2025 lidar trees below the 551 ft pool inside the mapped Fish and "
+                 "Wildlife Habitat zone; crowns must clear the water by 1.5 m")
 
 
 def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record):
@@ -294,7 +321,7 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record):
             point_cloud(f"Trees_{species}_{v}", pts, scales, rotations, prototypes[species][v], coll)
         counts[species] = len(arr)
 
-    flooded_timber(rng, timber_rows, prototypes, snags, record)
+    flooded_timber(rng, timber_rows, prototypes, snags, proto_coll, record)
     total = sum(counts.values())
     record("trees_placed", total > 1000 and lstats["lidar_placed"] > 10000, total=total,
            by_species=counts, **lstats, mask_scatter=stats,
