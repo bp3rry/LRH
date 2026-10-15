@@ -123,7 +123,20 @@ shots:
   V_west_to_dam:
     kind: marketing
     description: From over the creek arm west of the lots, looking east across the lots toward Leon Hurse Dam.
-    camera: {position: [-650.0, -60.0, 280.0], target: [1199.0, 900.0, 172.0], lens_mm: 28.0}
+    # Enhanced (owner, 15 Oct 2026): higher and tighter, aimed between the lots and the
+    # dam, clearer air so the dam reads at ~1.8 km.
+    camera: {position: [-620.0, -120.0, 360.0], target: [700.0, 520.0, 168.0], lens_mm: 32.0}
     sun: {datetime: "2026-10-14T17:00", utc_offset_h: -5}
+    haze_visibility_km: 40
     cleared_ground: grassed
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  V_west_to_dam_redline:
+    kind: marketing
+    description: V_west_to_dam with red parcel and lot lines and lot numbers.
+    camera: {position: [-620.0, -120.0, 360.0], target: [700.0, 520.0, 168.0], lens_mm: 32.0}
+    sun: {datetime: "2026-10-14T17:00", utc_offset_h: -5}
+    haze_visibility_km: 40
+    cleared_ground: grassed
+    redline: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
