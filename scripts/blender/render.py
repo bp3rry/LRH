@@ -315,6 +315,9 @@ def main():
     bpy.ops.wm.open_mainfile(filepath=str(args.blend))
     configure_device(bpy.context.scene)
     out = lrh.out_dir()
+    if args.res != "draft":  # 4K and final frames go in their own subfolder
+        out = out / args.res
+        out.mkdir(exist_ok=True)
     for name in names:
         render_shot(name, shots[name], config, args, out)
 
