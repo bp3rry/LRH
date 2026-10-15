@@ -27,3 +27,6 @@ out/
 *.mp4
 .blender-site/
 .build/
+
+# Personal Claude Code settings
+.claude/settings.local.json
