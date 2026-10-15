@@ -136,6 +136,8 @@ def main():
     strip = strips.new_image("frames", str(frames_dir / files[0]), 1, 1)
     for name in files[1:]:
         strip.elements.append(name)
+    if hasattr(enc.render.image_settings, "media_type"):  # Blender 5: video is a media type
+        enc.render.image_settings.media_type = "VIDEO"
     enc.render.image_settings.file_format = "FFMPEG"
     enc.render.ffmpeg.format = "MPEG4"
     enc.render.ffmpeg.codec = "H264"
@@ -143,7 +145,6 @@ def main():
     enc.render.ffmpeg.ffmpeg_preset = "GOOD"
     enc.view_settings.view_transform = "Standard"  # frames are already display-referred
     enc.render.filepath = str(out / "flyover_test.mp4")
-    bpy.context.window_manager.windows[0].scene = enc if bpy.context.window_manager.windows else enc
     bpy.ops.render.render(animation=True, scene=enc.name)
     (out / "flyover_test.json").write_text(json.dumps({
         "schema": "lrh.flyover/1", "rendered_utc": lrh.utc_now(), "git": lrh.git_commit(),
