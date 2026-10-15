@@ -27,9 +27,8 @@ import lrh  # noqa: E402
 import render  # noqa: E402
 import yaml  # noqa: E402
 
-FPS, SECONDS = 30, 12
+FPS = 30
 RES = (1920, 1080)
-SAMPLES = 32
 LENS_MM = 24.0
 SUN = {"datetime": "2026-10-14T16:30", "utc_offset_h": -5}
 HAZE_KM = 30
@@ -37,11 +36,25 @@ COLLECTIONS = ["Terrain", "Water", "Roads", "Landmarks", "Vegetation", "Driveway
                "Shoreline", "Flooded_Timber_Dying", "Spanish_Moss"]
 # (camera position, look-at) keys: high over CR 3635 south-east of the lots, across the
 # turnarounds and the Lot 1 site, then rising over the flooded timber to the lake.
-KEYS = [((420.0, -560.0, 380.0), (-40.0, -20.0, 176.0)),
+# Variants: name -> (seconds, samples, keys). "test" is the approved 12 s path.
+TEST_KEYS = [((420.0, -560.0, 380.0), (-40.0, -20.0, 176.0)),
         ((250.0, -300.0, 340.0), (-110.0, 120.0, 174.0)),
         ((90.0, -40.0, 310.0), (-230.0, 330.0, 170.0)),
         ((-80.0, 200.0, 320.0), (-400.0, 800.0, 168.0)),
         ((-150.0, 330.0, 335.0), (-440.0, 780.0, 168.0))]
+# Full version (owner, 15 Oct 2026): approach from far over CR 3635, over the lots and
+# Lot 1, across the flooded timber, then arc west over the arm and turn to look back
+# south-east across the timber at the lots.
+FULL_KEYS = [((760.0, -980.0, 430.0), (40.0, -60.0, 176.0)),
+             ((420.0, -560.0, 380.0), (-40.0, -20.0, 176.0)),
+             ((230.0, -280.0, 345.0), (-110.0, 140.0, 174.0)),
+             ((80.0, -20.0, 320.0), (-230.0, 340.0, 170.0)),
+             ((-90.0, 210.0, 320.0), (-420.0, 780.0, 168.0)),
+             ((-320.0, 480.0, 330.0), (-520.0, 1200.0, 168.0)),
+             ((-560.0, 640.0, 320.0), (-200.0, 380.0, 170.0)),
+             ((-660.0, 380.0, 300.0), (0.0, 40.0, 176.0))]
+VARIANTS = {"test": (12, 32, TEST_KEYS), "full": (36, 64, FULL_KEYS)}
+KEYS, SECONDS, SAMPLES = TEST_KEYS, 12, 32
 
 
 def catmull_rom(points, t):
@@ -60,20 +73,35 @@ def ease(t):
     return t * t * (3 - 2 * t)
 
 
+_ARC = {}
+
+
 def pose(frame, total):
-    t = ease(frame / (total - 1))
+    """Constant ground speed along the camera spline (arc-length parametrised), eased
+    in and out; the look-at point follows the same spline parameter."""
     cams = np.array([k[0] for k in KEYS])
     looks = np.array([k[1] for k in KEYS])
+    key = id(KEYS)
+    if key not in _ARC:
+        u = np.linspace(0, 1, 4001)
+        pts = np.array([catmull_rom(cams, x) for x in u])
+        length = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(pts, axis=0), axis=1))])
+        _ARC[key] = (u, length / length[-1])
+    u, s = _ARC[key]
+    t = float(np.interp(ease(frame / (total - 1)), s, u))
     return catmull_rom(cams, t), catmull_rom(looks, t)
 
 
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    global KEYS, SECONDS, SAMPLES
+    variant = argv[argv.index("--variant") + 1] if "--variant" in argv else "test"
+    SECONDS, SAMPLES, KEYS = VARIANTS[variant]
     total = FPS * SECONDS
     only = None
     if "--frames" in argv:
         only = [int(f) for f in argv[argv.index("--frames") + 1].split(",")]
-    out = lrh.out_dir() / "video"
+    out = lrh.out_dir() / "video" / variant
     frames_dir = out / "frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
     config = yaml.safe_load((lrh.ROOT / "shots.yaml").read_text())["render"]
@@ -144,14 +172,14 @@ def main():
     enc.render.ffmpeg.constant_rate_factor = "HIGH"
     enc.render.ffmpeg.ffmpeg_preset = "GOOD"
     enc.view_settings.view_transform = "Standard"  # frames are already display-referred
-    enc.render.filepath = str(out / "flyover_test.mp4")
+    enc.render.filepath = str(out / f"flyover_{variant}.mp4")
     bpy.ops.render.render(animation=True, scene=enc.name)
-    (out / "flyover_test.json").write_text(json.dumps({
+    (out / f"flyover_{variant}.json").write_text(json.dumps({"variant": variant,
         "schema": "lrh.flyover/1", "rendered_utc": lrh.utc_now(), "git": lrh.git_commit(),
         "blend": bpy.data.filepath, "fps": FPS, "seconds": SECONDS, "resolution": RES,
         "samples": SAMPLES, "lens_mm": LENS_MM, "sun": SUN, "haze_km": HAZE_KM,
         "collections": COLLECTIONS, "keys": KEYS, "caption": config["caption"]}, indent=1) + "\n")
-    print("ENCODED", out / "flyover_test.mp4")
+    print("ENCODED", out / f"flyover_{variant}.mp4")
 
 
 if __name__ == "__main__":
