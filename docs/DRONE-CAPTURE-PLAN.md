@@ -8,9 +8,11 @@ properties, flown either by the owner or by a contracted Part 107 pilot (§8).
 
 ## 0. Who flies what (owner, 15 Oct 2026)
 
-- **Marketing capture (§4–§6): the owner's local Part 107 pilot**, who also took the
-  existing drone photo. The owner will supply the pilot's other photos and video from
-  that flight (§6.3).
+- **Existing aerials:** taken by **KwikImage** ([kwikimage.com](https://kwikimage.com/)),
+  commissioned by the co-owner (a real estate agent): 42 stills and one video, in
+  `inputs/drone/2023-08-11_pilot-existing/` (§6.3).
+- **New marketing capture (§4–§6):** a Part 107 pilot, for example the owner's local
+  pilot or KwikImage again.
 - **Owner, recreational (TRUST):** practice flights for learning only, kept separate
   from marketing capture. Good practice targets for later capture:
   - flying a manual grid at a steady height;
