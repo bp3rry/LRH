@@ -290,6 +290,15 @@ Review renders: `out/2026-10-14/check_lotplan_features_draft.png` (north-up) and
       classification at each site, the occupied-residence rule, and the UTRWD permit
       itself.
 
+### Phase 2c — Owner drone capture (planned)
+
+After mowing and dock-corridor clearing, the owner flies a mapping grid, oblique and
+corridor passes, and reference stills. LRH processes them with photogrammetry,
+registers them to the project frame and StratMap lidar, and updates the clearing,
+trees and close-range textures. The plan, capture spec and import steps are in
+[docs/DRONE-CAPTURE-PLAN.md](docs/DRONE-CAPTURE-PLAN.md). The DJI Mini 5 Pro's lidar
+is for obstacle sensing only; the 3D scan comes from photogrammetry.
+
 ### Phase 3+ — Later releases (planned after Phase 2 is accepted)
 
 - **Per-lot stills:** templated cameras for each lot (lot-to-lake, lot-from-water,
@@ -356,4 +365,5 @@ owner was told its natural range at Lake Ralph Hall is unconfirmed).
 | Optional: UTRWD's official georeferenced water-surface classification map, to replace the digitized draft LSMP outline | Owner (request from UTRWD) | Before publication |
 | Lots 9–10 dock: **deferred by owner (14 Oct 2026), no action**; options remain share 7–8, fishing dock, or re-pair | Owner | When the owner revisits |
 | Lot 1 driveway access (connects at the mapped CR 3635 end) | Owner | Phase 2b finals |
+| Drone capture: Part 107 or a contracted pilot for marketing imagery; UTRWD permission to fly over its land and water (docs/DRONE-CAPTURE-PLAN.md §3) | Owner | Before Phase 2c flights |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |

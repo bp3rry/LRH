@@ -13,6 +13,7 @@ See [PLAN.md](PLAN.md) for scope, phases, and open decisions.
 | Path | Committed | Contents |
 | --- | --- | --- |
 | `PLAN.md` | yes | Plan and status |
+| `docs/` | yes | Supporting plans (drone capture) |
 | `scripts/` | yes | Input import, Blender scene build, and render scripts |
 | `shots.yaml` | yes | Camera and render definitions |
 | `inputs.lock.json` | yes | Source path and SHA-256 for every input |
