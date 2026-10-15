@@ -800,7 +800,7 @@ def main():
         colls[name] = collection(name)
     lotplan.build_redline(context, sampler, colls["Redline"])
     drives = lotplan.driveway_lines(context, road_lines[:-1])
-    drive_area = lotplan.build_driveways(drives, sampler, colls["Driveways"], context)
+    drive_area, drive_lines = lotplan.build_driveways(drives, sampler, colls["Driveways"], context)
     # Owner, 15 Oct 2026: a mown shoreline path at 551 ft and, per lot, an access path and a
     # cleared circle at a possible dock site. Dock positions are undecided, so the paired
     # dock layout stays an optional layer that clears no trees.
@@ -813,7 +813,8 @@ def main():
                            for b in context["boundaries"] if b["kind"] == "owner_parcel_boundary"])
     vegetation.scatter(colls["Vegetation"], grid, sampler, road_lines, zone, timber_zone, record,
                        clear=unary_union([drive_area, shore_area]),
-                       open_sky=(shore_open, lotplan.MOWN_CORRIDOR_M / 2), scrub_zone=parcels)
+                       open_sky=(shapely.GeometryCollection([shore_open, drive_lines]),
+                                 lotplan.MOWN_CORRIDOR_M / 2), scrub_zone=parcels)
     (out / "lot_sites.json").write_text(json.dumps(
         {label: {**site, "shore_circle": shore_access[label]["circle"]}
          for label, site in lotplan.house_sites(context).items()}, indent=1) + "\n")

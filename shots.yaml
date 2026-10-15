@@ -101,6 +101,8 @@ shots:
     camera: {position: [360.0, -470.0, 340.0], target: [-420.0, 260.0, 168.0], lens_mm: 24.0}
     sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
     cleared_ground: grassed  # owner, 14 Oct 2026
+    driveways: true
+    shoreline: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
 
   H3_from_lake:
@@ -109,6 +111,8 @@ shots:
     camera: {position: [-560.0, 860.0, 330.0], target: [0.0, 0.0, 176.0], lens_mm: 32.0}
     sun: {datetime: "2026-10-14T15:00", utc_offset_h: -5}
     cleared_ground: grassed  # owner, 14 Oct 2026
+    driveways: true
+    shoreline: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
 
   H1_arrival_lotplan:
@@ -131,6 +135,8 @@ shots:
     sun: {datetime: "2026-10-14T17:00", utc_offset_h: -5}
     haze_visibility_km: 40
     cleared_ground: grassed
+    driveways: true
+    shoreline: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
 
   V_west_to_dam_redline:
@@ -141,6 +147,40 @@ shots:
     haze_visibility_km: 40
     cleared_ground: grassed
     redline: true
+    driveways: true
+    shoreline: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  # --- 15 Oct 2026: views of the new lot features (driveways, shoreline path, circles) ---
+  L1_secluded:
+    kind: marketing
+    description: Low aerial over the Lot 1 secluded build site, from the south-east above CR 3635.
+    camera: {position: [12.6, 162.0, 311.2], target: [-42.4, 237.0, 171.2], lens_mm: 35.0}
+    sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
+    haze_visibility_km: 40
+    cleared_ground: grassed
+    driveways: true
+    shoreline: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  L5_house_view:
+    kind: marketing
+    description: Eye level (6 m, second floor) from the Lot 5 house site, looking west-north-west toward the shoreline circle and the flooded timber (morning, sun behind).
+    camera: {position: [-42.0, 13.2, 179.0], target: [-334.9, 68.4, 171.0], lens_mm: 24.0}
+    sun: {datetime: "2026-10-14T09:30", utc_offset_h: -5}
+    haze_visibility_km: 30
+    cleared_ground: grassed
+    driveways: true
+    shoreline: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  S_shore_path:
+    kind: marketing
+    description: Walking the mown shoreline path at the Lot 5 circle, looking north along the timbered creek arm.
+    camera: {position: [-134.9, 13.4, 169.6], target: [-146.9, 133.4, 168.7], lens_mm: 28.0}
+    sun: {datetime: "2026-10-14T10:00", utc_offset_h: -5}
+    haze_visibility_km: 30
+    cleared_ground: grassed
     driveways: true
     shoreline: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]

@@ -348,6 +348,20 @@ lake views from each lot.
   Ground-floor values are optimistic: the model has no understory, so low sight lines
   pass under tree crowns.
 
+### Lot 1 secluded build site and new views (15 Oct 2026)
+
+- **Lot 1.** The driveway follows the CR 3635 continuation along the outside of Lot 1's
+  road-facing edge, then turns in through the trees. It ends at a turnaround at the
+  centre of Lot 1's measured trees, with a 14 m cleared house pad beside it (owner).
+  Canopy is opened over every drive, turnaround and shoreline path, so they read from
+  the air.
+- **Views** (drafts in `out/2026-10-15/`, contact sheet `views_contact_sheet.jpg`):
+  - the existing H1, H3 and V_west_to_dam, with driveways and shoreline features;
+  - new: `L1_secluded` (low aerial of the Lot 1 build site), `L5_house_view`
+    (second-floor eye level, morning) and `S_shore_path` (walking the shoreline path).
+  - `S_shore_path` shows the limits of the flat-draped paths and procedural trees at
+    walking scale; it is not ready for a cinematic final.
+
 ### Phase 2c — Owner drone capture (planned)
 
 After mowing and dock-corridor clearing, the owner flies a mapping grid, oblique and

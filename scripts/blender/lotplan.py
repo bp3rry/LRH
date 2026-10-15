@@ -23,7 +23,10 @@ import shapely.ops  # noqa: E402
 from shapely.ops import unary_union  # noqa: E402
 
 FT = 0.3048
-DRIVEWAY_TO_CENTRE = {"Lot 2"}  # owner, 14 Oct 2026
+DRIVEWAY_TO_CENTRE = {"Lot 1", "Lot 2"}  # owner, 14-15 Oct 2026
+# Lot 1 (owner, 15 Oct 2026): a secluded build site inside its tree clump. The turnaround
+# sits at the centre of the lot's measured trees and the house site just west of it.
+SECLUDED_LOTS = {"Lot 1"}
 # Proposed east-west boundary between parcels 116505 and 135089 (owner considering a
 # re-survey): y chosen so each parcel keeps its CAD acreage; lots 5 and 6 keep their areas.
 PROPOSED_PARCEL_LINE_Y = -9.6
@@ -165,6 +168,11 @@ def house_sites(context):
         x0, x1 = across.bounds[0], across.bounds[2]
         house = (min(x0 + HOUSE_SETBACK_M, (x0 + x1) / 2), yc)
         turn = (min(house[0] + TURN_OFFSET_M, x1 - TURN_RADIUS_M - 5.0), yc)
+        if label in SECLUDED_LOTS:
+            t = np.load(lrh.ROOT / "out/derived/lidar_trees.npz")["trees"]
+            inside = shapely.contains_xy(poly, t[:, 0], t[:, 1]) & (t[:, 3] > 6.0)
+            cx, cy = t[inside, :2].mean(axis=0)
+            turn, house = (float(cx), float(cy)), (float(cx) - 18.0, float(cy))
         out[label] = {"west": (x0, yc), "house": house, "turn": turn}
     return out
 
@@ -175,7 +183,7 @@ def driveway_lines(context, cr3635_lines, depth_m=32.0):
     lines = {}
     for label, poly in lots_by_label(context).items():
         frontage = poly.exterior.intersection(road.buffer(25.0))
-        if frontage.is_empty:
+        if frontage.is_empty and label not in DRIVEWAY_TO_CENTRE:
             # Lot 1: the TxDOT centreline stops at the bend south of it (UTRWD maps show
             # the road continuing north-west); run the driveway from the mapped road end
             # to the lot's nearest point.
@@ -186,8 +194,6 @@ def driveway_lines(context, cr3635_lines, depth_m=32.0):
             lines[label] = [near_road.coords[0], corner.coords[0],
                             tuple(np.array(corner.coords[0]) + inward * depth_m)]
             continue
-        mid = frontage.interpolate(0.5, normalized=True) if frontage.geom_type == "LineString" \
-            else frontage.centroid
         if label in DRIVEWAY_TO_CENTRE:
             # Owner: enter at the middle of the lot's east (road-facing) frontage, then head
             # for the lot's centre. Lot 2's frontage runs past the mapped road end, so the
@@ -200,11 +206,26 @@ def driveway_lines(context, cr3635_lines, depth_m=32.0):
                 east = max(east.geoms, key=lambda g: g.length)
             entry = east.interpolate(0.5, normalized=True)
             on_road = road.interpolate(road.project(entry))
+            if label in SECLUDED_LOTS:
+                # Follow the road's continuation along the outside of the lot's road-facing
+                # edge (6 m out), then turn in through the trees to the turnaround.
+                d_entry = east.project(entry)
+                ahead = []
+                for d in np.arange(0.0, d_entry, 4.0):
+                    p0 = np.array(east.interpolate(d).coords[0])
+                    p1 = np.array(east.interpolate(min(east.length, d + 1.0)).coords[0])
+                    t = (p1 - p0) / max(np.hypot(*(p1 - p0)), 1e-9)
+                    ahead.append(tuple(p0 + np.array([t[1], -t[0]]) * 6.0))  # outward (CCW)
+                lines[label] = [road.interpolate(road.project(Point(ahead[0]))).coords[0],
+                                *ahead, entry.coords[0]]
+                continue
             toward = np.array(poly.representative_point().coords[0]) - np.array(entry.coords[0])
             toward /= np.linalg.norm(toward)
             lines[label] = [on_road.coords[0], entry.coords[0],
                             tuple(np.array(entry.coords[0]) + toward * (depth_m - 8.0))]
             continue
+        mid = frontage.interpolate(0.5, normalized=True) if frontage.geom_type == "LineString" \
+            else frontage.centroid
         on_road = road.interpolate(road.project(mid))
         inward = np.array(mid.coords[0]) - np.array(on_road.coords[0])
         inward /= np.linalg.norm(inward)
@@ -218,10 +239,12 @@ def driveway_lines(context, cr3635_lines, depth_m=32.0):
     return lines
 
 
-def disc(name, centre, r_out, r_in, sampler, lift, mat, coll, segments=48):
-    """A terrain-draped disc (r_in = 0) or ring."""
+def disc(name, centre, r_out, r_in, sampler, lift, mat, coll, segments=72):
+    """A terrain-draped disc (r_in = 0) or ring, about 1 m between rings so it follows
+    the 1 m terrain without the ground poking through."""
     cx, cy = centre
-    rings = [r_in, r_out] if r_in > 0 else [0.05, r_out / 2, r_out]
+    n = max(3, int(math.ceil((r_out - r_in) / 1.0)) + 1)
+    rings = list(np.linspace(max(r_in, 0.05), r_out, n))
     verts = []
     for r in rings:
         for k in range(segments):
@@ -247,12 +270,28 @@ def build_driveways(lines, sampler, coll, context):
     footprint = []
     for label, line in lines.items():
         key = label.replace(" ", "_")
-        strip(f"Driveway_{key}", line, 4.0, sampler, 0.14, gravel, coll)
         turn = line[-1]
+        # Stop the drive at the turnaround's inner edge so it does not cover the island.
+        last = np.array(line[-2])
+        stop = np.array(turn) - (np.array(turn) - last) / np.linalg.norm(np.array(turn) - last) \
+            * (ISLAND_RADIUS_M + 1.0)
+        strip(f"Driveway_{key}", list(line[:-1]) + [tuple(stop)], 4.0, sampler, 0.14, gravel, coll)
         disc(f"Turnaround_{key}", turn, TURN_RADIUS_M, ISLAND_RADIUS_M, sampler, 0.15, gravel, coll)
         disc(f"Turnaround_{key}_Island", turn, ISLAND_RADIUS_M + 0.2, 0.0, sampler, 0.18, mown, coll)
         footprint += [LineString(line).buffer(3.0), Point(turn).buffer(TURN_RADIUS_M + 2.0)]
-    return unary_union(footprint)
+    # Open sky over drives and turnarounds; secluded lots also get a cleared house pad
+    # inside the trees, so the build site reads from the air.
+    open_geoms = [LineString(l) for l in lines.values()]
+    sites = house_sites(context)
+    for label, line in lines.items():
+        open_geoms.append(Point(line[-1]).buffer(TURN_RADIUS_M - 2.0))
+        if label in SECLUDED_LOTS:
+            pad = Point(sites[label]["house"]).buffer(14.0)
+            footprint.append(pad.buffer(1.0))
+            open_geoms.append(pad)
+            disc(f"House_Pad_{label.replace(' ', '_')}", sites[label]["house"], 10.0, 0.0,
+                 sampler, 0.05, mown, coll)
+    return unary_union(footprint), shapely.GeometryCollection(open_geoms)
 
 
 # --------------------------------------------------------------------------- shoreline
