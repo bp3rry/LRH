@@ -14,7 +14,8 @@ render:
   spanish_moss: true       # owner choice, 14 Oct 2026 (dying + moss)
   redline: false           # parcel/lot redlines and lot numbers (Phase 2b)
   driveways: false         # one gravel driveway per lot off CR 3635
-  docks: false             # one dock per lot pair + shoreline paths (UTRWD permit required)
+  docks: false             # paired dock layout (undecided; optional)
+  shoreline: false         # mown 551 ft shoreline path, per-lot access paths and circles
   cleared_ground: soil     # the parcels' cleared ground: soil (as photographed) | grassed
   draft: {resolution: [1920, 1080], samples: 96}
   final: {resolution: [7680, 4320], samples: 1024, tile_size: 2048}
@@ -90,7 +91,7 @@ shots:
     cleared_ground: grassed
     redline: true
     driveways: true
-    docks: true
+    shoreline: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
 
   # --- Phase 2 hero stills (marketing: no overlays or docks; caption added) ---
@@ -118,7 +119,7 @@ shots:
     cleared_ground: grassed
     redline: true
     driveways: true
-    docks: true
+    shoreline: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
 
   V_west_to_dam:
@@ -140,4 +141,6 @@ shots:
     haze_visibility_km: 40
     cleared_ground: grassed
     redline: true
+    driveways: true
+    shoreline: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]

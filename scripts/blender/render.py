@@ -211,7 +211,7 @@ def render_shot(name, shot, config, args, out):
         bool(shot.get("spanish_moss", config.get("spanish_moss", False)))
     if moss and timber in ("dying", "snags"):
         wanted.add("Spanish_Moss")
-    for layer in ("redline", "driveways", "docks"):
+    for layer in ("redline", "driveways", "shoreline", "docks"):
         if shot.get(layer, config.get(layer, False)):
             wanted.add(layer.capitalize())
     cleared = args.cleared_ground or shot.get("cleared_ground", config.get("cleared_ground", "soil"))

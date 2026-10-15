@@ -196,7 +196,7 @@ def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record):
 
 
 def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, clear=None,
-            open_sky=None):
+            open_sky=None, scrub_zone=None, scrub_max_height=4.0):
     """`clear`: footprints (driveways, dock paths and docks) where no tree may stand.
     `open_sky`: (lines, half width): no crown may overhang these corridors, so cleared
     dock paths read from the air (owner, 14 Oct 2026)."""
@@ -239,6 +239,11 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
                 near_woods |= site_cover.lookup(x + dx, y + dy)[0] == WOODS
     brush_piles = in_site & (cls == CLEARED) & ~near_woods
     keep = ~brush_piles & ~shapely.contains_xy(road_buffer, x, y)
+    # Owner, 15 Oct 2026: brush piles burned and scrub cleared inside the parcels.
+    scrub = np.zeros(len(x), bool)
+    if scrub_zone is not None:
+        scrub = shapely.contains_xy(scrub_zone, x, y) & (height < scrub_max_height)
+        keep &= ~scrub
     if open_sky is not None:
         lines, half = open_sky
         overhang = shapely.distance(shapely.points(x, y), lines) < half + 0.8 * crown
@@ -247,6 +252,7 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
     else:
         lstats_overhang = 0
     lstats = {"lidar_detected": len(lidar), "lidar_brush_piles_omitted": int(brush_piles.sum()),
+              "lidar_scrub_cleared": int(scrub.sum()),
               "lidar_cleared_for_paths": lstats_overhang}
     x, y, height, crown, evergreen = (a[keep] for a in (x, y, height, crown, evergreen))
     z = site_grid.heights(x, y)

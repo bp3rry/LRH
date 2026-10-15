@@ -79,6 +79,27 @@ def lots_by_label(context):
 
 # --------------------------------------------------------------------------- redline
 
+def number_material():
+    """Lot numbers: white at 45% opacity, so the ground reads through (owner, 15 Oct)."""
+    mat = bpy.data.materials.get("Redline_Number")
+    if mat:
+        return mat
+    mat = bpy.data.materials.new("Redline_Number")
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    nodes.remove(nodes["Principled BSDF"])
+    emit = nodes.new("ShaderNodeEmission")
+    emit.inputs["Color"].default_value = (1, 1, 1, 1)
+    emit.inputs["Strength"].default_value = 1.2
+    clear = nodes.new("ShaderNodeBsdfTransparent")
+    mix = nodes.new("ShaderNodeMixShader")
+    mix.inputs["Fac"].default_value = 0.45
+    links.new(clear.outputs[0], mix.inputs[1])
+    links.new(emit.outputs[0], mix.inputs[2])
+    links.new(mix.outputs[0], nodes["Material Output"].inputs["Surface"])
+    return mat
+
+
 def build_redline(context, sampler, coll):
     red = material("Redline_Parcel", (0.85, 0.05, 0.03), 0.5, emission=1.5)
     white = material("Redline_Lot", (0.95, 0.95, 0.92), 0.5, emission=1.0)
@@ -120,14 +141,33 @@ def build_redline(context, sampler, coll):
         text.body = label.split()[-1]
         text.size = 16.0
         text.align_x, text.align_y = "CENTER", "CENTER"
-        text.extrude = 0.15
         obj = bpy.data.objects.new(f"Redline_{label.replace(' ', '_')}_Number", text)
         obj.location = (cx, cy, (sampler(cx, cy) or lrh.POOL_M) + 0.6)
-        obj.data.materials.append(white)
+        obj.data.materials.append(number_material())
         coll.objects.link(obj)
 
 
 # --------------------------------------------------------------------------- driveways
+
+HOUSE_SETBACK_M = 35.0   # house site this far east of the lot's west (lake-side) line
+TURN_OFFSET_M = 28.0     # turnaround centre this far east of the house site
+TURN_RADIUS_M = 10.0     # gravel circle, with a grass island
+ISLAND_RADIUS_M = 4.0
+
+
+def house_sites(context):
+    """Per lot: a conceptual house site near the lake side and a turnaround east of it,
+    both on the lot's east-west centre line."""
+    out = {}
+    for label, poly in lots_by_label(context).items():
+        yc = poly.centroid.y
+        across = LineString([(-1e4, yc), (1e4, yc)]).intersection(poly)
+        x0, x1 = across.bounds[0], across.bounds[2]
+        house = (min(x0 + HOUSE_SETBACK_M, (x0 + x1) / 2), yc)
+        turn = (min(house[0] + TURN_OFFSET_M, x1 - TURN_RADIUS_M - 5.0), yc)
+        out[label] = {"west": (x0, yc), "house": house, "turn": turn}
+    return out
+
 
 def driveway_lines(context, cr3635_lines, depth_m=32.0):
     """One driveway per lot: from the CR 3635 edge, square to the road, into the lot."""
@@ -171,13 +211,109 @@ def driveway_lines(context, cr3635_lines, depth_m=32.0):
         start = np.array(on_road.coords[0]) + inward * 4.0  # road half-width + shoulder
         end = start + inward * depth_m
         lines[label] = [tuple(start), tuple(end)]
+    # Every driveway continues to its lot's turnaround (owner, 15 Oct 2026).
+    sites = house_sites(context)
+    for label in lines:
+        lines[label] = list(lines[label]) + [sites[label]["turn"]]
     return lines
 
 
-def build_driveways(lines, sampler, coll):
+def disc(name, centre, r_out, r_in, sampler, lift, mat, coll, segments=48):
+    """A terrain-draped disc (r_in = 0) or ring."""
+    cx, cy = centre
+    rings = [r_in, r_out] if r_in > 0 else [0.05, r_out / 2, r_out]
+    verts = []
+    for r in rings:
+        for k in range(segments):
+            a = 2 * math.pi * k / segments
+            x, y = cx + r * math.cos(a), cy + r * math.sin(a)
+            verts.append((x, y, (sampler(x, y) or lrh.POOL_M) + lift))
+    faces = [(i * segments + k, i * segments + (k + 1) % segments,
+              (i + 1) * segments + (k + 1) % segments, (i + 1) * segments + k)
+             for i in range(len(rings) - 1) for k in range(segments)]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.validate()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.data.materials.append(mat)
+    coll.objects.link(obj)
+    return obj
+
+
+def build_driveways(lines, sampler, coll, context):
+    """Driveways to a circular gravel turnaround with a mown island, per lot."""
     gravel = material("Driveway_Gravel", (0.55, 0.52, 0.45), 0.95)
+    mown = material("Path_Mown_Grass", (0.09, 0.15, 0.04), 1.0)
+    footprint = []
     for label, line in lines.items():
-        strip(f"Driveway_{label.replace(' ', '_')}", line, 4.0, sampler, 0.14, gravel, coll)
+        key = label.replace(" ", "_")
+        strip(f"Driveway_{key}", line, 4.0, sampler, 0.14, gravel, coll)
+        turn = line[-1]
+        disc(f"Turnaround_{key}", turn, TURN_RADIUS_M, ISLAND_RADIUS_M, sampler, 0.15, gravel, coll)
+        disc(f"Turnaround_{key}_Island", turn, ISLAND_RADIUS_M + 0.2, 0.0, sampler, 0.18, mown, coll)
+        footprint += [LineString(line).buffer(3.0), Point(turn).buffer(TURN_RADIUS_M + 2.0)]
+    return unary_union(footprint)
+
+
+# --------------------------------------------------------------------------- shoreline
+
+SHORE_PATH_INSET_M = 4.0     # path centre this far landward of the 551 ft shoreline
+SHORE_CIRCLE_RADIUS_M = 9.0  # cleared, mown circle at each lot's possible dock site
+
+
+def shoreline_layout(context, water):
+    """The 551 ft shoreline in front of the lots (east shore of the creek arm), a path
+    just landward of it, and per lot a circle on the path and an access path from the
+    lot's west line (owner, 15 Oct 2026: one-time riparian clearing agreed with UTRWD)."""
+    arm = max(water.geoms, key=lambda g: g.area) if water.geom_type == "MultiPolygon" else water
+    parcels = unary_union(list(lots_by_label(context).values()))
+    y0, y1 = parcels.bounds[1] - 10.0, parcels.bounds[3] + 10.0
+    pts = []
+    for y in np.arange(y0, y1, 2.0):
+        across = LineString([(-1e4, y), (1e4, y)])
+        west = across.intersection(parcels)
+        if west.is_empty:
+            continue
+        wx = west.bounds[0]
+        hit = across.intersection(arm)
+        xs = [g.bounds[2] for g in getattr(hit, "geoms", [hit]) if not g.is_empty and g.bounds[2] < wx]
+        if xs:
+            pts.append((max(xs) + SHORE_PATH_INSET_M, y))
+    if len(pts) < 20:
+        lrh.fail("could not trace the shoreline in front of the lots")
+    pts = np.array(pts)
+    k = 5  # smooth the trace over ~20 m
+    pad = np.pad(pts[:, 0], k, mode="edge")
+    pts[:, 0] = np.convolve(pad, np.ones(2 * k + 1) / (2 * k + 1), mode="valid")
+    path = LineString(pts)
+    access = {}
+    for label, site in house_sites(context).items():
+        yc = site["west"][1]
+        centre = path.interpolate(path.project(Point(path.bounds[0], yc)))
+        # nearest path point at the lot's centre-line latitude
+        cand = [path.interpolate(d) for d in np.arange(0, path.length, 1.0)]
+        centre = min(cand, key=lambda p: abs(p.y - yc))
+        access[label] = {"circle": (centre.x, centre.y), "path": [site["west"], (centre.x, centre.y)]}
+    return path, access
+
+
+def build_shoreline(path, access, sampler, coll):
+    mown = material("Path_Mown_Grass", (0.09, 0.15, 0.04), 1.0)
+    gravel = material("Path_Gravel_Grey", (0.46, 0.46, 0.44), 0.95)
+    light = material("Shore_Circle_Mown", (0.20, 0.27, 0.09), 1.0)  # fresh-mown, lighter
+    strip("Shoreline_Path_Mown", list(path.coords), MOWN_CORRIDOR_M, sampler, 0.06, mown, coll)
+    strip("Shoreline_Path_Gravel", list(path.coords), PATH_WIDTH_M, sampler, 0.10, gravel, coll)
+    footprint, open_lines = [path.buffer(MOWN_CORRIDOR_M / 2 + 1.0)], [path]
+    for label, a in access.items():
+        key = label.replace(" ", "_")
+        strip(f"Shore_Access_{key}_Mown", a["path"], MOWN_CORRIDOR_M, sampler, 0.06, mown, coll)
+        strip(f"Shore_Access_{key}_Gravel", a["path"], PATH_WIDTH_M, sampler, 0.10, gravel, coll)
+        disc(f"Shore_Circle_{key}", a["circle"], SHORE_CIRCLE_RADIUS_M, 3.0, sampler, 0.11, light, coll)
+        disc(f"Shore_Circle_{key}_Pad", a["circle"], 3.2, 0.0, sampler, 0.12, gravel, coll)
+        footprint += [LineString(a["path"]).buffer(MOWN_CORRIDOR_M / 2 + 1.0),
+                      Point(a["circle"]).buffer(SHORE_CIRCLE_RADIUS_M + 1.0)]
+        open_lines += [LineString(a["path"]), Point(a["circle"]).buffer(SHORE_CIRCLE_RADIUS_M)]
+    return unary_union(footprint), shapely.GeometryCollection(open_lines)
 
 
 # --------------------------------------------------------------------------- docks

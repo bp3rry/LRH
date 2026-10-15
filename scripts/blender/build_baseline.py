@@ -796,16 +796,27 @@ def main():
                       "geometry": mapping(zone)}]}))
     colls["Masks"].hide_render = True
     # Phase 2b lot plan: redlines, driveways, docks and paths (switchable per shot).
-    for name in ("Redline", "Driveways", "Docks"):
+    for name in ("Redline", "Driveways", "Shoreline", "Docks"):
         colls[name] = collection(name)
     lotplan.build_redline(context, sampler, colls["Redline"])
     drives = lotplan.driveway_lines(context, road_lines[:-1])
-    lotplan.build_driveways(drives, sampler, colls["Driveways"])
+    drive_area = lotplan.build_driveways(drives, sampler, colls["Driveways"], context)
+    # Owner, 15 Oct 2026: a mown shoreline path at 551 ft and, per lot, an access path and a
+    # cleared circle at a possible dock site. Dock positions are undecided, so the paired
+    # dock layout stays an optional layer that clears no trees.
+    shore_path, shore_access = lotplan.shoreline_layout(context, pooled)
+    shore_area, shore_open = lotplan.build_shoreline(shore_path, shore_access, sampler,
+                                                     colls["Shoreline"])
     docks = lotplan.dock_layout(context, pooled, grid, sampler, record)
-    dock_area, dock_paths = lotplan.build_docks(docks, sampler, colls["Docks"])
-    cleared = unary_union([LineString(l).buffer(3.0) for l in drives.values()] + [dock_area])
+    lotplan.build_docks(docks, sampler, colls["Docks"])
+    parcels = unary_union([Polygon(np.array(b["lines_local_m"][0])[:, :2])
+                           for b in context["boundaries"] if b["kind"] == "owner_parcel_boundary"])
     vegetation.scatter(colls["Vegetation"], grid, sampler, road_lines, zone, timber_zone, record,
-                       clear=cleared, open_sky=(dock_paths, lotplan.MOWN_CORRIDOR_M / 2))
+                       clear=unary_union([drive_area, shore_area]),
+                       open_sky=(shore_open, lotplan.MOWN_CORRIDOR_M / 2), scrub_zone=parcels)
+    (out / "lot_sites.json").write_text(json.dumps(
+        {label: {**site, "shore_circle": shore_access[label]["circle"]}
+         for label, site in lotplan.house_sites(context).items()}, indent=1) + "\n")
     build_cameras(shots, colls["Cameras"])
     default_world(scene)
 

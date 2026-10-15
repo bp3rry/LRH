@@ -315,6 +315,39 @@ lake views from each lot.
   tolerance dropped from 15 m to 4 m to match the better registration.
 - Result: 1,912 flooded-timber trees; all baseline checks pass.
 
+### Lot features and lake-view score (15 Oct 2026, owner direction)
+
+- **Clearing.** Brush piles are omitted. Scrub under 4 m is cleared inside the parcels;
+  the lidar finds none above its 3 m detection limit, and smaller scrub is not
+  modelled. Honey locust cannot be told apart in the imagery or lidar; the owner may mark
+  them for removal.
+- **Per lot:** a driveway to a 10 m gravel turnaround with a mown island; a conceptual
+  house site 35 m inside the lake-side line; and an access path to a cleared, mown circle
+  (9 m radius, gravel pad) on a mown shoreline path that follows the 551 ft shoreline 4 m
+  landward, in front of all lots. This uses the owner's understanding with UTRWD of a
+  one-time riparian clearing of invasives and mowing; written approval is pending.
+  Trees under the paths and circles are removed (104). The paired dock layout stays
+  optional and clears nothing. Lot numbers are now 45% opaque.
+- **Lake-view score** (`scripts/blender/lake_views.py`; `out/2026-10-15/lake_views.md`,
+  `lake_views_panoramas.jpg`). It measures the share of the lake-facing 210° in which a
+  sight line from the house site reaches open water:
+
+  | Lot | 2nd floor (dying) | 2nd floor (snags) | Ground floor | Blocked by flooded timber | Blocked by shoreline woods |
+  | --- | --- | --- | --- | --- | --- |
+  | 1 | 5% | 15% | 4% | 16% | 68% |
+  | 2 | 10% | 12% | 19% | 10% | 79% |
+  | 3 | 10% | 18% | 14% | 29% | 61% |
+  | 4 | 7% | 18% | 15% | 25% | 68% |
+  | 5 | 12% | 21% | 13% | 23% | 64% |
+  | 6 | 10% | 14% | 20% | 23% | 64% |
+  | 7 | 12% | 16% | 10% | 18% | 60% |
+  | 8 | 6% | 13% | 8% | 22% | 72% |
+  | 9 | 4% | 4% | 9% | 8% | 82% |
+  | 10 | 2% | 2% | 4% | 4% | 70% |
+
+  Ground-floor values are optimistic: the model has no understory, so low sight lines
+  pass under tree crowns.
+
 ### Phase 2c — Owner drone capture (planned)
 
 After mowing and dock-corridor clearing, the owner flies a mapping grid, oblique and
