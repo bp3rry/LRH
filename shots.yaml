@@ -19,6 +19,7 @@ render:
   cleared_ground: soil     # the parcels' cleared ground: soil (as photographed) | grassed
   draft: {resolution: [1920, 1080], samples: 96}
   final: {resolution: [7680, 4320], samples: 1024, tile_size: 2048}
+  4k: {resolution: [3840, 2160], samples: 256}
   caption: "Artist's conception. Lake shown at conservation pool. Lot lines approximate, subject to survey and plat."
   caption_docks: "Docks conceptual, subject to UTRWD Shoreline Use Permit."
 

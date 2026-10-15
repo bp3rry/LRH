@@ -36,7 +36,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--shot", required=True, help="shot name, or 'all'")
     parser.add_argument("--kind", choices=["check", "marketing"], help="filter for --shot all")
-    parser.add_argument("--res", choices=["draft", "final"], default="draft")
+    parser.add_argument("--res", choices=["draft", "4k", "final"], default="draft")
     parser.add_argument("--blend", type=Path)
     parser.add_argument("--samples", type=int)
     parser.add_argument("--flooded-timber", choices=["leafy", "dying", "snags", "none"],
