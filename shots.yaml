@@ -119,3 +119,11 @@ shots:
     driveways: true
     docks: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  V_west_to_dam:
+    kind: marketing
+    description: From over the creek arm west of the lots, looking east across the lots toward Leon Hurse Dam.
+    camera: {position: [-650.0, -60.0, 280.0], target: [1199.0, 900.0, 172.0], lens_mm: 28.0}
+    sun: {datetime: "2026-10-14T17:00", utc_offset_h: -5}
+    cleared_ground: grassed
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
