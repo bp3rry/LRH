@@ -6,6 +6,19 @@ the data into LRH. The owner handles pre-flight planning. This plan covers what 
 capture, how, and what LRH does with it. It is written to be reused on other
 properties, flown either by the owner or by a contracted Part 107 pilot (§8).
 
+## 0. Who flies what (owner, 15 Oct 2026)
+
+- **Marketing capture (§4–§6): the owner's local Part 107 pilot**, who also took the
+  existing drone photo. The owner will supply the pilot's other photos and video from
+  that flight (§6.3).
+- **Owner, recreational (TRUST):** practice flights for learning only, kept separate
+  from marketing capture. Good practice targets for later capture:
+  - flying a manual grid at a steady height;
+  - holding a camera angle along a line;
+  - hovering at a set position and heading.
+  
+  Don't feed recreational footage into marketing images (§3).
+
 ## 1. What the capture is for
 
 The current model is built from data that predates the work now planned on the site:
@@ -123,6 +136,20 @@ inputs/drone/<YYYY-MM-DD>_<site>/
 
 `inputs/` is git-ignored, as with all source data. An import step records a SHA-256
 of every file in a committed `drone.lock.json`, as `imagery.lock.json` does for NAIP.
+
+### 6.3 Existing pilot photos and video
+
+Copy them unchanged into `inputs/drone/<flight date>_pilot-existing/raw/`, with any
+flight logs, and note the date in `capture_manifest.yaml`. LRH can then:
+- solve each photo's camera, as was done for the current drone photo, to add more
+  side-by-side check views;
+- try photogrammetry on overlapping stills and on frames pulled from the video. This
+  works if the footage circles or sweeps the site with good overlap; a single pass may
+  not;
+- use the clearest straight-down or high oblique frames to refine the clearing map.
+
+These predate the planned mowing and clearing, so they describe the site as it was
+then, not the final layout.
 
 ### 6.2 Processing (LRH tasks, to be built)
 
