@@ -34,9 +34,10 @@ shots:
   check_drone_match:
     kind: check
     description: Camera matched to inputs/reference/drone-ladonia-arial-1.jpeg.
-    # Solved by scripts/solve_drone_camera.py against PTM's survey-registered outline
-    # (out/<date>/drone_camera_solve.json has the residuals).
-    camera: {position: [398.80, -454.22, 430.18], target: [-91.03, -24.76, 175.00], lens_mm: 28.883, roll_deg: -3.739}
+    # GPS-anchored solve of KwikImage LADONIA-18 (scripts/kwik_ortho.py; within 1.4 m of the
+    # GPS fix, lidar canopy correlation 0.60). Replaces the earlier outline-only solve, which
+    # sat ~140 m too far south-east and ~50 m too high.
+    camera: {position: [312.77, -328.44, 374.01], target: [-76.74, -8.18, 175.00], lens_mm: 25.343, roll_deg: -0.206}
     resolution: [2016, 1134]
     sun: {datetime: "2026-08-20T11:30", utc_offset_h: -5}
     collections: [Terrain, Water, Roads, Landmarks, Vegetation, Overlays_Review]

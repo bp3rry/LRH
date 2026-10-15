@@ -229,13 +229,13 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
     lidar = np.load(DERIVED / "lidar_trees.npz")["trees"]
     x, y, height, crown, evergreen = lidar[:, 0], lidar[:, 1], lidar[:, 3], lidar[:, 4], lidar[:, 5]
     cls, in_site = site_cover.lookup(x, y)
-    # The photo projection is registered to ~10 m along the view direction (the lidar to
-    # well under 1 m), so an object counts as a brush pile only if the photo shows no
-    # woods within 15 m; nearer ones are the photo's retained trees, displaced.
+    # The photo projection uses the GPS-anchored KwikImage camera (registered to ~2-3 m;
+    # scripts/kwik_ortho.py), so an object counts as a brush pile only if the photo shows
+    # no woods within 4 m; nearer ones are the photo's retained trees.
     near_woods = np.zeros(len(x), bool)
-    for dx in np.arange(-15.0, 15.1, 2.5):
-        for dy in np.arange(-15.0, 15.1, 2.5):
-            if dx * dx + dy * dy <= 225:
+    for dx in np.arange(-4.0, 4.1, 1.0):
+        for dy in np.arange(-4.0, 4.1, 1.0):
+            if dx * dx + dy * dy <= 16:
                 near_woods |= site_cover.lookup(x + dx, y + dy)[0] == WOODS
     brush_piles = in_site & (cls == CLEARED) & ~near_woods
     keep = ~brush_piles & ~shapely.contains_xy(road_buffer, x, y)

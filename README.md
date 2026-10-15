@@ -42,6 +42,9 @@ clang -O2 -I/opt/homebrew/include/laszip -L/opt/homebrew/lib -llaszip_api \
       scripts/native/laz_dump.c -o .build/laz_dump
 $BPY scripts/lidar_trees.py                   # measured trees -> out/derived/lidar_trees.npz
 $BPY scripts/digitize_fwh_zone.py             # LSMP habitat zone -> out/derived/fwh_zone_lsmp.geojson
+$BPY scripts/lidar_surfaces.py                # 1 m lidar DSM/DTM -> out/derived/
+$BPY scripts/calibrate_crowns.py              # crown radii calibrated to lidar canopy cover
+$BPY scripts/kwik_ortho.py 24 18 14 15 17 28  # KwikImage cameras, ortho, canopy checks
 $B -b --python scripts/blender/build_baseline.py          # -> out/<date>/lrh_baseline.blend
 $B -b --python scripts/blender/render.py -- --shot all --kind check
 ```

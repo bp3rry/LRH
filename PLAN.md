@@ -292,6 +292,29 @@ Review renders: `out/2026-10-14/check_lotplan_features_draft.png` (north-up) and
       classification at each site, the occupied-residence rule, and the UTRWD permit
       itself.
 
+### Accuracy pass with the KwikImage aerials (15 Oct 2026)
+
+Priority: flooded-timber and creek tree positions, which decide open versus obstructed
+lake views from each lot.
+
+- **Cameras.** Six KwikImage photos (11 Aug 2023) were solved from their GPS, altitude
+  and gimbal data, refined by correlating the photo canopy with the lidar canopy
+  (`scripts/kwik_ortho.py`). Each camera lands 1.4–3.6 m from its GPS fix and within
+  6 m of its recorded altitude, with the lens at 25.1–25.4 mm (spec 25.0).
+- **Timber positions confirmed.** 86–99% of the habitat-zone lidar crowns land on photo
+  tree canopy in every view (about 48% by chance). The straight-down shot 24 shows no
+  canopy offset between photo and lidar at 1 m resolution.
+- **Crown sizes corrected.** In closed woods the lidar crown measure ran far wider than
+  tree spacing (median radius 7.9 m at 5.8 m spacing), over-closing the stand. Radii
+  are now capped at 1.13 × the nearest-neighbour distance, calibrated so crowns cover
+  exactly the lidar canopy area (`scripts/calibrate_crowns.py`). The habitat-zone median
+  is now 5.8 m.
+- **Drone-match camera corrected.** The earlier outline-only solve sat about 140 m too far
+  south-east and about 50 m too high, with a longer lens hiding the error. The GPS-anchored
+  camera replaces it, and the clearing map was re-projected through it. The brush-pile
+  tolerance dropped from 15 m to 4 m to match the better registration.
+- Result: 1,912 flooded-timber trees; all baseline checks pass.
+
 ### Phase 2c — Owner drone capture (planned)
 
 After mowing and dock-corridor clearing, the owner flies a mapping grid, oblique and
