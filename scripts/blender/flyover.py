@@ -74,6 +74,7 @@ def ease(t):
 
 
 _ARC = {}
+TILT_KNEE_DEG, TILT_WIDTH_DEG = 19.0, 4.0
 
 
 def pose(frame, total):
@@ -89,7 +90,20 @@ def pose(frame, total):
         _ARC[key] = (u, length / length[-1])
     u, s = _ARC[key]
     t = float(np.interp(ease(frame / (total - 1)), s, u))
-    return catmull_rom(cams, t), catmull_rom(looks, t)
+    cam, look = catmull_rom(cams, t), catmull_rom(looks, t)
+    # Soft cap on down-tilt: during the return turn the look-at spline passes under the
+    # camera and the view would tip ~40 deg down onto dark water. Below the knee the
+    # pose is unchanged; above it the tilt saturates smoothly at knee + width.
+    d = look - cam
+    horiz = math.hypot(d[0], d[1])
+    pitch = math.degrees(math.atan2(-d[2], horiz))
+    if pitch > TILT_KNEE_DEG:
+        capped = TILT_KNEE_DEG + TILT_WIDTH_DEG * math.tanh((pitch - TILT_KNEE_DEG) / TILT_WIDTH_DEG)
+        dist = float(np.linalg.norm(d))
+        hx, hy = d[0] / max(horiz, 1e-9), d[1] / max(horiz, 1e-9)
+        r = math.radians(capped)
+        look = cam + dist * np.array([hx * math.cos(r), hy * math.cos(r), -math.sin(r)])
+    return cam, look
 
 
 def main():
@@ -138,7 +152,7 @@ def main():
             scene.render.filepath = str(raw)
             t0 = time.time()
             bpy.ops.render.render(write_still=True)
-            if f % 30 == 0 or only is not None:
+            if True:  # every frame: a blank frame must fail (CLAUDE.md)
                 try:
                     lrh.frame_stats(raw)
                 except lrh.CheckFailed as error:
