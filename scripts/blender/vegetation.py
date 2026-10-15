@@ -2,7 +2,7 @@
 
 Inside the StratMap 2025 lidar coverage (canopy source (a)), every tree is a measured
 one from scripts/lidar_trees.py: position, height and crown radius, with red cedar where
-the leaf-off evergreen score is high. The drone photo (late 2024) predates the lidar
+the leaf-off evergreen score is high. The drone photo (11 Aug 2023) predates the lidar
 flight (9 Dec 2025), so a lidar object on ground the photo already shows cleared, far
 from any woods, cannot be a standing tree: it is a brush pile and is omitted. Lidar
 objects on roads or below pool are dropped too. Outside the coverage, trees are scattered

@@ -24,7 +24,7 @@ properties, flown either by the owner or by a contracted Part 107 pilot (§8).
 ## 1. What the capture is for
 
 The current model is built from data that predates the work now planned on the site:
-NAIP July 2024 imagery, the drone photo from late 2024 and StratMap lidar from
+NAIP July 2024 imagery, the KwikImage drone photo of August 2023 and StratMap lidar from
 December 2025. A fresh capture after mowing and clearing would:
 
 1. **Replace the drone-photo clearing map** with a true orthomosaic. The current

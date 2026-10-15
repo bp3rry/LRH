@@ -105,7 +105,7 @@ def principled(name, rgb, roughness=0.8, **inputs):
 
 
 def imagery_ground_material(name, product, image_path, cleared_mask=None):
-    """Ground albedo from NAIP, with the late-2024 clearing and underwater ground overlaid."""
+    """Ground albedo from NAIP, with the August 2023 drone-photo clearing and underwater ground overlaid."""
     xmin, _, _, ymax = product["bbox_local_m"]
     width = product["size_px"][0] * product["cell_m"]
     height = product["size_px"][1] * product["cell_m"]

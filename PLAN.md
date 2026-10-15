@@ -150,8 +150,10 @@ drone-match side-by-side and accepted it. Build products are in `out/2026-10-14/
       the TxGIO county MrSID mosaic with LizardTech's SDK; it aligns with NAIP 2022 to
       within a pixel. NAIP 2022 is kept as a fallback. Classes: water, bare, pasture,
       woods, with per-year thresholds.
-      Inside the parcels, the late-2024 clearing comes from the drone photo, projected through
-      the solved camera: 69% cleared, 22% woods, 9% pasture.
+      Inside the parcels, the clearing comes from the KwikImage drone photo of 11 Aug 2023
+      (EXIF; confirmed by the owner), projected through the solved camera: 69% cleared, 22%
+      woods, 9% pasture. NAIP July 2024 is newer, but at 0.6 m it reads the scraped ground as
+      pasture, so the photo still defines the clearing.
 - [x] Trees: 90,838 instances. 30,152 are measured StratMap 2025 lidar trees (source (a);
       position, height, crown radius; red cedar where the leaf-off evergreen score is
       ≥ 0.8) over the six near tiles. The rest are mask-scattered outside lidar coverage
@@ -164,8 +166,8 @@ drone-match side-by-side and accepted it. Build products are in `out/2026-10-14/
 - [x] Check views: north-up lot plan, drone match, lake oblique. The drone camera was
       solved against PTM's survey-registered outline (29 px RMS at 2048 px); the roads
       line up with the photo.
-- [x] Photo vs lidar inside the parcels. The drone photo (late 2024, per the owner)
-      predates the lidar (9 Dec 2025). A lidar object on ground the photo already shows
+- [x] Photo vs lidar inside the parcels. The drone photo (11 Aug 2023; first recorded
+      here as "late 2024") predates the lidar (9 Dec 2025). A lidar object on ground the photo already shows
       cleared, with no woods within 15 m, cannot be a standing tree. These 51 objects sit
       on the photo's brush piles and are omitted. Lidar trees within 15 m of the photo's
       retained clumps are kept (the photo projection is registered to ~10 m; the camera
