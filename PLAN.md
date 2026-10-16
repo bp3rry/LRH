@@ -362,6 +362,29 @@ lake views from each lot.
   - `S_shore_path` shows the limits of the flat-draped paths and procedural trees at
     walking scale; it is not ready for a cinematic final.
 
+### Lake life and light (16 Oct 2026, owner direction: early fall, a skier)
+
+- **Water:** wind ripples at three scales (swells, chop, fine ripples), so low sun makes a
+  glitter path instead of a flat mirror; affects every view.
+- **Ski boat and skier** (`scripts/blender/scene_life.py`, procedural): a 6.6 m boat, a 22 m
+  rope and a skier, with a Kelvin-wedge wake and skier spray. It is placed per shot
+  (`boat:` in `shots.yaml`), always on open main lake more than 100 m from shore: the
+  draft LSMP makes water within 200 ft of shore no-wake, and the timbered arm is a no-wake
+  habitat zone.
+- **Gulls:** 14 ring-billed gulls (common on North Texas lakes October to March), placed
+  per shot (`gulls:`). They read as birds within about 60 m of the camera and as specks
+  beyond that.
+- **Shots:**
+  - `G_golden_hour`: from over the lake north-east of the property at 5:40 pm, into the
+    sun, with the glitter path, skier and gulls. The lots are hidden behind the peninsula
+    from any viewpoint where the glint, open water and boat line up.
+  - `V_west_to_dam_life`: the west view, with the skier on the open lake beyond the lots
+    and gulls near the camera.
+- Haze toward the sun uses the all-around horizon colour (`haze_colour: all_azimuths`),
+  so into-the-sun views are not bleached white.
+- Ducks, herons and egrets wait for the close-range quality pass: they are sub-pixel at
+  aerial distances.
+
 ### Phase 2c — Owner drone capture (planned)
 
 After mowing and dock-corridor clearing, the owner flies a mapping grid, oblique and

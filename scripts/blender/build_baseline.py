@@ -25,6 +25,7 @@ from mathutils.geometry import delaunay_2d_cdt
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import infrastructure  # noqa: E402
 import lotplan  # noqa: E402
+import scene_life  # noqa: E402
 import lrh  # noqa: E402
 import vegetation  # noqa: E402
 
@@ -183,23 +184,39 @@ def imagery_ground_material(name, product, image_path, cleared_mask=None):
 
 
 def water_material():
-    mat = principled("Lake_Water", (0.02, 0.05, 0.05), roughness=0.04,
+    """Reservoir water: glossy dielectric with wind ripples at three scales (long swells,
+    metre-scale chop, fine ripples), stretched across an assumed southerly breeze, so low
+    sun produces a glitter path instead of a mirror (owner, 16 Oct 2026)."""
+    mat = principled("Lake_Water", (0.02, 0.05, 0.05), roughness=0.06,
                      **{"Transmission Weight": 1.0, "IOR": 1.333})
     nodes, links = mat.node_tree.nodes, mat.node_tree.links
     bsdf = nodes["Principled BSDF"]
-    # Wind ripples: two noise scales into a weak bump.
     coord = nodes.new("ShaderNodeTexCoord")
-    mapping_node = nodes.new("ShaderNodeMapping")
-    mapping_node.inputs["Scale"].default_value = (1.0, 2.5, 1.0)
-    links.new(coord.outputs["Object"], mapping_node.inputs["Vector"])
-    noise = nodes.new("ShaderNodeTexNoise")
-    noise.inputs["Scale"].default_value = 0.35
-    noise.inputs["Detail"].default_value = 6.0
-    links.new(mapping_node.outputs["Vector"], noise.inputs["Vector"])
+    height = None
+    for scale, stretch, weight in ((0.03, 3.0, 0.35), (0.45, 2.0, 0.40), (3.0, 1.5, 0.25)):
+        mp = nodes.new("ShaderNodeMapping")
+        mp.inputs["Scale"].default_value = (1.0, stretch, 1.0)  # crests run east-west
+        links.new(coord.outputs["Object"], mp.inputs["Vector"])
+        noise = nodes.new("ShaderNodeTexNoise")
+        noise.inputs["Scale"].default_value = scale
+        noise.inputs["Detail"].default_value = 4.0
+        links.new(mp.outputs["Vector"], noise.inputs["Vector"])
+        mul = nodes.new("ShaderNodeMath")
+        mul.operation = "MULTIPLY"
+        mul.inputs[1].default_value = weight
+        links.new(noise.outputs["Fac"], mul.inputs[0])
+        if height is None:
+            height = mul.outputs[0]
+        else:
+            add = nodes.new("ShaderNodeMath")
+            add.operation = "ADD"
+            links.new(height, add.inputs[0])
+            links.new(mul.outputs[0], add.inputs[1])
+            height = add.outputs[0]
     bump = nodes.new("ShaderNodeBump")
-    bump.inputs["Strength"].default_value = 0.08
-    bump.inputs["Distance"].default_value = 0.05
-    links.new(noise.outputs["Fac"], bump.inputs["Height"])
+    bump.inputs["Strength"].default_value = 0.8
+    bump.inputs["Distance"].default_value = 0.6
+    links.new(height, bump.inputs["Height"])
     links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
     # Turbid reservoir water: absorption only (scattering is costly at this scale).
     absorb = nodes.new("ShaderNodeVolumeAbsorption")
@@ -818,6 +835,7 @@ def main():
     (out / "lot_sites.json").write_text(json.dumps(
         {label: {**site, "shore_circle": shore_access[label]["circle"]}
          for label, site in lotplan.house_sites(context).items()}, indent=1) + "\n")
+    scene_life.build(record)
     build_cameras(shots, colls["Cameras"])
     default_world(scene)
 

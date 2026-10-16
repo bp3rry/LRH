@@ -91,7 +91,7 @@ def configure_sky(scene, sun_spec):
             "elevation_deg": round(elevation, 2), "azimuth_deg": round(azimuth, 2)}
 
 
-def horizon_colour(scene, camera, scratch):
+def horizon_colour(scene, camera, scratch, all_azimuths=False):
     """Scene-linear sky colour 4-10 degrees above the horizon, around the view heading,
     from a tiny world-only equirectangular render at the camera position."""
     layer = bpy.context.view_layer.layer_collection
@@ -120,25 +120,27 @@ def horizon_colour(scene, camera, scratch):
     bpy.data.images.remove(image)
     # Below ~3 degrees an elevated camera sees the sky model's dark ground.
     band = px[90 + 4:90 + 10, 180 - 40:180 + 40].reshape(-1, 3)
+    if all_azimuths:  # into-the-sun views: the sun-side sky would bleach the haze white
+        band = px[90 + 4:90 + 10, :].reshape(-1, 3)
     (scene.camera, scene.render.resolution_x, scene.render.resolution_y, scene.cycles.samples,
      scene.render.filepath, scene.render.image_settings.file_format,
      scene.cycles.use_denoising) = saved
     bpy.data.objects.remove(pano, do_unlink=True)
     for child in layer.children:
         child.exclude = excluded[child.name]
-    colour = band.mean(axis=0)
+    colour = np.median(band, axis=0) if all_azimuths else band.mean(axis=0)
     if colour.max() < 0.01:
         lrh.fail(f"horizon sky colour measured as {colour}; haze would darken the horizon")
     return colour
 
 
-def configure_haze(scene, camera, visibility_km, scratch):
+def configure_haze(scene, camera, visibility_km, scratch, all_azimuths=False):
     """Aerial perspective in the compositor: each pixel fades toward the measured horizon
     sky colour by 1 - exp(-k d), with k from the meteorological visibility (contrast 2%
     at that range, Koschmieder). The sky itself (no depth) is left untouched."""
     # Measure the horizon first: the pano render must not pass through this compositor.
     scene.render.use_compositing = False
-    colour = horizon_colour(scene, camera, scratch) if visibility_km else None
+    colour = horizon_colour(scene, camera, scratch, all_azimuths) if visibility_km else None
     scene.render.use_compositing = True
     tree = bpy.data.node_groups.new("LRH_Haze", "CompositorNodeTree")
     scene.compositing_node_group = tree
@@ -174,6 +176,29 @@ def configure_haze(scene, camera, visibility_km, scratch):
     links.new(mix.outputs["Result"], out.inputs[0])
     return {"visibility_km": visibility_km, "extinction_per_m": k,
             "horizon_colour_linear": [round(float(c), 4) for c in colour]}
+
+
+def place_life(shot):
+    """Per-shot placement of the ski boat and gull flock (scene_life builds them at
+    their defaults). shots.yaml: boat: {xy: [x, y], heading_deg: h}; gulls: [x, y, z]."""
+    import scene_life
+    boat = bpy.data.objects.get("Ski_Boat")
+    if boat is not None:
+        spec = shot.get("boat", {})
+        x, y = spec.get("xy", scene_life.BOAT_XY)
+        heading = spec.get("heading_deg", scene_life.BOAT_HEADING_DEG)
+        boat.location = (x, y, lrh.POOL_M)
+        boat.rotation_euler = (0.0, 0.0, math.pi / 2 - math.radians(heading))
+    target = shot.get("gulls")
+    gulls = [o for o in bpy.data.objects if o.name.startswith("Gull_") and o.name[5:].isdigit()]
+    if gulls:
+        base = getattr(place_life, "_base", None)
+        if base is None:
+            base = {o.name: o.location.copy() for o in gulls}
+            place_life._base = base
+        delta = Vector(target) - Vector(scene_life.GULLS["centre"]) if target else Vector()
+        for o in gulls:
+            o.location = base[o.name] + delta
 
 
 def apply_collections(scene, wanted):
@@ -234,6 +259,7 @@ def render_shot(name, shot, config, args, out):
     if camera is None:
         lrh.fail(f"{name}: no camera CAM_{name} in the .blend; rebuild the baseline")
     scene.camera = camera
+    place_life(shot)
     # Flat lot numbers read upright from this camera: text +Y along the view heading.
     forward = camera.matrix_world.to_quaternion() @ Vector((0, 0, -1))
     if abs(forward.x) + abs(forward.y) > 1e-3:
@@ -243,7 +269,8 @@ def render_shot(name, shot, config, args, out):
     sun = configure_sky(scene, shot["sun"])
     with tempfile.TemporaryDirectory() as scratch:
         haze = configure_haze(scene, camera, shot.get("haze_visibility_km",
-                                                      config.get("haze_visibility_km")), scratch)
+                                                      config.get("haze_visibility_km")), scratch,
+                              shot.get("haze_colour") == "all_azimuths")
     apply_collections(scene, wanted)
 
     stem = f"{name}_{args.res}"

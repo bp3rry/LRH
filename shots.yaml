@@ -185,3 +185,29 @@ shots:
     driveways: true
     shoreline: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  G_golden_hour:
+    kind: marketing
+    description: Golden hour from over the lake north-east of the property, looking south-west into the low sun - glitter path, a skier behind a ski boat on open water, gulls, the lots and timbered arm beyond.
+    # West of the dam crest (x=1199), over open water.
+    camera: {position: [1150.0, 900.0, 330.0], target: [24.0, 250.0, 172.0], lens_mm: 28.0}
+    sun: {datetime: "2026-10-14T17:40", utc_offset_h: -5}
+    haze_visibility_km: 50
+    haze_colour: all_azimuths
+    cleared_ground: grassed
+    driveways: true
+    shoreline: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation, Lake_Life, Gulls]
+
+  V_west_to_dam_life:
+    kind: marketing
+    description: V_west_to_dam with a skier on the open lake beyond the lots and gulls over the timber.
+    camera: {position: [-620.0, -120.0, 360.0], target: [700.0, 520.0, 168.0], lens_mm: 32.0}
+    sun: {datetime: "2026-10-14T17:00", utc_offset_h: -5}
+    haze_visibility_km: 40
+    cleared_ground: grassed
+    driveways: true
+    shoreline: true
+    boat: {xy: [450.0, 1050.0], heading_deg: 70.0}
+    gulls: [-592.0, -106.0, 354.0]
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation, Lake_Life, Gulls]
