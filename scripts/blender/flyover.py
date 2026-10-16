@@ -130,6 +130,63 @@ def pose(frame, total):
     return cam, look
 
 
+# Lake life in the oval flyover (owner, 16 Oct 2026). The boat runs ENE across the open
+# main lake north-east of the property (>=247 m from shore and >=363 m from the habitat
+# zone for the whole minute) at slalom speed. Two gull flocks are placed where the
+# camera passes them, flying against the camera so they sweep through the frame.
+BOAT_ROUTE = {"start": (150.0, 940.0), "heading_deg": 70.0, "speed_ms": 13.0}
+GULL_FLOCKS = [{"frame": 360, "ahead_m": 42.0, "below_m": 14.0, "heading_off_deg": 170.0},
+               {"frame": 1260, "ahead_m": 42.0, "below_m": 14.0, "heading_off_deg": 160.0}]
+GULL_SPEED_MS, FLAP_HZ = 11.0, 2.6
+LIFE_COLLECTIONS = ["Lake_Life", "Gulls"]
+
+
+class Life:
+    """Moves the boat and gulls each frame; gull wings cycle through three poses."""
+
+    def __init__(self, total):
+        import scene_life
+        self.total = total
+        self.boat = bpy.data.objects.get("Ski_Boat")
+        self.poses = [bpy.data.meshes[f"Gull_Wings_{i}"] for i in range(3)]
+        gulls = sorted((o for o in bpy.data.objects if o.name.startswith("Gull_") and o.name[5:].isdigit()),
+                       key=lambda o: o.name)
+        centre = Vector(scene_life.GULLS["centre"])
+        offsets = [o.location - centre for o in gulls]
+        rng = np.random.default_rng(1016)
+        self.gulls = []
+        half = len(gulls) // 2
+        for k, (g, off) in enumerate(zip(gulls, offsets)):
+            flock = GULL_FLOCKS[0] if k < half else GULL_FLOCKS[1]
+            cam, look = pose(flock["frame"], total)
+            d = (look - cam) / np.linalg.norm(look - cam)
+            anchor = cam + d * flock["ahead_m"] - np.array([0, 0, flock["below_m"]])
+            cam_heading = math.degrees(math.atan2(d[0], d[1]))
+            heading = math.radians(cam_heading + flock["heading_off_deg"] + rng.uniform(-12, 12))
+            self.gulls.append({"obj": g, "anchor": anchor, "frame": flock["frame"],
+                               "offset": np.array(off) * 0.45, "heading": heading,
+                               "phase": rng.uniform(0, 1), "bob": rng.uniform(0, 6.28)})
+
+    def __call__(self, frame):
+        t = frame / FPS
+        if self.boat is not None:
+            h = math.radians(BOAT_ROUTE["heading_deg"])
+            x0, y0 = BOAT_ROUTE["start"]
+            dist = BOAT_ROUTE["speed_ms"] * t
+            self.boat.location = (x0 + math.sin(h) * dist, y0 + math.cos(h) * dist, lrh.POOL_M)
+            self.boat.rotation_euler = (0.0, 0.0, math.pi / 2 - h)
+        for g in self.gulls:
+            dt = (frame - g["frame"]) / FPS
+            vel = np.array([math.sin(g["heading"]), math.cos(g["heading"]), 0.0]) * GULL_SPEED_MS
+            pos = g["anchor"] + g["offset"] + vel * dt
+            pos[2] += 0.4 * math.sin(2 * math.pi * 0.5 * t + g["bob"])
+            obj = g["obj"]
+            obj.location = Vector(pos)
+            obj.rotation_euler = (0.0, 0.0, math.pi / 2 - g["heading"])
+            cycle = (t * FLAP_HZ + g["phase"]) % 1.0
+            obj.data = self.poses[[0, 1, 2, 1][int(cycle * 4) % 4]]
+
+
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     global KEYS, SECONDS, SAMPLES
@@ -148,7 +205,12 @@ def main():
         render.configure_device(scene)
         render.configure_sky(scene, SUN)
         bpy.data.materials["Ground_Site"].node_tree.nodes["LRH_Cleared_Grassed"].outputs[0].default_value = 1.0
-        render.apply_collections(scene, set(COLLECTIONS))
+        life = None
+        if variant == "oval":
+            render.apply_collections(scene, set(COLLECTIONS + LIFE_COLLECTIONS))
+            life = Life(total)
+        else:
+            render.apply_collections(scene, set(COLLECTIONS))
         cam = bpy.data.objects.new("CAM_flyover", bpy.data.cameras.new("CAM_flyover"))
         scene.collection.objects.link(cam)
         cam.data.lens, cam.data.clip_start, cam.data.clip_end = LENS_MM, 1.0, 60000.0
@@ -172,6 +234,8 @@ def main():
             loc, look = pose(f, total)
             cam.location = Vector(loc)
             cam.rotation_euler = (Vector(look) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
+            if life is not None:
+                life(f)
             raw = frames_dir / f"raw_{f:04d}.png"
             scene.render.filepath = str(raw)
             t0 = time.time()
