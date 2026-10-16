@@ -53,7 +53,31 @@ FULL_KEYS = [((760.0, -980.0, 430.0), (40.0, -60.0, 176.0)),
              ((-320.0, 480.0, 330.0), (-520.0, 1200.0, 168.0)),
              ((-560.0, 640.0, 320.0), (-200.0, 380.0, 170.0)),
              ((-660.0, 380.0, 300.0), (0.0, 40.0, 176.0))]
-VARIANTS = {"test": (12, 32, TEST_KEYS), "full": (36, 64, FULL_KEYS)}
+
+
+def oval_keys(n=40):
+    """Owner, 15 Oct 2026: an oval orbit instead of the full path's sharp return turn.
+    The camera runs clockwise (seen from above) round an ellipse centred on the lots and
+    timber, from over CR 3635 south-east of the property, round the south and west over
+    the timber, about 180 degrees, ending north-west over the water looking south-east
+    across the flooded timber at the lots. It looks a third of the way out toward
+    a spot ~40 degrees ahead on the orbit, around a point biased toward the lots, so the
+    view leads gently into the turn and keeps the lots in frame."""
+    cx, cy, a, b = -150.0, 170.0, 560.0, 470.0   # centre; semi-axes north-south, east-west
+    keys = []
+    lx, ly = -100.0, 120.0                         # look centre, biased toward the lots
+    for th in np.linspace(math.radians(-50), math.radians(-232), n):
+        alt = 335.0 + 25.0 * math.sin(th * 1.5)            # slow 310-360 m rise and fall
+        cam = (cx + b * math.cos(th), cy + a * math.sin(th), alt)
+        ahead = th - math.radians(40)
+        look = (lx + 0.33 * b * math.cos(ahead), ly + 0.33 * a * math.sin(ahead), 170.0)
+        keys.append((cam, look))
+    return keys
+
+
+OVAL_KEYS = oval_keys()
+VARIANTS = {"test": (12, 32, TEST_KEYS), "full": (36, 64, FULL_KEYS),
+            "oval": (60, 64, OVAL_KEYS)}
 KEYS, SECONDS, SAMPLES = TEST_KEYS, 12, 32
 
 
