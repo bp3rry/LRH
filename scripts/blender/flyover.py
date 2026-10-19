@@ -7,7 +7,11 @@ Blender's built-in FFmpeg encoder. Interrupted runs resume: existing frames are 
 
 Usage:
   Blender -b out/<date>/lrh_baseline.blend --python scripts/blender/flyover.py -- \
-      [--frames 0,120,240,359] [--encode-only]
+      [--variant test|full|oval|low] [--frames 0,120,240,359] [--encode-only] [--preview]
+
+Variant "low" (Phase 3a) reads its per-frame poses from out/derived/flight_low.json
+(scripts/flight_path.py), shows the Lot 5 cabin and the walking path, at golden hour.
+--preview renders the animatic: 960 x 540, 8 samples, every third frame, encoded at 10 fps.
 Output: out/<date>/video/frames/f_NNNN.png, flyover_test.mp4, flyover_test.json
 """
 
@@ -77,7 +81,13 @@ def oval_keys(n=40):
 
 OVAL_KEYS = oval_keys()
 VARIANTS = {"test": (12, 32, TEST_KEYS), "full": (36, 64, FULL_KEYS),
-            "oval": (60, 64, OVAL_KEYS)}
+            "oval": (60, 64, OVAL_KEYS), "low": (None, 64, None)}
+# Phase 3a low-altitude flight (owner, 19 Oct 2026): golden hour, one illustrative cabin.
+LOW = {"sun": {"datetime": "2026-10-14T18:10", "utc_offset_h": -5}, "exposure": -2.5,
+       "haze_km": 25, "cabins": ["Lot 5"],
+       "collections": ["Terrain", "Water", "Roads", "Landmarks", "Vegetation", "Shoreline",
+                       "Flooded_Timber_Dying", "Spanish_Moss", "Lake_Life"]}
+POSES = None
 KEYS, SECONDS, SAMPLES = TEST_KEYS, 12, 32
 
 
@@ -103,7 +113,11 @@ TILT_KNEE_DEG, TILT_WIDTH_DEG = 19.0, 4.0
 
 def pose(frame, total):
     """Constant ground speed along the camera spline (arc-length parametrised), eased
-    in and out; the look-at point follows the same spline parameter."""
+    in and out; the look-at point follows the same spline parameter. The low variant
+    uses the precomputed, clearance-checked poses."""
+    if POSES is not None:
+        cam, look = POSES[frame]
+        return np.array(cam), np.array(look)
     cams = np.array([k[0] for k in KEYS])
     looks = np.array([k[1] for k in KEYS])
     key = id(KEYS)
@@ -187,16 +201,47 @@ class Life:
             obj.data = self.poses[[0, 1, 2, 1][int(cycle * 4) % 4]]
 
 
+class BoatOnly:
+    """The ski boat on its open-lake route (no gulls: their flocks are placed for the oval)."""
+
+    def __init__(self):
+        self.boat = bpy.data.objects.get("Ski_Boat")
+
+    def __call__(self, frame):
+        if self.boat is None:
+            return
+        h = math.radians(BOAT_ROUTE["heading_deg"])
+        x0, y0 = BOAT_ROUTE["start"]
+        dist = BOAT_ROUTE["speed_ms"] * frame / FPS
+        self.boat.location = (x0 + math.sin(h) * dist, y0 + math.cos(h) * dist, lrh.POOL_M)
+        self.boat.rotation_euler = (0.0, 0.0, math.pi / 2 - h)
+
+
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    global KEYS, SECONDS, SAMPLES
+    global KEYS, SECONDS, SAMPLES, POSES, SUN, HAZE_KM, COLLECTIONS, RES
     variant = argv[argv.index("--variant") + 1] if "--variant" in argv else "test"
     SECONDS, SAMPLES, KEYS = VARIANTS[variant]
-    total = FPS * SECONDS
+    fps, step, exposure, cabins = FPS, 1, None, []
+    if variant == "low":
+        flight = json.loads((lrh.ROOT / "out/derived/flight_low.json").read_text())
+        if not flight["checks"]["passed"]:
+            lrh.fail(f"flight_low.json failed its clearance checks: {flight['checks']}")
+        POSES = flight["poses"]
+        SECONDS = len(POSES) / FPS
+        KEYS = flight["keys"]
+        SUN, HAZE_KM, COLLECTIONS = LOW["sun"], LOW["haze_km"], LOW["collections"]
+        exposure, cabins = LOW["exposure"], LOW["cabins"]
+    total = len(POSES) if POSES is not None else FPS * SECONDS
+    if "--preview" in argv:
+        RES, SAMPLES, step, fps = (960, 540), 8, 3, FPS // 3
+        variant_dir = f"{variant}_preview"
+    else:
+        variant_dir = variant
     only = None
     if "--frames" in argv:
         only = [int(f) for f in argv[argv.index("--frames") + 1].split(",")]
-    out = lrh.out_dir() / "video" / variant
+    out = lrh.out_dir() / "video" / variant_dir
     frames_dir = out / "frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
     config = yaml.safe_load((lrh.ROOT / "shots.yaml").read_text())["render"]
@@ -209,6 +254,10 @@ def main():
         if variant == "oval":
             render.apply_collections(scene, set(COLLECTIONS + LIFE_COLLECTIONS))
             life = Life(total)
+        elif variant == "low":
+            render.apply_collections(scene, set(COLLECTIONS + ["Cabins"]))
+            render.apply_cabins(cabins)
+            life = BoatOnly()
         else:
             render.apply_collections(scene, set(COLLECTIONS))
         cam = bpy.data.objects.new("CAM_flyover", bpy.data.cameras.new("CAM_flyover"))
@@ -219,13 +268,15 @@ def main():
         scene.render.resolution_percentage = 100
         scene.cycles.samples = SAMPLES
         scene.render.use_persistent_data = True
-        scene.view_settings.exposure = config.get("exposure", -4.0)
+        scene.view_settings.exposure = exposure if exposure is not None else config.get("exposure", -4.0)
         loc, look = pose(0, total)
         cam.location = Vector(loc)
         cam.rotation_euler = (Vector(look) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
         with tempfile.TemporaryDirectory() as scratch:
-            render.configure_haze(scene, cam, HAZE_KM, scratch)  # horizon colour from frame 0
-        todo = only if only is not None else range(total)
+            render.configure_haze(scene, cam, HAZE_KM, scratch,  # horizon colour from frame 0
+                                  all_azimuths=variant == "low")
+        todo = only if only is not None else range(0, total, step)
+        caption = config["caption"] + (" " + config["caption_cabins"] if cabins else "")
         started = time.time()
         for f in todo:
             path = frames_dir / f"f_{f:04d}.png"
@@ -245,23 +296,23 @@ def main():
                     lrh.frame_stats(raw)
                 except lrh.CheckFailed as error:
                     lrh.fail(f"frame {f}: {error}")
-            render.caption(raw, path, config["caption"])
+            render.caption(raw, path, caption)
             raw.unlink()
             print(f"FRAME {f} {time.time() - t0:.1f}s", flush=True)
         print(f"RENDERED {len(list(todo))} frames in {time.time() - started:.0f}s")
     if only is not None:
         return
     # Encode with Blender's FFmpeg through the sequencer.
-    missing = [f for f in range(total) if not (frames_dir / f"f_{f:04d}.png").exists()]
+    missing = [f for f in range(0, total, step) if not (frames_dir / f"f_{f:04d}.png").exists()]
     if missing:
         lrh.fail(f"{len(missing)} frames missing, first {missing[0]}")
     enc = bpy.data.scenes.new("LRH_Encode")
     enc.render.resolution_x, enc.render.resolution_y = RES
     enc.render.resolution_percentage = 100
-    enc.render.fps = FPS
-    enc.frame_start, enc.frame_end = 1, total
-    seq = enc.sequence_editor_create()
+    enc.render.fps = fps
     files = sorted(p.name for p in frames_dir.glob("f_*.png"))
+    enc.frame_start, enc.frame_end = 1, len(files)
+    seq = enc.sequence_editor_create()
     strips = seq.strips if hasattr(seq, "strips") else seq.sequences
     strip = strips.new_image("frames", str(frames_dir / files[0]), 1, 1)
     for name in files[1:]:
@@ -274,14 +325,14 @@ def main():
     enc.render.ffmpeg.constant_rate_factor = "HIGH"
     enc.render.ffmpeg.ffmpeg_preset = "GOOD"
     enc.view_settings.view_transform = "Standard"  # frames are already display-referred
-    enc.render.filepath = str(out / f"flyover_{variant}.mp4")
+    enc.render.filepath = str(out / f"flyover_{variant_dir}.mp4")
     bpy.ops.render.render(animation=True, scene=enc.name)
-    (out / f"flyover_{variant}.json").write_text(json.dumps({"variant": variant,
+    (out / f"flyover_{variant_dir}.json").write_text(json.dumps({"variant": variant_dir,
         "schema": "lrh.flyover/1", "rendered_utc": lrh.utc_now(), "git": lrh.git_commit(),
-        "blend": bpy.data.filepath, "fps": FPS, "seconds": SECONDS, "resolution": RES,
+        "blend": bpy.data.filepath, "fps": fps, "seconds": SECONDS, "resolution": RES,
         "samples": SAMPLES, "lens_mm": LENS_MM, "sun": SUN, "haze_km": HAZE_KM,
         "collections": COLLECTIONS, "keys": KEYS, "caption": config["caption"]}, indent=1) + "\n")
-    print("ENCODED", out / f"flyover_{variant}.mp4")
+    print("ENCODED", out / f"flyover_{variant_dir}.mp4")
 
 
 if __name__ == "__main__":

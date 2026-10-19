@@ -836,7 +836,7 @@ def main():
                        clear=unary_union([drive_area, shore_area]),
                        open_sky=(shapely.GeometryCollection([shore_open, drive_lines]),
                                  lotplan.MOWN_CORRIDOR_M / 2), scrub_zone=parcels,
-                       build_sites={label: cabins.clearing(site) for label, site in sites.items()})
+                       build_sites={label: cabins.clearing(site, label) for label, site in sites.items()})
     colls["Cabins"] = collection("Cabins")
     cabins.build(colls["Cabins"], sampler, ribbon, HeightSampler, terrain, record)
     (out / "lot_sites.json").write_text(json.dumps(

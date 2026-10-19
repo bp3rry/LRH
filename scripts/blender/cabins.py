@@ -72,13 +72,32 @@ def build_sites():
             if "pad" in v and v["pad"][0].get("house") in FITS and "terrace_floor_m" in v["pad"][0]}
 
 
-def clearing(site):
+def walk_line(label, pad):
+    """Owner, 19 Oct 2026: a simple 5 ft gravel walking path from the lake stair down
+    across the lake-side acre to the lot's shoreline access path (which starts at the
+    lot's west line; lotplan.shoreline_layout). Later phases add the full site network."""
+    sites = sorted(lrh.ROOT.glob("out/*/lot_sites.json"))
+    if not sites:
+        return None
+    west = json.loads(sites[-1].read_text()).get(label, {}).get("west")
+    if west is None:
+        return None
+    L = grading.layout(pad.bounds)
+    start = (L["xp"] - 0.3, L["ys"] - 1.6)          # below the switchback stair
+    mid = (start[0] - 12.0, start[1])
+    return shapely.geometry.LineString([start, mid, tuple(west)])
+
+
+def clearing(site, label=None):
     """Footprint where no tree may stand once the lot is built: the graded area, the
     patio and the front drive."""
     _, pad = site["pad"]
     parts = [pad.buffer(8.0, join_style="mitre"), patio_centre(pad).buffer(PATIO_R + 2)]
     if "drive_front" in site:
         parts.append(site["drive_front"][1].buffer(3.5))
+    walk = walk_line(label, pad) if label else None
+    if walk is not None:
+        parts.append(walk.buffer(2.5))
     return shapely.union_all(parts)
 
 
@@ -912,6 +931,12 @@ def build(root, sampler, ribbon, sampler_class, terrain, record):
             ribbon(f"Drive_{key}", line, 3.6,
                    lambda x, y, on_site=on_site: on_site(x, y) if on_site(x, y) is not None else sampler(x, y),
                    0.06, gravel, coll)
+        walk = walk_line(label, pad)
+        if walk is not None:
+            path_mat = bpy.data.materials.get("Path_Gravel_Grey") or plain("Path_Gravel_Grey", (0.46, 0.46, 0.44), 0.95)
+            ribbon(f"Walk_{key}", list(walk.coords), 5 * FT,
+                   lambda x, y, on_site=on_site: on_site(x, y) if on_site(x, y) is not None else sampler(x, y),
+                   0.08, path_mat, coll)
         built[label] = {"terrace_floor_m": T, "back_grade_m": E, "terrain_vertices_cut": lowered,
                         "patio": [round(pc.x, 1), round(pc.y, 1)]}
     skipped = sorted(set(f"Lot {i}" for i in range(1, 11)) - set(built))

@@ -815,6 +815,67 @@ about 17 s a frame on this M4):
 The usual rules apply: no overlays or docks, the creek zone stays wooded, and the caption
 is shown.
 
+**R0 status (19 Oct 2026):**
+- **Path script:** `scripts/flight_path.py` designs the path. It writes
+  `out/derived/flight_low.json` and `flight_low_plan.png`.
+- **Checks:** the path passes.
+  - Height: at least 19 m above the ground or lake, and at least 15 m above the canopy.
+  - Turns: pans at most 9.9°/s (a gentle drone pan, allowed up to 10°/s at this height).
+  - Tilt and altitude: down-tilt at most 20°; at most 145 ft above the ground; at most
+    16 m/s.
+- **Length:** about 114 s, longer than the 75–90 s target; pacing is for the owner to judge.
+- **Render mode:** `flyover.py --variant low` renders it. `--preview` gives the animatic
+  (960 × 540, 8 samples, every third frame at 10 fps, about 2 s a frame).
+- **Shown:** the Lot 5 cabin and a simple 5 ft gravel walking path. The path runs from the
+  lake stair to the lot's shoreline access path (owner: simple walking paths for now).
+
+### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
+
+One illustrative cabin (Lot 5) is enough for now. A later phase renders a cabin on every
+lot, for build-out stills and a build-out flyover variant:
+- `cabins: all`; Lot 10 needs a smaller plan first.
+- Each lot's lidar trees on the footprint are removed (already per lot).
+- Optional variety, such as mirrored plans and roof or stain colours, so the row does not
+  read as cloned.
+
+### Phase 3c — Site infrastructure (planned)
+
+Show everything the site plan carries, as switchable layers for stills and video:
+- the shared north-south access road and its utility corridor;
+- private utility easements to each lot's west edge;
+- driveways, rear drive-through drives, entry yards and turnarounds;
+- the septic drip areas (as mown lawn, optionally outlined in check views);
+- the recreation sites with their utility pedestals;
+- shoreline paths and dock circles, mailboxes and gates, and fencing (split rail);
+- dock options, once UTRWD permitting allows them to be shown.
+
+Marketing frames keep the §7 rules. Infrastructure appears only where the owner approves
+it for publication.
+
+### Phase 4 — "Perry Lakeside Resort" concept (end phase; owner direction, 19 Oct 2026)
+
+**Concept.** Improve the property, build a few cabins and start rental operations. Then
+market each lot as a working lakehouse rental, which raises the sales-price target
+significantly. Renders, stills and video for this phase:
+- **Resort vision:** a few rented cabins in use, with lights on, a fire pit, kayaks, golf
+  carts on the paths, and guests on the shoreline path and at the dock circles.
+- **Entry experience:** a resort sign at CR 3635, the access road and landscaping.
+- **Per-lot "working rental" packages:** each lot with its cabin, porch and lake view,
+  plus the shared amenities.
+- **Seasonal and time-of-day variants:** golden hour, dusk with lights, early fall (owner
+  favourite) and spring.
+
+**Representation cautions** (to settle with the owner, the co-owner/agent and counsel
+before publishing):
+- The name "Perry Lakeside Resort" needs a trademark or assumed-name check.
+- Captions must present the resort as a concept, not existing operations, until it
+  operates.
+- Any rental-income or occupancy figures need a factual basis and the agent's or counsel's
+  review.
+- Short-term rental use must be checked against County rules, UTRWD lake rules (draft LSMP),
+  deed restrictions and lender terms.
+- The open LSMP question on septic for lots under 5 ac (§9) still applies.
+
 ### Phase 3+ — Later releases (planned after Phase 2 is accepted)
 
 - **Per-lot stills:** templated cameras for each lot (lot-to-lake, lot-from-water,
@@ -882,7 +943,8 @@ owner was told its natural range at Lake Ralph Hall is unconfirmed).
 | Lots 9–10 dock: **deferred by owner (14 Oct 2026), no action**; options remain share 7–8, fishing dock, or re-pair | Owner | When the owner revisits |
 | Lot 1 driveway access (connects at the mapped CR 3635 end) | Owner | Phase 2b finals |
 | Phase 2d: whether the access road and utility corridor appear in marketing (Lot 10 takes the small house unless the County allows a smaller CR 3640 setback) | Owner | Before Phase 2d renders |
-| Phase 3a flyover: one illustrative cabin (Lot 5) or a build-out; whether the access road and easements appear; time of day; approve the R0 flight path | Owner | Before R8 (path approval at R0) |
+| Phase 3a flyover: approve the R0 flight path and pacing (preview `out/2026-10-19/video/low_preview/`); time of day. One cabin (Lot 5) and a simple walking path for now (owner, 19 Oct 2026); all cabins in Phase 3b, roads and easements in Phase 3c | Owner | R0 review |
+| Phase 4 "Perry Lakeside Resort": name check, caption wording for a concept resort, any rental-income claims, short-term-rental rules (County, UTRWD, deed) | Owner, co-owner/agent, counsel | Before Phase 4 publication |
 | **LSMP Water Quality Protection Criteria vs Lake Zoning OSSF exception:** would ten ~2 ac lots on septic still qualify for individual Shoreline Use Permits (docks, paths, shoreline clearing)? | Owner, UTRWD, attorney | **Before platting** |
 | Drone capture: Part 107 or a contracted pilot for marketing imagery; UTRWD permission to fly over its land and water (docs/DRONE-CAPTURE-PLAN.md §3) | Owner | Before Phase 2c flights |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |
