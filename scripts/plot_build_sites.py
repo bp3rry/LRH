@@ -22,6 +22,7 @@ FT = 0.3048
 CENTRE, ORTHO_M = (0.0, 35.0), 600.0  # must match shots.yaml check_build_sites
 HOUSE = (50 * FT, 40 * FT)            # illustrative stilt-house footprint (E-W, N-S)
 SHOP = (30 * FT, 24 * FT)             # illustrative detached garage / outbuilding
+SMALL_HOUSE = (36 * FT, 28 * FT)      # illustrative 2 BR / 1 BA lake house (constrained lots)
 
 
 def main():
@@ -64,20 +65,22 @@ def main():
         d.polygon(ring(g), fill=(205, 190, 150, 210), outline=(255, 255, 255, 255))
         cx, cy = g.centroid.x, g.centroid.y
         x0, y0, x1, y1 = g.bounds
-        house = shapely.box(x1 - 4 - HOUSE[0], cy - HOUSE[1] / 2, x1 - 4, cy + HOUSE[1] / 2)
-        shop = shapely.box(x0 + 3, y1 - 3 - SHOP[1], x0 + 3 + SHOP[0], y1 - 3)
+        hw, hd = SMALL_HOUSE if p.get("house") == "small" else HOUSE
+        house = shapely.box(x1 - 3 - hw, cy - hd / 2, x1 - 3, cy + hd / 2)
         d.polygon(ring(house), fill=(240, 240, 235, 255), outline=(60, 60, 60, 255))
-        d.polygon(ring(shop), fill=(200, 200, 195, 255), outline=(60, 60, 60, 255))
+        if p.get("house") != "small":
+            shop = shapely.box(x0 + 3, y1 - 3 - SHOP[1], x0 + 3 + SHOP[0], y1 - 3)
+            d.polygon(ring(shop), fill=(200, 200, 195, 255), outline=(60, 60, 60, 255))
     im = Image.alpha_composite(im.convert("RGBA"), layer).convert("RGB")
     d = ImageDraw.Draw(im)
     font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 16)
-    legend = [("Raised pad 60x80 ft (+2 ft)", (205, 190, 150)), ("4:1 fill slope", (120, 160, 60)),
-              ("Stilt house / outbuilding (illustrative)", (240, 240, 235)),
-              ("Septic drip area 5,000 sq ft + sewer stub", (150, 95, 40)),
+    legend = [("Raised pad 60x80 ft (+2 ft); Lot 10: 40x60 ft, 2 BR", (205, 190, 150)), ("4:1 fill slope", (120, 160, 60)),
+              ("Lake-house cabin / outbuilding (illustrative)", (240, 240, 235)),
+              ("Septic drip area (5,000 / 3,000 sq ft) + sewer stub", (150, 95, 40)),
               ("Drives", (170, 170, 165)), ("N-S access road + utility corridor", (240, 200, 60)),
               ("Setback envelope (100 ft CR 3635, 20 ft sides)", (255, 255, 255))]
     y = 14
-    d.rectangle([8, 8, 400, 14 + 22 * len(legend)], fill=(0, 0, 0))
+    d.rectangle([8, 8, 440, 14 + 22 * len(legend)], fill=(0, 0, 0))
     for text, colour in legend:
         d.rectangle([16, y + 3, 30, y + 15], fill=colour)
         d.text((38, y), text, font=font, fill=(255, 255, 255))

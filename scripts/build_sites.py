@@ -8,10 +8,13 @@ with a stub-out to a shared utility corridor along a north-south access road thr
 lots' east-west midpoints. The main drive comes from CR 3635 to the front or side of the
 house, and a second drive from the access road allows drive-through for a boat or RV.
 
+Owner (19 Oct 2026): lots that cannot take the standard pad get a smaller lake house,
+2 BR / 1 BA, on a 60 x 40 ft pad. All houses are lake-house / rustic-cabin style.
+
 Septic sizing is a planning placeholder. Under TCEQ 30 TAC 285, 4 bedrooms (3 up + 1
 down) with under 3,500 sq ft gives a design flow of about 300 gal/day. A drip field on the
 area's clay soils needs roughly 4,500-5,000 sq ft; 5,000 sq ft (about 70 x 70 ft) is
-reserved. A licensed designer sets the real system from a soil evaluation.
+reserved. The 2 BR house (about 180 gal/day) reserves 3,000 sq ft (75 x 40 ft). A licensed designer sets the real system from a soil evaluation.
 
 Method per lot:
 1. Candidate pads (long side east-west, 2 m grid) inside the setback envelope and the
@@ -47,16 +50,24 @@ from kwik_ortho import Surface  # noqa: E402
 
 FT = 0.3048
 PAD = (80 * FT, 60 * FT)          # east-west, north-south (m)
+SMALL_PAD = (60 * FT, 40 * FT)    # 2 BR / 1 BA lake house for constrained lots
 RAISE_M = 2 * FT
 SLOPE = 4.0                        # 4:1 fill slopes
 ROAD_SETBACK = 100 * FT
 SIDE_SETBACK = 20 * FT
 SEPTIC = (100 * FT, 50 * FT)       # 5,000 sq ft drip field, long side east-west
+SMALL_SEPTIC = (75 * FT, 40 * FT)  # 3,000 sq ft for 2 BR
+HOUSE_TYPES = [  # tried in order; the first that fits the lot is used
+    {"name": "standard", "plan": "3 BR / 1 BA up, 1 BR / 1 BA apartment + boat storage down",
+     "pad": PAD, "septic": SEPTIC, "septic_sq_ft": 5000, "flow_gpd": 300},
+    {"name": "small", "plan": "2 BR / 1 BA lake house",
+     "pad": SMALL_PAD, "septic": SMALL_SEPTIC, "septic_sq_ft": 3000, "flow_gpd": 180},
+]
 DRIVE_W = 4.0
 SECLUDED = {"Lot 1"}  # owner, 15 Oct 2026: the wooded build site, reached by its own drive
 # Lot 10 is a corner lot between CR 3635 and relocated CR 3640: a 100 ft setback from
-# both roads leaves ~57 ft of depth, under the pad's 60 ft, so it is reported as
-# constrained rather than forced (candidate for the planned re-survey).
+# both roads leaves ~57 ft of depth, under the standard pad's 60 ft, so it falls back to
+# the small house (or the planned re-survey).
 CORNER_LOTS = {"Lot 10"}
 UTRWD_SETBACK = 50 * FT
 DERIVED = ROOT / "out/derived"
@@ -135,7 +146,7 @@ def access_road(lots):
     return LineString(list(map(tuple, pts)) + [end.coords[0]])
 
 
-def place_septic(poly, pad, cy, corridor=None):
+def place_septic(poly, pad, cy, corridor=None, SEPTIC=SEPTIC):
     """Septic (100 x 50 ft) beside the house on its road side, north half; else south or
     north of the pad. Returns (box, description) or (None, None)."""
     inner = poly.buffer(-SIDE_SETBACK / 2, join_style="mitre")
@@ -171,12 +182,17 @@ def analyse():
         y0, y1 = poly.bounds[1], poly.bounds[3]
         yc = (y0 + y1) / 2
         xm = midline_x(poly, yc)
-        candidates, tier = [], None
+        candidates, tier, htype = [], None, None
         # Tier 1: road-side half (owner preference). Tier 2: anywhere east of the access
         # road. Lot 1 (owner, 15 Oct): its secluded site in the tree clump is tier 3.
         tiers = [] if label in SECLUDED else \
             [("road-side half", 8.0), ("east of access road", 4.0), ("anywhere in envelope", None)]
-        for tier_name, clear in tiers:
+        for ht in HOUSE_TYPES:
+         if candidates:
+            break
+         PAD, SEPTIC = ht["pad"], ht["septic"]
+         htype = ht
+         for tier_name, clear in tiers:
           for cx in np.arange(poly.bounds[0], poly.bounds[2], 2.0):
             for cy in np.arange(y0, y1, 2.0):
                 pad = box(cx - PAD[0] / 2, cy - PAD[1] / 2, cx + PAD[0] / 2, cy + PAD[1] / 2)
@@ -189,7 +205,7 @@ def analyse():
                     continue
                 if pad.intersects(corridor):
                     continue
-                if place_septic(poly, pad, cy, corridor)[0] is None:  # pad and septic together
+                if place_septic(poly, pad, cy, corridor, SEPTIC)[0] is None:  # pad and septic together
                     continue
                 gx, gy = np.meshgrid(np.linspace(pad.bounds[0], pad.bounds[2], 9),
                                      np.linspace(pad.bounds[1], pad.bounds[3], 7))
@@ -201,6 +217,8 @@ def analyse():
             tier = tier_name
             break
         if not candidates and label in SECLUDED:
+            htype = HOUSE_TYPES[0]
+            PAD, SEPTIC = htype["pad"], htype["septic"]
             sites = json.loads(sorted((ROOT / "out").glob("*/lot_sites.json"))[-1].read_text())
             hx, hy = sites["Lot 1"]["house"]
             for cx in np.arange(hx - 20, hx + 20.1, 2.0):
@@ -217,8 +235,8 @@ def analyse():
         if not candidates:
             rows.append({"lot": label, "fits": False,
                          "reason": "corner lot: 100 ft setbacks from both CR 3635 and CR 3640 "
-                                   "leave less depth than the 60 ft pad" if label in CORNER_LOTS
-                                   else "no 60x80 ft pad fits the setback envelope"})
+                                   "leave too little depth for either pad" if label in CORNER_LOTS
+                                   else "no pad fits the setback envelope"})
             features.append({"type": "Feature", "properties": {"lot": label, "kind": "envelope"},
                              "geometry": mapping(envelope)})
             continue
@@ -235,7 +253,7 @@ def analyse():
         # drive passes it along the south half and reaches the house's side (owner: front
         # or side approach). Drive lies >=1.5 m inside the lot line; septic stays inside
         # the lot by half the side setback and clear of the drive by 2 m.
-        septic, side = place_septic(poly, pad, cy, corridor if label != "Lot 1" else None)
+        septic, side = place_septic(poly, pad, cy, corridor if label != "Lot 1" else None, SEPTIC)
         # Main drive: along y_d (south half, clear of septic), from CR 3635 to the pad.
         y_lo = poly.buffer(-1.5 - DRIVE_W / 2).bounds[1]
         y_d = max(y_lo, pad.bounds[1] + DRIVE_W / 2 + 1.0)
@@ -255,6 +273,9 @@ def analyse():
 
         rows.append({
             "lot": label, "fits": True, "siting": tier,
+            "house": htype["name"], "plan": htype["plan"],
+            "pad_ft": [round(PAD[0] / FT), round(PAD[1] / FT)],
+            "septic_sq_ft": htype["septic_sq_ft"], "design_flow_gpd": htype["flow_gpd"],
             "pad_centre_local_m": [round(cx, 1), round(cy, 1)],
             "natural_ground_ft": {"mean": round(z_mean / FT, 1), "relief": round(z_relief / FT, 1)},
             "pad_top_ft": round(top / FT, 1),
@@ -268,7 +289,7 @@ def analyse():
             "rear_drive_to_access_road_ft": round(drive_back.length / FT) if drive_back else None,
         })
         props = {"lot": label}
-        features.append({"type": "Feature", "properties": {**props, "kind": "pad",
+        features.append({"type": "Feature", "properties": {**props, "kind": "pad", "house": htype["name"],
                                                          "top_m": round(top, 2)},
                          "geometry": mapping(pad)})
         features.append({"type": "Feature", "properties": {**props, "kind": "envelope"},
@@ -293,10 +314,12 @@ def analyse():
     (DERIVED / "build_sites.geojson").write_text(json.dumps(
         {"type": "FeatureCollection", "crs_note": "LRH local metres (origin.json)",
          "features": features}, indent=1) + "\n")
-    report = {"parameters": {"pad_ft": [80, 60], "raise_ft": 2, "fill_slope": "4:1",
+    report = {"parameters": {"pad_ft": [80, 60], "small_pad_ft": [60, 40], "raise_ft": 2, "fill_slope": "4:1",
+                             "style": "lake house / rustic cabin (all lots)",
                              "setback_cr3635_ft": 100, "setback_sides_ft": 20,
                              "septic_area_sq_ft": 5000, "septic_basis": "4 BR (3 up + 1 down), "
-                             "~300 gal/day, drip on clay; placeholder pending soil evaluation"},
+                             "~300 gal/day, drip on clay; small house 2 BR ~180 gal/day, 3,000 sq ft; "
+                             "placeholders pending soil evaluation"},
               "access_road_length_ft": round(access.length / FT), "lots": rows}
     (DERIVED / "build_sites.json").write_text(json.dumps(report, indent=1) + "\n")
     return report
