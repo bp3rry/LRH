@@ -513,18 +513,24 @@ label is not yet tied to NAVD88 (see the PTM notes), so treat freeboard as appro
 | Lot | Site | Natural ground | Pad top | Fill, in place / loose | Trees on pad | Septic | Front drive | Rear drive |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Secluded wooded site (inside the road setback) | 565.9 ft | 567.9 ft | 653 / 751 cu yd | 2 | Road side, north half | 463 ft | none |
-| 2 | Road-side half | 574.3 ft | 576.3 ft | 491 / 565 cu yd | 8 | Beside house | 165 ft | 43 ft |
-| 3 | Road-side half | 578.6 ft | 580.6 ft | 547 / 629 cu yd | 0 | Beside house | 141 ft | 59 ft |
-| 4 | Road-side half | 579.2 ft | 581.2 ft | 465 / 535 cu yd | 0 | Beside house | 140 ft | 72 ft |
-| 5 | Road-side half | 580.3 ft | 582.3 ft | 498 / 572 cu yd | 0 | Road side, north half | 175 ft | 58 ft |
-| 6 | Road-side half | 584.9 ft | 586.9 ft | 559 / 642 cu yd | 0 | Beside house | 141 ft | 123 ft |
-| 7 | Road-side half | 587.3 ft | 589.3 ft | 622 / 716 cu yd | 0 | Road side, north half | 159 ft | 114 ft |
-| 8 | Road-side half | 588.9 ft | 590.9 ft | 596 / 685 cu yd | 0 | Road side, north half | 183 ft | 107 ft |
-| 9 | Road-side half | 589.2 ft | 591.2 ft | 704 / 810 cu yd | 2 | Road side, north half | 187 ft | 100 ft |
-| 10 | Road-side half, **small house** (2 BR / 1 BA, 60 × 40 ft pad) | 583.6 ft | 585.6 ft | 345 / 397 cu yd | 3 | Road side, north half | 266 ft | 136 ft |
+| 2 | Road-side half | 574.3 ft | 576.3 ft | 491 / 565 cu yd | 8 | Beside house | 165 ft | 34 ft |
+| 3 | Road-side half | 578.6 ft | 580.6 ft | 547 / 629 cu yd | 0 | Beside house | 141 ft | 70 ft |
+| 4 | Road-side half | 579.2 ft | 581.2 ft | 465 / 535 cu yd | 0 | Beside house | 140 ft | 84 ft |
+| 5 | Road-side half | 580.3 ft | 582.3 ft | 498 / 572 cu yd | 0 | Road side, north half | 175 ft | 63 ft |
+| 6 | Road-side half | 584.9 ft | 586.9 ft | 559 / 642 cu yd | 0 | Beside house | 141 ft | 111 ft |
+| 7 | Road-side half | 587.3 ft | 589.3 ft | 622 / 716 cu yd | 0 | Road side, north half | 159 ft | 106 ft |
+| 8 | Road-side half | 588.9 ft | 590.9 ft | 596 / 685 cu yd | 0 | Road side, north half | 183 ft | 98 ft |
+| 9 | Road-side half | 589.2 ft | 591.2 ft | 704 / 810 cu yd | 2 | Road side, north half | 187 ft | 117 ft |
+| 10 | Road-side half, **small house** (2 BR / 1 BA, 60 × 40 ft pad) | 583.6 ft | 585.6 ft | 345 / 397 cu yd | 3 | Road side, north half | 266 ft | 85 ft |
 
-- The access road runs about 1,645 ft from Lot 2 south to the CR 3640 route, with the
-  utility corridor along it. Each septic area has a sewer stub toward the corridor.
+- The access road runs about 1,338 ft from Lot 2 south to CR 3640, with the utility
+  corridor along it. Owner, 19 Oct 2026: the midpoint rule is relaxed. The road follows a
+  gentle curve fitted through the midpoints of Lots 2–9, then runs straight south across
+  Lot 10 to CR 3640 instead of angling southwest across it. On Lot 10 it uses 112 ft of
+  length (about 0.09 ac of the 35 ft road and corridor). That leaves 0.74 ac east of the
+  road for the house and 1.18 ac to the west, open toward the lake. Each septic area has a sewer stub toward the corridor.
+- Siting prefers the road-side half over house size: a small house in the front half
+  beats a standard house pushed onto the low lake side.
 - **Lot 10:** as a corner lot, 100 ft setbacks from both CR 3635 and CR 3640 leave about
   57 ft of depth, under the standard pad's 60 ft. It takes the small house (owner, 19 Oct
   2026). A smaller CR 3640 setback (Fannin County) or the planned re-survey could restore

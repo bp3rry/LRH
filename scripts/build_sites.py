@@ -121,29 +121,36 @@ ACCESS_HALF_M = (20 + 15) * FT / 2  # 20 ft gravel road + 15 ft utility corridor
 
 
 def access_road(lots):
-    """North-south access road through the east-west midpoints of Lots 2-10 (Lot 1 keeps
-    its private secluded drive), smoothed, with its south end connected to relocated
-    CR 3640 for a second outlet."""
-    pts = []
-    for label in [f"Lot {i}" for i in range(2, 11)]:
+    """North-south access road for Lots 2-10 (Lot 1 keeps its private secluded drive).
+
+    A gentle quadratic fitted through the east-west midpoints of Lots 2-9, then continued
+    straight along its south tangent across Lot 10 to relocated CR 3640 for a second
+    outlet. Owner, 19 Oct 2026: the midpoint rule is relaxed so the road stays straight and
+    does not angle across the corner lot, which is wider than the others."""
+    ys, xs = [], []
+    for label in [f"Lot {i}" for i in range(2, 10)]:
         poly = lots[label]
         for y in np.arange(poly.bounds[1] + 4, poly.bounds[3] - 4, 4.0):
             x = midline_x(poly, y)
             if x is not None:
-                pts.append((x, y))
-    buckets = {}
-    for x, y in pts:  # one point per 4 m of latitude (adjacent lots overlap in y)
-        buckets.setdefault(round(y / 4.0), []).append(x)
-    pts = np.array([(np.mean(xs), key * 4.0) for key, xs in sorted(buckets.items(), reverse=True)])
-    k = 6
-    pts[:, 0] = np.convolve(np.pad(pts[:, 0], k, mode="edge"), np.ones(2 * k + 1) / (2 * k + 1),
-                            mode="valid")
+                ys.append(y)
+                xs.append(x)
+    coef = np.polyfit(ys, xs, 2)
+    y_n, y_s = lots["Lot 2"].bounds[3] - 4.0, lots["Lot 9"].bounds[1]
+    yy = np.arange(y_n, y_s - 0.1, -4.0)
+    pts = [(float(np.polyval(coef, y)), float(y)) for y in yy]
     geo = json.loads((ROOT / "inputs/geometry/cr3640-composite-context-route-epsg6344.geojson").read_text())
     origin = json.loads((ROOT / "inputs/terrain/origin.json").read_text())["origin"]
     cr3640 = LineString(np.array(geo["features"][0]["geometry"]["coordinates"])[:, :2]
                         - [origin["easting"], origin["northing"]])
-    end = cr3640.interpolate(cr3640.project(Point(pts[-1])))
-    return LineString(list(map(tuple, pts)) + [end.coords[0]])
+    slope = float(np.polyval(np.polyder(coef), y_s))  # dx/dy at the Lot 9/10 line
+    ray = LineString([pts[-1], (pts[-1][0] - slope * 300.0, pts[-1][1] - 300.0)])
+    hit = ray.intersection(cr3640)
+    if hit.is_empty:
+        end = cr3640.interpolate(cr3640.project(Point(pts[-1])))
+    else:
+        end = min(getattr(hit, "geoms", [hit]), key=lambda g: g.distance(Point(pts[-1])))
+    return LineString(pts + [end.coords[0]])
 
 
 def place_septic(poly, pad, cy, corridor=None, SEPTIC=SEPTIC):
@@ -187,12 +194,14 @@ def analyse():
         # road. Lot 1 (owner, 15 Oct): its secluded site in the tree clump is tier 3.
         tiers = [] if label in SECLUDED else \
             [("road-side half", 8.0), ("east of access road", 4.0), ("anywhere in envelope", None)]
-        for ht in HOUSE_TYPES:
+        # Site tier first, then house type: a small house in the road-side half beats a
+        # standard house pushed onto the low lake side.
+        for tier_name, clear in tiers:
          if candidates:
             break
-         PAD, SEPTIC = ht["pad"], ht["septic"]
-         htype = ht
-         for tier_name, clear in tiers:
+         for ht in HOUSE_TYPES:
+          PAD, SEPTIC = ht["pad"], ht["septic"]
+          htype = ht
           for cx in np.arange(poly.bounds[0], poly.bounds[2], 2.0):
             for cy in np.arange(y0, y1, 2.0):
                 pad = box(cx - PAD[0] / 2, cy - PAD[1] / 2, cx + PAD[0] / 2, cy + PAD[1] / 2)
