@@ -60,6 +60,10 @@ def main():
         d.polygon(ring(g), fill=(150, 95, 40, 120), outline=(120, 70, 25, 255))
     for p, g in by("sewer_stub"):
         d.line([px(*c) for c in g.coords], fill=(120, 70, 25, 255), width=2)
+    for p, g in by("septic_tank"):
+        x, y = px(g.x, g.y)
+        r = 5 * FT / m_per_px + 1
+        d.ellipse([x - r, y - r, x + r, y + r], fill=(70, 40, 15, 255), outline=(255, 255, 255, 255))
     for p, g in by("pad"):
         d.polygon(ring(g.buffer(2 * FT * 4, join_style="mitre")), fill=(120, 160, 60, 70))  # 4:1 toe
         d.polygon(ring(g), fill=(205, 190, 150, 210), outline=(255, 255, 255, 255))
@@ -74,13 +78,13 @@ def main():
     im = Image.alpha_composite(im.convert("RGBA"), layer).convert("RGB")
     d = ImageDraw.Draw(im)
     font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 16)
-    legend = [("Raised pad 60x80 ft (+2 ft); Lot 10: 40x60 ft, 2 BR", (205, 190, 150)), ("4:1 fill slope", (120, 160, 60)),
-              ("Lake-house cabin / outbuilding (illustrative)", (240, 240, 235)),
-              ("Septic drip area (5,000 / 3,000 sq ft) + sewer stub", (150, 95, 40)),
+    legend = [("Raised pad 60x80 ft (+2 ft); Lot 10: 40x60 ft", (205, 190, 150)), ("4:1 fill slope", (120, 160, 60)),
+              ("Cabin 2 BR/1 BA up, opt. 1 BR/1 BA apt down; outbuilding", (240, 240, 235)),
+              ("Septic tank (front) + 4,000 sq ft drip area + sewer stub", (150, 95, 40)),
               ("Drives", (170, 170, 165)), ("N-S access road + utility corridor", (240, 200, 60)),
               ("Setback envelope (100 ft CR 3635, 20 ft sides)", (255, 255, 255))]
     y = 14
-    d.rectangle([8, 8, 440, 14 + 22 * len(legend)], fill=(0, 0, 0))
+    d.rectangle([8, 8, 500, 14 + 22 * len(legend)], fill=(0, 0, 0))
     for text, colour in legend:
         d.rectangle([16, y + 3, 30, y + 15], fill=colour)
         d.text((38, y), text, font=font, fill=(255, 255, 255))

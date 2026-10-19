@@ -8,8 +8,11 @@ with a stub-out to a shared utility corridor along a north-south access road thr
 lots' east-west midpoints. The main drive comes from CR 3635 to the front or side of the
 house, and a second drive from the access road allows drive-through for a boat or RV.
 
-Owner (19 Oct 2026): lots that cannot take the standard pad get a smaller lake house,
-2 BR / 1 BA, on a 60 x 40 ft pad. All houses are lake-house / rustic-cabin style.
+Owner (19 Oct 2026, revised): every house is a lake-house / rustic cabin with 2 BR / 1 BA
+upstairs and an optional 1 BR / 1 BA apartment on the ground floor, so septic is sized for
+3 bedrooms. Lots that cannot take the standard 60 x 80 ft pad use a 60 x 40 ft pad. The
+septic goes in front of the house (road side); a gravity check tests whether the pad gives
+enough fall from a ground-floor bath to the tank, and reports any extra pad height needed.
 
 Septic sizing is a planning placeholder. Under TCEQ 30 TAC 285, 4 bedrooms (3 up + 1
 down) with under 3,500 sq ft gives a design flow of about 300 gal/day. A drip field on the
@@ -55,14 +58,25 @@ RAISE_M = 2 * FT
 SLOPE = 4.0                        # 4:1 fill slopes
 ROAD_SETBACK = 100 * FT
 SIDE_SETBACK = 20 * FT
-SEPTIC = (100 * FT, 50 * FT)       # 5,000 sq ft drip field, long side east-west
-SMALL_SEPTIC = (75 * FT, 40 * FT)  # 3,000 sq ft for 2 BR
+# 3 BR (2 up + optional 1 down) under 2,500 sq ft: about 240 gal/day (30 TAC 285); a drip
+# field on clay at roughly the same loading as before needs about 4,000 sq ft.
+SEPTIC = (80 * FT, 50 * FT)
+PLAN = "2 BR / 1 BA up; optional 1 BR / 1 BA apartment down"
 HOUSE_TYPES = [  # tried in order; the first that fits the lot is used
-    {"name": "standard", "plan": "3 BR / 1 BA up, 1 BR / 1 BA apartment + boat storage down",
-     "pad": PAD, "septic": SEPTIC, "septic_sq_ft": 5000, "flow_gpd": 300},
-    {"name": "small", "plan": "2 BR / 1 BA lake house",
-     "pad": SMALL_PAD, "septic": SMALL_SEPTIC, "septic_sq_ft": 3000, "flow_gpd": 180},
+    {"name": "standard", "plan": PLAN, "pad": PAD, "septic": SEPTIC,
+     "septic_sq_ft": 4000, "flow_gpd": 240},
+    {"name": "small", "plan": PLAN, "pad": SMALL_PAD, "septic": (100 * FT, 40 * FT),  # same area, shallower
+     "septic_sq_ft": 4000, "flow_gpd": 240},
 ]
+# Gravity check, ground-floor bath to the tank (planning assumptions, for the designer):
+# floor at pad top; building drain leaves 1 ft below the floor; the tank sits on undisturbed
+# ground just past the 4:1 fill toe on the road side; the sewer falls 1/8 in per ft
+# (minimum); a standard tank's inlet is no more than 3 ft below grade. Anything deeper is
+# reported as extra pad height (or a deep-bury tank, or an ejector pump for that bath).
+DRAIN_BELOW_FLOOR = 1.0 * FT
+SEWER_SLOPE = 0.125 / 12
+MAX_INLET_DEPTH = 3.0 * FT
+TANK_OFF_PAD = RAISE_M * SLOPE + 1.0   # past the fill toe
 DRIVE_W = 4.0
 SECLUDED = {"Lot 1"}  # owner, 15 Oct 2026: the wooded build site, reached by its own drive
 # Lot 10 is a corner lot between CR 3635 and relocated CR 3640: a 100 ft setback from
@@ -159,16 +173,16 @@ def place_septic(poly, pad, cy, corridor=None, SEPTIC=SEPTIC):
     inner = poly.buffer(-SIDE_SETBACK / 2, join_style="mitre")
     lot_n = inner.bounds[3]
     for sx in np.arange(pad.bounds[2] + 3.0 + SEPTIC[0] / 2, poly.bounds[2], 2.0):
-        for sy in np.arange(lot_n - SEPTIC[1] / 2, cy - 1.0, -1.0):
+        for sy in np.arange(lot_n - SEPTIC[1] / 2, pad.bounds[1], -1.0):
             cand = box(sx - SEPTIC[0] / 2, sy - SEPTIC[1] / 2, sx + SEPTIC[0] / 2, sy + SEPTIC[1] / 2)
             if inner.contains(cand) and cand.bounds[1] - pad.bounds[1] > DRIVE_W + 3.0 and \
                     (corridor is None or not cand.intersects(corridor)):
-                return cand, "road side of house, north half"
+                return cand, "front (road side) of house"
     cx = pad.centroid.x
     for sy in (pad.bounds[1] - 3.0 - SEPTIC[1] / 2, pad.bounds[3] + 3.0 + SEPTIC[1] / 2):
         cand = box(cx - SEPTIC[0] / 2, sy - SEPTIC[1] / 2, cx + SEPTIC[0] / 2, sy + SEPTIC[1] / 2)
         if inner.contains(cand) and (corridor is None or not cand.intersects(corridor)):
-            return cand, "beside house"
+            return cand, "beside house (front does not fit)"
     return None, None
 
 
@@ -285,6 +299,34 @@ def analyse():
             drive_back = LineString([(pad.bounds[0], cy), hp.coords[0]])
         septic_conflict = septic is not None and drive_front.buffer(DRIVE_W / 2).intersects(septic)
 
+        # Gravity check: ground-floor bath -> tank. The tank sits between the house and the
+        # drip area, past the fill toe on the drip area's side of the pad.
+        gravity = None
+        if septic is not None:
+            sx, sy = septic.centroid.x, septic.centroid.y
+            if septic.bounds[0] >= pad.bounds[2]:          # front (road side)
+                tank = (pad.bounds[2] + TANK_OFF_PAD, min(max(sy, pad.bounds[1] + 3), pad.bounds[3] - 3))
+                wall = (pad.bounds[2] - 3.0, tank[1])
+            elif sy < pad.bounds[1]:                          # south of the pad
+                tank = (sx, pad.bounds[1] - TANK_OFF_PAD)
+                wall = (sx, cy - 6.0)
+            else:                                             # north of the pad
+                tank = (sx, pad.bounds[3] + TANK_OFF_PAD)
+                wall = (sx, cy + 6.0)
+            run = math.dist(tank, wall)
+            ground = max(float(dtm(np.array([tank[0]]), np.array([tank[1]]))[0]),
+                         top - shapely.distance(Point(tank), pad) / SLOPE)
+            inlet = top - DRAIN_BELOW_FLOOR - run * SEWER_SLOPE
+            depth = max(ground - inlet, 1.0 * FT)  # at least 1 ft of cover over the inlet
+            extra = max(0.0, depth - MAX_INLET_DEPTH)
+            gravity = {"tank_local_m": [round(tank[0], 1), round(tank[1], 1)],
+                       "sewer_run_ft": round(run / FT),
+                       "ground_at_tank_ft": round(ground / FT, 1),
+                       "fall_floor_to_tank_ground_ft": round((top - ground) / FT, 1),
+                       "tank_inlet_depth_ft": round(depth / FT, 1),
+                       "ground_floor_bath_ok": extra == 0.0,
+                       "extra_pad_height_ft": round(extra / FT, 1)}
+
         rows.append({
             "lot": label, "fits": True, "siting": tier,
             "house": htype["name"], "plan": htype["plan"],
@@ -298,6 +340,7 @@ def analyse():
             "cut_on_pad_cu_yd": round(cut_pad / CU_YD),
             "graded_area_sq_ft": round(fill_area / (FT * FT)),
             "septic_placement": side,
+            "gravity_ground_floor_bath": gravity,
             "septic_fits": septic is not None, "septic_clear_of_drive": not septic_conflict,
             "front_drive_ft": round(drive_front.length / FT),
             "rear_drive_to_access_road_ft": round(drive_back.length / FT) if drive_back else None,
@@ -315,6 +358,10 @@ def analyse():
                                access.interpolate(access.project(septic.centroid)).coords[0]])
             features.append({"type": "Feature", "properties": {**props, "kind": "sewer_stub"},
                              "geometry": mapping(stub)})
+            if gravity is not None:
+                features.append({"type": "Feature", "properties": {
+                    **props, "kind": "septic_tank", "inlet_depth_ft": gravity["tank_inlet_depth_ft"]},
+                    "geometry": mapping(Point(gravity["tank_local_m"]))})
         features.append({"type": "Feature", "properties": {**props, "kind": "drive_front"},
                          "geometry": mapping(drive_front)})
         if drive_back is not None:
@@ -331,9 +378,10 @@ def analyse():
     report = {"parameters": {"pad_ft": [80, 60], "small_pad_ft": [60, 40], "raise_ft": 2, "fill_slope": "4:1",
                              "style": "lake house / rustic cabin (all lots)",
                              "setback_cr3635_ft": 100, "setback_sides_ft": 20,
-                             "septic_area_sq_ft": 5000, "septic_basis": "4 BR (3 up + 1 down), "
-                             "~300 gal/day, drip on clay; small house 2 BR ~180 gal/day, 3,000 sq ft; "
-                             "placeholders pending soil evaluation"},
+                             "septic_area_sq_ft": 4000, "septic_basis": "3 BR (2 up + optional 1 down), "
+                             "~240 gal/day, drip on clay; placeholder pending soil evaluation",
+                             "gravity": "drain 1 ft below floor, 1/8 in/ft, tank past fill toe, "
+                             "max standard inlet depth 3 ft"},
               "access_road_length_ft": round(access.length / FT), "lots": rows}
     (DERIVED / "build_sites.json").write_text(json.dumps(report, indent=1) + "\n")
     return report

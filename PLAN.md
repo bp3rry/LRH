@@ -492,37 +492,57 @@ label is not yet tied to NAVD88 (see the PTM notes), so treat freeboard as appro
      garage, clearly labelled as illustrative;
    - all with the §7 caption.
 
-**Owner parameters for initial review (19 Oct 2026)**
+**Owner parameters for initial review (19 Oct 2026, house program revised the same day)**
 - Setbacks: 100 ft from CR 3635, 20 ft from side lot lines.
-- House: 3 BR / 1 bath upstairs, plus a roughed-in 1 BR / 1 bath apartment on the ground
-  floor with boat storage and parking. Septic is sized for 4 bedrooms: about 300 gal/day
-  under TCEQ Chapter 285. The drip area is a 100 × 50 ft (5,000 sq ft) placeholder on
-  clay soils until a soil evaluation is done.
+- **House, all lots:** a lake-house / rustic cabin with 2 BR / 1 bath upstairs and an
+  optional 1 BR / 1 bath apartment on the ground floor, with boat storage and parking.
+  Septic is sized for the full 3 bedrooms: about 240 gal/day under TCEQ Chapter 285. The
+  drip area is a 4,000 sq ft placeholder on clay soils (80 × 50 ft; 100 × 40 ft on the
+  60 × 40 ft pad) until a soil evaluation is done.
+- **Septic in front:** tank and drip area on the road side of the house, on every lot.
 - The front drive may reach the front or the side of the house. A second, rear entry from
   the shared access road allows drive-through with a boat or RV.
-- **Constrained lots:** a smaller 2 BR / 1 bath lake house on a 60 × 40 ft pad, with
-  about 180 gal/day and a 3,000 sq ft (75 × 40 ft) drip placeholder. The analysis uses it
-  wherever the standard pad does not fit; today that is Lot 10 only.
-- **Style, all lots:** lake house / rustic cabin construction. Massing and any later house
-  models follow it, for example board-and-batten or log-look siding, metal roofs, deep
-  covered porches and timber or stone piers under the raised floor.
+- **Constrained lots:** the same house program on a 60 × 40 ft pad, wherever the standard
+  pad does not fit; today that is Lot 10 only.
+- **Style:** massing and any later house models follow the cabin style, for example
+  board-and-batten or log-look siding, metal roofs, deep covered porches and timber or
+  stone piers under the raised floor.
 
-**First results (`scripts/build_sites.py`, plan drawn by `scripts/plot_build_sites.py`
+**Gravity check for a downstairs bath.** The septic is in front, on the road side, where
+the ground is higher. So the check is whether a ground-floor bath on the raised pad can
+still drain by gravity to a tank there. Planning assumptions:
+- the bath floor is at pad top, and the building drain leaves 1 ft below the floor;
+- the tank sits on undisturbed ground just past the fill toe, about 21 ft of sewer from
+  the house;
+- the sewer falls at least 1/8 in per ft;
+- a standard tank's inlet is no more than 3 ft below grade, with at least 1 ft of cover.
+
+Any extra depth would be reported as extra pad height. Upstairs fixtures have ample fall.
+A pump tank doses the drip field in any case, so the drip area's own elevation does not
+matter.
+
+**Results (`scripts/build_sites.py`, plan drawn by `scripts/plot_build_sites.py`
 → `out/2026-10-19/build_sites_plan.png`)**
 
-| Lot | Site | Natural ground | Pad top | Fill, in place / loose | Trees on pad | Septic | Front drive | Rear drive |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Secluded wooded site (inside the road setback) | 565.9 ft | 567.9 ft | 653 / 751 cu yd | 2 | Road side, north half | 264 ft | none |
-| 2 | Road-side half | 574.3 ft | 576.3 ft | 491 / 565 cu yd | 8 | Beside house | 165 ft | 34 ft |
-| 3 | Road-side half | 578.6 ft | 580.6 ft | 547 / 629 cu yd | 0 | Beside house | 141 ft | 70 ft |
-| 4 | Road-side half | 579.2 ft | 581.2 ft | 465 / 535 cu yd | 0 | Beside house | 140 ft | 84 ft |
-| 5 | Road-side half | 580.3 ft | 582.3 ft | 498 / 572 cu yd | 0 | Road side, north half | 175 ft | 63 ft |
-| 6 | Road-side half | 584.9 ft | 586.9 ft | 559 / 642 cu yd | 0 | Beside house | 141 ft | 111 ft |
-| 7 | Road-side half | 587.3 ft | 589.3 ft | 622 / 716 cu yd | 0 | Road side, north half | 159 ft | 106 ft |
-| 8 | Road-side half | 588.9 ft | 590.9 ft | 596 / 685 cu yd | 0 | Road side, north half | 183 ft | 98 ft |
-| 9 | Road-side half | 589.2 ft | 591.2 ft | 704 / 810 cu yd | 2 | Road side, north half | 187 ft | 117 ft |
-| 10 | Road-side half, **small house** (2 BR / 1 BA, 60 × 40 ft pad) | 583.6 ft | 585.6 ft | 345 / 397 cu yd | 3 | Road side, north half | 266 ft | 85 ft |
+| Lot | Site | Natural ground | Pad top | Fill, in place / loose | Trees on pad | Front drive | Rear drive | Floor above ground at tank | Tank inlet depth | Downstairs bath by gravity |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Secluded wooded site (inside the road setback) | 565.9 ft | 567.9 ft | 653 / 751 cu yd | 2 | 264 ft | none | +1.3 ft | 1.0 ft | yes |
+| 2 | Road-side half | 573.3 ft | 575.3 ft | 469 / 539 cu yd | 6 | 158 ft | 34 ft | +1.7 ft | 1.0 ft | yes |
+| 3 | Road-side half | 578.6 ft | 580.6 ft | 547 / 629 cu yd | 0 | 141 ft | 70 ft | +1.8 ft | 1.0 ft | yes |
+| 4 | Road-side half | 579.2 ft | 581.2 ft | 481 / 553 cu yd | 0 | 141 ft | 81 ft | -0.2 ft | 1.4 ft | yes |
+| 5 | Road-side half | 581.3 ft | 583.3 ft | 516 / 593 cu yd | 0 | 147 ft | 90 ft | +0.8 ft | 1.0 ft | yes |
+| 6 | Road-side half | 583.8 ft | 585.8 ft | 584 / 672 cu yd | 0 | 140 ft | 108 ft | -0.3 ft | 1.5 ft | yes |
+| 7 | Road-side half | 588.5 ft | 590.5 ft | 603 / 694 cu yd | 0 | 139 ft | 125 ft | -0.2 ft | 1.4 ft | yes |
+| 8 | Road-side half | 591.4 ft | 593.4 ft | 605 / 695 cu yd | 1 | 145 ft | 137 ft | -0.9 ft | 2.1 ft | yes |
+| 9 | Road-side half | 591.9 ft | 593.9 ft | 557 / 641 cu yd | 4 | 143 ft | 162 ft | +0.3 ft | 1.0 ft | yes |
+| 10 | Road-side half, **60 × 40 ft pad** | 583.6 ft | 585.6 ft | 345 / 397 cu yd | 3 | 266 ft | 85 ft | -1.3 ft | 2.6 ft | yes |
 
+- **No lot needs extra pad height for a downstairs bath.** The 2 ft raise gives enough fall
+  everywhere. Lot 10 is tightest: the ground at its tank is 1.3 ft above the pad, so the
+  inlet is 2.6 ft deep, with 0.4 ft to spare. Lot 8 has 0.9 ft to spare. Moving a tank
+  farther from the house adds about 0.1 ft of depth per 10 ft of sewer. On Lots 8 and 10,
+  if the designer needs the tank much farther out, plan on a few more inches of pad, a
+  deeper-rated tank, or an ejector pump for the downstairs bath.
 - The access road runs about 1,338 ft from Lot 2 south to CR 3640, with the utility
   corridor along it. Owner, 19 Oct 2026: the midpoint rule is relaxed. The road follows a
   gentle curve fitted through the midpoints of Lots 2–9, then runs straight south across
@@ -540,7 +560,7 @@ label is not yet tied to NAVD88 (see the PTM notes), so treat freeboard as appro
   the standard pad.
 - **Lot 1:** the road-side half is inside the setback or too low, so the secluded wooded
   site is kept.
-- Fill per lot is 465–704 cu yd in place. Cut is assumed to come from levelling elsewhere
+- Fill per lot is 345–653 cu yd in place. Cut is assumed to come from levelling elsewhere
   on the same lot; no cut/fill surface has been modelled yet.
 
 **Still open:** whether the access road and utility corridor appear in
