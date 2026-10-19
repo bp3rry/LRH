@@ -314,7 +314,7 @@ def render_shot(name, shot, config, args, out):
     text = config["caption"]
     if "Docks" in wanted:
         text += " " + config["caption_docks"]
-    if cabin_lots:
+    if cabin_lots and config.get("caption_cabins"):
         text += " " + config["caption_cabins"]
     if kind == "marketing":
         deliverable = out / f"{stem}.png"

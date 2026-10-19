@@ -23,7 +23,7 @@ render:
   4k: {resolution: [3840, 2160], samples: 256}
   caption: "Artist's conception. Lake shown at conservation pool. Lot lines approximate, subject to survey and plat."
   caption_docks: "Docks conceptual, subject to UTRWD Shoreline Use Permit."
-  caption_cabins: "Cabin, grading and patio illustrative."
+  caption_cabins: ""       # owner, 19 Oct 2026: no extra caution captions (RISK REVIEW phase)
 
 shots:
   check_lotplan_ortho:

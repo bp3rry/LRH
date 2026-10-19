@@ -276,7 +276,7 @@ def main():
             render.configure_haze(scene, cam, HAZE_KM, scratch,  # horizon colour from frame 0
                                   all_azimuths=variant == "low")
         todo = only if only is not None else range(0, total, step)
-        caption = config["caption"] + (" " + config["caption_cabins"] if cabins else "")
+        caption = config["caption"] + (" " + config["caption_cabins"] if cabins and config.get("caption_cabins") else "")
         started = time.time()
         for f in todo:
             path = frames_dir / f"f_{f:04d}.png"
