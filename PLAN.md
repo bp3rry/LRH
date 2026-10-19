@@ -413,52 +413,88 @@ northward to about 574 ft at Lot 1. Every lot's road-side half sits 5–21 ft ab
 lake-side half, and every build site is more than 20 ft above the 551 ft pool. The 551 ft
 label is not yet tied to NAVD88 (see the PTM notes), so treat freeboard as approximate.
 
+**Owner decisions (19 Oct 2026)**
+- **Pad:** 60 × 80 ft, leaving room for the house plus a detached garage or outbuilding.
+- **House:** two storeys, as a raised "stilt" (beach-house) design. The ground level is
+  storage, parking or an apartment, with the full home on the upper floor. A walk-out
+  basement was considered but needs about 8–9 ft of fall across the pad. The best 80 ft
+  fall on each lot's road-side half is 3–7 ft, and 9.3 ft on Lot 9 only.
+- **Septic:** a target area **beside** the house, not lakeward of it, with gravity flow
+  from the house to the treatment tank. Include a capped stub-out for future connection to
+  a city or regional sewer line.
+- **Shared utility corridor:** an informal local "utility easement" along the north–south
+  access road, with common paths for water, the future sewer main, electric and internet.
+- **Shared docks: tabled.** The owner wants to avoid the cost of a shared sewer facility.
+
+**Wastewater rules found in the draft LSMP (Section 8) and Lake Zoning**
+- Septic (OSSF) is allowed by the Lake Ralph Hall Zoning Regulations (7 Feb 2023) for
+  single-family detached developments under 20 acres or under 20 lots. This property is
+  19.87 ac with 10 lots.
+- For an individual OSSF, the draft LSMP requires:
+  - subsurface discharge only (spray is prohibited);
+  - an annual maintenance contract with a licensed provider;
+  - the drain field entirely on the owner's lot and at least 50 ft from UTRWD land;
+  - a design for future connection to a centralized system, and connection once one is
+    reasonably available.
+
+  The owner's stub-out plan matches this.
+- Drip systems are subsurface, so they qualify. TCEQ drip fields normally need pressure
+  dosing from a pump tank. "Gravity" applies to the house-to-tank leg, which a raised
+  house makes easy. The system type is for a licensed OSSF designer.
+- **Key risk, beyond shared docks.** The draft LSMP issues Shoreline Use Permits (docks,
+  access paths and, by implication, the shoreline clearing) only to properties that meet
+  its Water Quality Protection Criteria. Those criteria prohibit OSSFs and require
+  centralized sewer "if located within a subdivision with lots less than 5 acres." Platting
+  ten ~2 ac lots on septic could block **individual** shoreline permits, not just
+  community docks. The zoning exception and this criterion need reconciling with UTRWD and
+  the owner's attorney before platting.
+
 **Tasks**
-1. **Build-site analysis.** Per lot, search the road-side half for a 2,000 sq ft home
-   pad (assumed 50 × 40 ft footprint on a 60 × 50 ft level top). Rank candidate sites by:
+1. **Build-site analysis.** Per lot, search the road-side half for a 60 × 80 ft pad.
+   Rank candidate sites by:
    - elevation and how flat the ground already is;
    - distance from CR 3635 and the lot lines (setbacks to be confirmed with Fannin
      County);
    - trees that would need clearing;
-   - the lake-view score from `lake_views.py`, at first-floor, second-floor and
-     third-floor or deck height.
+   - the lake-view score from `lake_views.py`, at the stilt house's living-floor eye
+     height (about 5.3 m above natural grade: 0.6 m pad, ~3 m ground storey, 1.7 m eye)
+     and from an upper deck (about 8.5 m).
    Lot 1 keeps its secluded wooded site as an option.
 2. **Grading plan.** Raise each pad about 2 ft, using cut from levelling elsewhere on the
    lot, so cut and fill balance on each lot.
-   - Estimated fill: a 60 × 50 ft top raised 2 ft with 4:1 side slopes takes about
-     300 cu yd in place, about 350 cu yd before compaction.
+   - Estimated fill: a 60 × 80 ft top raised 2 ft with 4:1 side slopes takes about
+     450 cu yd in place, about 510 cu yd before compaction.
    - Outputs: a proposed-grade surface for each lot, with a cut/fill map, volumes and a
-     drainage direction check (pads drain away from the house and toward the lake side,
-     not onto CR 3635 or a neighbouring lot).
+     drainage check (pads drain away from the house and toward the lake side, not onto
+     CR 3635, the septic area or a neighbouring lot).
    - The grading is modelled in the terrain so renders show the raised pads.
    - Conceptual only; a civil engineer or surveyor designs the real grading.
-3. **Open lake-side acre.** Keep the lake-side half of each lot clear of structures in the
+3. **Septic target areas.** Per lot, a target drain-field area beside the house on the
+   pad's side (not lakeward), at least 50 ft from UTRWD land, outside the pad and the
+   drives, with a sewer stub-out line toward the access road corridor. Size from the
+   house's bedroom count once known; the designer sets the final layout from a soil
+   evaluation.
+4. **Open lake-side acre.** Keep the lake-side half of each lot clear of structures in the
    model, as mown grass and retained trees, and re-score lake views from the new sites.
-4. **Shared access option** (a switchable layer):
-   - a north–south gravel access road running through the lots' east–west midpoints,
-     linking the lots between the build sites and the open lake-side acre;
-   - shared driveways off CR 3635 serving pairs of lots, which halves the road cuts;
-   - access easements shown as conceptual; they need survey and legal drafting.
-5. **Two larger shared dock sites** (a switchable layer, replacing the per-pair docks):
-   - two dock areas on the creek arm, each serving five lots, drawn larger to show
-     shared use;
-   - each reached from the access road by the mown shoreline path;
-   - placed with the existing LSMP checks: 300 ft separation, at most 120 ft long, open
-     shoreline, and outside the 200 ft no-wake band where boat use needs it.
+5. **Shared access and utility corridor** (a switchable layer):
+   - a north–south gravel access road through the lots' east–west midpoints, between the
+     build sites and the open lake-side acre, with shared driveways off CR 3635 serving
+     pairs of lots;
+   - the utility corridor alongside it, carrying water, the future sewer main (stub-outs
+     from each septic area), electric and internet;
+   - easements shown as conceptual; they need survey and legal drafting.
+6. **Shared dock sites: tabled** (owner, 19 Oct 2026). The per-pair dock layer stays
+   available but is not developed further.
+7. **Renders:**
+   - a north-up plan with pads, outbuilding space, septic areas, access road and utility
+     corridor;
+   - aerials of the raised pads with simple massing for a stilt house and a detached
+     garage, clearly labelled as illustrative;
+   - all with the §7 caption.
 
-   The draft LSMP allows one community association dock (up to 20 slips) per
-   association. It requires the association to meet its Water Quality Protection
-   Criteria, which prohibit on-site septic (OSSF) and require centralized sewage for
-   subdivisions with lots under 5 ac. Ten ~2 ac lots on septic would not qualify. This is
-   a key question for UTRWD and the owner's attorney before showing shared docks in
-   marketing.
-6. **Renders:** a north-up plan with build sites, grading and access, plus aerial views
-   of the raised pads and shared docks. All conceptual, with the §7 caption.
-
-**Open questions for the owner:** home footprint and storeys (one or two); preferred
-setbacks from CR 3635; whether septic fields should be sited (typically
-0.25–0.5 ac per lot on the road side); and whether the access road and shared docks go in
-marketing images or stay planning-only.
+**Still open:** setbacks from CR 3635 and the lot lines; bedroom count for septic sizing;
+whether the access road and utility corridor appear in marketing images or stay
+planning-only.
 
 ### Phase 2c — Owner drone capture (planned)
 
@@ -535,6 +571,7 @@ owner was told its natural range at Lake Ralph Hall is unconfirmed).
 | Optional: UTRWD's official georeferenced water-surface classification map, to replace the digitized draft LSMP outline | Owner (request from UTRWD) | Before publication |
 | Lots 9–10 dock: **deferred by owner (14 Oct 2026), no action**; options remain share 7–8, fishing dock, or re-pair | Owner | When the owner revisits |
 | Lot 1 driveway access (connects at the mapped CR 3635 end) | Owner | Phase 2b finals |
-| Phase 2d: home footprint and storeys; setbacks; septic siting; whether the shared access road and docks appear in marketing; community dock eligibility (LSMP sewer criteria) | Owner, UTRWD, attorney | Before Phase 2d renders |
+| Phase 2d: setbacks from CR 3635 and lot lines; bedroom count (septic sizing); whether the access road and utility corridor appear in marketing | Owner | Before Phase 2d renders |
+| **LSMP Water Quality Protection Criteria vs Lake Zoning OSSF exception:** would ten ~2 ac lots on septic still qualify for individual Shoreline Use Permits (docks, paths, shoreline clearing)? | Owner, UTRWD, attorney | **Before platting** |
 | Drone capture: Part 107 or a contracted pilot for marketing imagery; UTRWD permission to fly over its land and water (docs/DRONE-CAPTURE-PLAN.md §3) | Owner | Before Phase 2c flights |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |
