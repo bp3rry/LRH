@@ -806,6 +806,54 @@ def cabin(m, coll, pad, T, E, grade, name):
     return {"stair_bottom": (xb1, (outer[0] + outer[1]) / 2, g_bottom)}
 
 
+def carport(m, coll, L, E, name):
+    """Covered parking (owner, 19 Oct 2026) at the end of the drive, off the house's
+    south-east corner: a concrete slab at entry-yard level, log posts on concrete piers
+    with Y-brackets, and a pitched shingle roof with board-and-batten gables and an
+    exposed king-post truss to match the house. Ridge east-west, open to the drive."""
+    wood, bb, roof, conc, dark = timber(), board_batten(), shingles(), concrete(), trim()
+    x0, y0, x1, y1 = L["carport"]
+    z = E + LIFT
+    m.box(x0, y0, z - 0.15, x1, y1, z + 0.1, conc)
+    eave = z + 0.1 + 2.9
+    ym = (y0 + y1) / 2
+    for x in (x0 + 0.2, x1 - 0.2):
+        for y in (y0 + 0.2, ym, y1 - 0.2):
+            pier_post(m, x, y, z + 0.1, eave, wood, conc)
+            y_braces(m, x, y, eave, "x", wood)
+    for y in (y0 + 0.2, y1 - 0.2):
+        m.box(x0, y - 0.13, eave - 0.05, x1, y + 0.13, eave + 0.22, wood)       # eave beams
+    pitch, ov = 8 / 12, 0.45
+    ridge = eave + 0.22 + (ym - y0) * pitch
+    for ya in (y0 - ov, y1 + ov):
+        za = eave + 0.22 - ov * pitch
+        lo = [(x0 - ov, ya, za), (x1 + ov, ya, za), (x1 + ov, ym, ridge), (x0 - ov, ym, ridge)]
+        m.hexa(lo + [(x, y, zz + 0.14) for x, y, zz in lo], roof)
+    m.beam((x0 - ov, ym, ridge + 0.14), (x1 + ov, ym, ridge + 0.14), 0.18, 0.07, dark)
+    for x in (x0 + 0.05, x1 - 0.2):
+        m.gable_x(y0, y1, x, eave + 0.22, ridge - 0.05, 0.15, bb)             # gable infill
+    for x in (x0 - ov + 0.05, x1 + ov - 0.1):                                   # rake boards
+        for ya in (y0 - ov, y1 + ov):
+            m.beam((x, ya, eave + 0.22 - ov * pitch), (x, ym, ridge), 0.07, 0.22, dark)
+    # Open truss at the drive end (the gable infill sits only above the tie beam).
+    xt = x1 - 0.2
+    m.beam((xt, y0, eave + 0.1), (xt, y1, eave + 0.1), 0.18, 0.26, wood)
+    m.beam((xt, ym, eave + 0.1), (xt, ym, ridge - 0.1), 0.16, 0.16, wood)
+    point_light(f"{name}_Carport", (x0 + (x1 - x0) / 2, ym, eave - 0.2), 50.0, (1.0, 0.72, 0.45), 0.1, coll)
+
+
+def walkways(L, info, E):
+    """Concrete walks (owner, 19 Oct 2026): carport to the front stair (front door), and
+    along the south side yard to the lake-side switchback stair."""
+    x0, y0, x1, y1 = L["carport"]
+    xe, ys, xp = L["xe"], L["ys"], L["xp"]
+    lane = ys - 0.57                                                  # front stair lane
+    yw = ys - 2.9                                                     # south side-yard walk
+    sx, sy, _ = info["stair_bottom"]
+    return [[(x0, lane), (xe - 0.2, lane)],
+            [(xe + 0.6, lane), (xe + 0.6, yw), (sx - 0.3, yw), (sx - 0.3, sy)]]
+
+
 def lawn():
     """Mown lawn on the graded site: fine colour variation and a little bump."""
     mat, tree = _mat("Cabin_Lawn")
@@ -922,6 +970,12 @@ def build(root, sampler, ribbon, sampler_class, terrain, record):
         for a in (160, 220):                                        # log benches
             cxy = (pc.x + 1.9 * math.sin(math.radians(a)), pc.y + 1.9 * math.cos(math.radians(a)))
             log_bench(m, cxy[0], cxy[1], pz + 0.04, (a + 180) % 360, timber())
+        Lc = grading.layout(pad.bounds)
+        carport(m, coll, Lc, E, key)
+        for k, line in enumerate(walkways(Lc, info, E)):
+            ribbon(f"Walk_Concrete_{key}_{k}", line, 1.2,
+                   lambda x, y, on_site=on_site: on_site(x, y) if on_site(x, y) is not None else sampler(x, y),
+                   0.05, concrete(), coll)
         sx, sy, sz = info["stair_bottom"]
         lamp_post(m, coll, sx - 0.8, sy - 0.6, sz, plain("Cabin_Iron", (0.03, 0.03, 0.03), 0.4, 0.8),
                   emitter("Cabin_Lantern", (1.0, 0.62, 0.3), 4.0), key)

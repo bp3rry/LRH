@@ -175,6 +175,12 @@ def place_septic(poly, pad, cy, corridor=None, SEPTIC=SEPTIC):
     north of the pad. Returns (box, description) or (None, None)."""
     inner = poly.buffer(-SIDE_SETBACK / 2, join_style="mitre")
     lot_n = inner.bounds[3]
+    # Keep clear of the covered parking slab and its drive apron (owner, 19 Oct 2026).
+    carport = box(*grading.layout(pad.bounds)["carport"]).buffer(1.5)
+    if corridor is None:
+        corridor = carport
+    else:
+        corridor = corridor.union(carport)
     for sx in np.arange(pad.bounds[2] + 3.0 + SEPTIC[0] / 2, poly.bounds[2], 2.0):
         for sy in np.arange(lot_n - SEPTIC[1] / 2, pad.bounds[1], -1.0):
             cand = box(sx - SEPTIC[0] / 2, sy - SEPTIC[1] / 2, sx + SEPTIC[0] / 2, sy + SEPTIC[1] / 2)
@@ -455,20 +461,22 @@ def analyse():
         # the lot by half the side setback and clear of the drive by 2 m.
         septic, side = place_septic(poly, pad, cy, corridor if label != "Lot 1" else None, SEPTIC)
         # Main drive: along y_d (south half, clear of septic), from CR 3635 to the pad.
+        # Main drive ends at the covered parking slab's road-side face (owner, 19 Oct 2026).
+        cp = grading.layout(pad.bounds)["carport"]
         y_lo = poly.buffer(-1.5 - DRIVE_W / 2).bounds[1]
-        y_d = max(y_lo, pad.bounds[1] + DRIVE_W / 2 + 1.0)
+        y_d = max(y_lo, (cp[1] + cp[3]) / 2)
         if septic is not None:
             y_d = min(y_d, septic.bounds[1] - 2.0 - DRIVE_W / 2)
-        row_line = LineString([(pad.bounds[2], y_d), (poly.bounds[2] + 50, y_d)])
+        row_line = LineString([(cp[2], y_d), (poly.bounds[2] + 50, y_d)])
         hit = row_line.intersection(poly.exterior)
-        exit_pt = min(getattr(hit, "geoms", [hit]), key=lambda g: g.distance(Point(pad.bounds[2], y_d)))
+        exit_pt = min(getattr(hit, "geoms", [hit]), key=lambda g: g.distance(Point(cp[2], y_d)))
         on_road = road.interpolate(road.project(exit_pt))
         if on_road.distance(exit_pt) > 15.0:
             # The mapped CR 3635 centreline stops at the bend by Lot 2 (the road continues
             # north-west past Lot 1). Owner: individual drives, no connector along the road;
             # run a short apron straight out from the lot's own frontage instead.
             on_road = Point(exit_pt.x + 8.0, exit_pt.y)
-        drive_front = LineString([on_road.coords[0], exit_pt.coords[0], (pad.bounds[2], y_d)])
+        drive_front = LineString([on_road.coords[0], exit_pt.coords[0], (cp[2], y_d)])
         hit_access = LineString([(pad.bounds[0], cy), (pad.bounds[0] - 200, cy)]).intersection(access)
         drive_back = None
         if not hit_access.is_empty and label not in SECLUDED:

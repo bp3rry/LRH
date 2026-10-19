@@ -24,6 +24,8 @@ EAST_MARGIN = 3.0                  # back wall to the pad's east edge (entry yar
 SOUTH_MARGIN = 2.3                 # pad's south edge to the south porch line (stair room)
 FILL_SLOPE, CUT_SLOPE = 4.0, 3.0
 BOAT_DOOR = (0.6, 3.6)             # boat / storage door on the north wall, metres from the lake wall
+CARPORT = (22 * FT, 24 * FT)       # covered parking (owner, 19 Oct 2026), E-W x N-S
+CARPORT_GAP = 1.2                  # back wall to the carport's west edge (walkway)
 
 
 def layout(pad_bounds):
@@ -34,16 +36,30 @@ def layout(pad_bounds):
     ys = y0 + SOUTH_MARGIN
     yb0 = ys + SOUTH_PORCH
     yb1 = yb0 + BODY[1]
+    cx0 = xe + CARPORT_GAP
+    cy0 = ys - 0.8
     return {"xw": xw, "xe": xe, "y0": yb0, "y1": yb1, "xp": xw - GABLE_PORCH,
-            "ys": ys, "yn": yb1 + NORTH_PORCH}
+            "ys": ys, "yn": yb1 + NORTH_PORCH,
+            "carport": (cx0, cy0, cx0 + CARPORT[0], cy0 + CARPORT[1])}
+
+
+def nearest_flat(x, y, pad_bounds):
+    """Nearest point on the graded flat area - the pad or the carport slab (entry-yard
+    level) - and the distance to it."""
+    x0, y0, x1, y1 = pad_bounds
+    c = layout(pad_bounds)["carport"]
+    px, py = np.clip(x, x0, x1), np.clip(y, y0, y1)
+    qx, qy = np.clip(x, c[0] - 0.5, c[2] + 0.5), np.clip(y, c[1] - 0.5, c[3] + 0.5)
+    dp, dq = np.hypot(x - px, y - py), np.hypot(x - qx, y - qy)
+    use_q = dq < dp
+    return np.where(use_q, qx, px), np.where(use_q, qy, py), np.minimum(dp, dq)
 
 
 def design(x, y, ground, pad_bounds, T, E):
     """Finished grade at points (x, y) given natural `ground` there (arrays)."""
     x, y, ground = (np.asarray(a, float) for a in (x, y, ground))
     L = layout(pad_bounds)
-    x0, y0, x1, y1 = pad_bounds
-    cx, cy = np.clip(x, x0, x1), np.clip(y, y0, y1)        # nearest point on the pad
+    cx, cy, d = nearest_flat(x, y, pad_bounds)             # nearest point on the graded area
     t = np.clip((cx - L["xw"]) / (L["xe"] - L["xw"]), 0.0, 1.0)
     edge = T + (E - T) * t                                  # lake terrace -> back yard
     # Boat-door ramp along the north side: level with the floor up to the door, then up.
@@ -53,7 +69,6 @@ def design(x, y, ground, pad_bounds, T, E):
     edge = np.where(ramp, T + (E - T) * tr, edge)
     house = (cx >= L["xw"]) & (cx <= L["xe"]) & (cy >= L["y0"]) & (cy <= L["y1"])
     edge = np.where(house, T, edge)                         # terrace slab
-    d = np.hypot(x - cx, y - cy)
     out = np.where(ground > edge, np.minimum(ground, edge + d / CUT_SLOPE),
                    np.maximum(ground, edge - d / FILL_SLOPE))
     return np.where(d == 0, edge, out)

@@ -841,6 +841,36 @@ is shown.
   - the sky is a clear gradient with no clouds;
   - views into the sun (B6, B7) are washed out.
 
+**R0 revision (owner, 19 Oct 2026): start at the point of beginning.**
+- **Start:** the video starts over the signed survey's point of beginning on the CR 3635
+  centreline. As fitted to the TxDOT centreline it is at LRH (114.5, −46.7); the model's
+  parcel corner is 10 m west.
+- **Route:**
+  1. Look west across the lots.
+  2. Sweep past the Lot 5 cabin's covered parking and front porch, and along its south
+     side to the lake gable and patio.
+  3. Follow the walking path down to the shoreline circle.
+  4. Run north over the flooded timber.
+  5. Finish over the open water, turning back toward the lots.
+- **Length and checks:** about 94 s (owner agreed to about 90 s); the path passes its
+  checks. Height is at least 19 m above the ground or lake, 14 m above the canopy, and at
+  most 144 ft. Pans are at most 9.9°/s, with gimbal smoothing over 2 s.
+- **Time of day:** golden hour (agreed).
+- **Previous run:** the first route's preview and R1 frames are kept in
+  `out/2026-10-19/video/low_preview_r0a/` and `low_r1a/`.
+
+**Covered parking (owner, 19 Oct 2026; until the architectural design is final):**
+- **Placement:** a 22 × 24 ft concrete slab at the end of the drive, off the cabin's
+  south-east corner, level with the entry yard. The grading includes it.
+- **Structure:** log posts on concrete piers with Y-brackets, a pitched (8:12) shingle
+  roof with its ridge east–west, board-and-batten gables and an open truss toward the
+  drive, matching the house.
+- **Walks:** concrete walks from the parking to the front stair (front porch and door),
+  and along the south side yard to the lake-side switchback stair.
+- **Driveway:** each lot's drive now ends at its parking slab.
+- **Septic:** on Lots 3 and 4 the slab leaves too little room for the Option A field in
+  front, so Option A goes beside the house there. Option B (lake-side) is unaffected.
+
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
 One illustrative cabin (Lot 5) is enough for now. A later phase renders a cabin on every

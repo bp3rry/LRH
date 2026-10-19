@@ -34,23 +34,27 @@ MIN_AGL, MIN_CANOPY = 15.0, 8.0
 MAX_TURN_DEG_S, MAX_TILT_DEG = 10.0, 35.0   # pans at low altitude; oval was 4.3 deg/s
 CABIN = (47.3, 12.9, 182.0)        # Lot 5 cabin (grading.layout), look-at height ~ main floor
 
-# (name, camera, look-at, speed m/s). Golden hour, sun from the west-south-west.
+# Owner, 19 Oct 2026: start at the survey's point of beginning on CR 3635 (signed survey,
+# fitted to the TxDOT centreline: LRH (114.5, -46.7); the model's parcel corner is 10 m
+# west at (104.3, -48.5)), look west across the lots, sweep to the Lot 5 cabin, follow the
+# walking path to the shoreline, run up the flooded timber and finish over the main lake
+# turning back toward the lots in golden light. (name, camera, look-at, speed m/s)
+POB = (114.5, -46.7)
 KEYS = [
-    ("B1", (-280.0, 700.0, 212.0), (-285.0, 430.0, 172.0), 16.0),   # main lake, boat below
-    ("", (-285.0, 560.0, 202.0), (-245.0, 330.0, 170.0), 16.0),
-    ("B2", (-265.0, 430.0, 197.0), (-200.0, 230.0, 170.0), 15.0),   # over the flooded timber
-    ("", (-232.0, 300.0, 196.0), (-150.0, 110.0, 172.0), 14.0),
-    ("", (-190.0, 150.0, 194.0), (-100.0, 30.0, 172.0), 12.0),
-    ("B3", (-155.0, 45.0, 190.0), (-60.0, 15.0, 176.0), 10.0),      # shoreline path, Lot 5 circle
-    ("B4", (-95.0, 8.0, 192.0), (CABIN[0], CABIN[1], 180.0), 8.0),  # lake-side acre to the cabin
-    ("", (-25.0, 0.0, 194.0), CABIN, 7.0),
-    ("B5", (12.0, -8.0, 195.0), CABIN, 5.5),                        # cabin reveal, orbit starts
-    ("", (33.0, -25.0, 196.0), CABIN, 5.5),
-    ("", (61.0, -30.0, 198.0), CABIN, 4.0),
-    ("", (80.0, -55.0, 202.0), (-20.0, -10.0, 177.0), 4.5),
-    ("B6", (88.0, -100.0, 207.0), (-160.0, -120.0, 172.0), 8.0),    # south along the lots
-    ("", (98.0, -165.0, 213.0), (-230.0, -160.0, 172.0), 11.0),
-    ("B7", (135.0, -230.0, 224.0), (-320.0, -170.0, 172.0), 7.0),   # over CR 3635, west at sunset
+    ("B1", (POB[0], POB[1], 202.0), (-80.0, -10.0, 176.0), 3.0),     # over the POB, looking west
+    ("", (88.0, -44.0, 202.0), (-20.0, 10.0, 178.0), 5.5),
+    ("", (62.0, -36.0, 199.0), (40.0, 40.0, 181.0), 5.0),
+    ("B2", (40.0, -28.0, 197.0), (38.0, 45.0, 181.0), 5.0),          # parking, porch, cabin
+    ("B3", (10.0, -18.0, 195.0), (45.0, 50.0, 181.0), 5.5),          # lake gable, patio
+    ("", (-20.0, -10.0, 194.0), (-50.0, 130.0, 176.0), 5.5),
+    ("", (-55.0, 0.0, 193.0), (-210.0, 70.0, 172.0), 5.5),
+    ("B4", (-100.0, 12.0, 192.0), (-210.0, 100.0, 170.0), 10.0),     # walking path to shore
+    ("B5", (-155.0, 50.0, 191.0), (-230.0, 260.0, 170.0), 14.0),     # shoreline circle
+    ("", (-200.0, 170.0, 194.0), (-260.0, 430.0, 170.0), 17.0),
+    ("B6", (-245.0, 330.0, 197.0), (-285.0, 600.0, 170.0), 17.0),    # flooded timber
+    ("", (-275.0, 480.0, 202.0), (-200.0, 720.0, 168.0), 13.0),
+    ("", (-282.0, 560.0, 207.0), (-80.0, 560.0, 170.0), 6.0),
+    ("B7", (-272.0, 610.0, 212.0), (-60.0, 280.0, 176.0), 3.5),      # look back at the lots
 ]
 
 
@@ -105,13 +109,30 @@ def eased(frames):
              float(np.interp(k, idx, us))) for k in src]
 
 
+def gimbal(cams, looks, sigma_s=2.0):
+    """Smooth the look direction like a drone gimbal: Gaussian over sigma_s seconds on the
+    unit view vector (distance to the look-at point kept). 2 s reads as a slow, deliberate pan."""
+    d = looks - cams
+    dist = np.linalg.norm(d, axis=1, keepdims=True)
+    u = d / dist
+    sig = sigma_s * FPS
+    k = np.arange(-int(3 * sig), int(3 * sig) + 1)
+    w = np.exp(-0.5 * (k / sig) ** 2)
+    w /= w.sum()
+    pad = np.pad(u, ((len(k) // 2, len(k) // 2), (0, 0)), mode="edge")
+    sm = np.column_stack([np.convolve(pad[:, i], w, mode="valid") for i in range(3)])
+    sm /= np.linalg.norm(sm, axis=1, keepdims=True)
+    return cams + sm * dist
+
+
 def main():
     dtm = Surface(ROOT / "out/derived/lidar_dtm_1m.tif")
     dsm = Surface(ROOT / "out/derived/lidar_dsm_1m.tif")
     frames, seconds, key_u = poses()
     frames = eased(frames)
     cams = np.array([f[0] for f in frames])
-    looks = np.array([f[1] for f in frames])
+    looks = gimbal(cams, np.array([f[1] for f in frames]))
+    frames = [(c, lk, f[2]) for c, lk, f in zip(cams, looks, frames)]
     ground = np.maximum(dtm(cams[:, 0], cams[:, 1]), POOL_M)
     canopy = np.maximum(dsm(cams[:, 0], cams[:, 1]), ground)
     agl = cams[:, 2] - ground
