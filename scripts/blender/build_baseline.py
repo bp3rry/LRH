@@ -23,6 +23,7 @@ from mathutils.bvhtree import BVHTree
 from mathutils.geometry import delaunay_2d_cdt
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import cabins  # noqa: E402
 import infrastructure  # noqa: E402
 import lotplan  # noqa: E402
 import scene_life  # noqa: E402
@@ -828,10 +829,16 @@ def main():
     lotplan.build_docks(docks, sampler, colls["Docks"])
     parcels = unary_union([Polygon(np.array(b["lines_local_m"][0])[:, :2])
                            for b in context["boundaries"] if b["kind"] == "owner_parcel_boundary"])
+    # Phase 2d: trees on each lot's pad, patio and drive are set aside per lot, so a shot
+    # that shows that lot's cabin (cabins.py) can remove them.
+    sites = cabins.build_sites()
     vegetation.scatter(colls["Vegetation"], grid, sampler, road_lines, zone, timber_zone, record,
                        clear=unary_union([drive_area, shore_area]),
                        open_sky=(shapely.GeometryCollection([shore_open, drive_lines]),
-                                 lotplan.MOWN_CORRIDOR_M / 2), scrub_zone=parcels)
+                                 lotplan.MOWN_CORRIDOR_M / 2), scrub_zone=parcels,
+                       build_sites={label: cabins.clearing(site) for label, site in sites.items()})
+    colls["Cabins"] = collection("Cabins")
+    cabins.build(colls["Cabins"], sampler, ribbon, HeightSampler, terrain.data.materials[0], record)
     (out / "lot_sites.json").write_text(json.dumps(
         {label: {**site, "shore_circle": shore_access[label]["circle"]}
          for label, site in lotplan.house_sites(context).items()}, indent=1) + "\n")

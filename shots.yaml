@@ -17,11 +17,13 @@ render:
   docks: false             # paired dock layout (undecided; optional)
   shoreline: false         # mown 551 ft shoreline path, per-lot access paths and circles
   cleared_ground: soil     # the parcels' cleared ground: soil (as photographed) | grassed
+  cabins: []               # Phase 2d cabins on these lots ([Lot 5] | all); removes their pad trees
   draft: {resolution: [1920, 1080], samples: 96}
   final: {resolution: [7680, 4320], samples: 1024, tile_size: 2048}
   4k: {resolution: [3840, 2160], samples: 256}
   caption: "Artist's conception. Lake shown at conservation pool. Lot lines approximate, subject to survey and plat."
   caption_docks: "Docks conceptual, subject to UTRWD Shoreline Use Permit."
+  caption_cabins: "Cabin, grading and patio illustrative."
 
 shots:
   check_lotplan_ortho:
@@ -222,3 +224,25 @@ shots:
     boat: {xy: [450.0, 1050.0], heading_deg: 70.0}
     gulls: [-592.0, -106.0, 354.0]
     collections: [Terrain, Water, Roads, Landmarks, Vegetation, Lake_Life, Gulls]
+
+  C2_cabin_sunset:
+    kind: marketing
+    description: Phase 2d test. Drone view from the south into the Lot 2 cabin's clearing at sunset, patio and fire pit on the lake side, ringed by the lidar-located post oaks; low sun from the west.
+    camera: {position: [-6.0, 130.0, 206.0], target: [1.5, 171.0, 177.0], lens_mm: 38.0}
+    sun: {datetime: "2026-10-14T18:35", utc_offset_h: -5}
+    exposure: 0.0    # low sun into a wooded clearing: 4 stops above the daytime -4
+    haze_visibility_km: 25
+    cleared_ground: grassed
+    cabins: [Lot 2]
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  C5_cabin_sunset:
+    kind: marketing
+    description: Phase 2d test. Low drone view of the Lot 5 cabin at sunset from the south-east, patio and fire pit on the lake side, flooded creek arm beyond.
+    camera: {position: [50.0, -16.2, 186.8], target: [28.8, 17.7, 179.0], lens_mm: 20.0}
+    sun: {datetime: "2026-10-14T18:35", utc_offset_h: -5}
+    exposure: -1.5   # sun 2.7 deg up: about 2.5 stops below the daytime -4
+    haze_visibility_km: 25
+    cleared_ground: grassed
+    cabins: [Lot 5]
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]

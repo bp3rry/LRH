@@ -211,6 +211,19 @@ def apply_collections(scene, wanted):
         child.exclude = child.name not in wanted and child.name != "Cameras"
 
 
+def apply_cabins(lots):
+    """Show the listed lots' cabins and remove the trees set aside on their footprints."""
+    keys = {lot.replace(" ", "_") for lot in lots}
+    layer = bpy.context.view_layer.layer_collection
+    if "Cabins" in layer.children:
+        for child in layer.children["Cabins"].children:
+            child.exclude = child.name.removeprefix("Cabin_") not in keys
+    if "Vegetation" in layer.children:
+        for child in layer.children["Vegetation"].children:
+            if child.name.startswith("Vegetation_BuildSite_"):
+                child.exclude = child.name.removeprefix("Vegetation_BuildSite_") in keys
+
+
 def caption(src, dst, text):
     from PIL import Image, ImageDraw, ImageFont  # from .blender-site
     image = Image.open(src).convert("RGB")
@@ -239,6 +252,12 @@ def render_shot(name, shot, config, args, out):
     for layer in ("redline", "driveways", "shoreline", "docks"):
         if shot.get(layer, config.get(layer, False)):
             wanted.add(layer.capitalize())
+    # Phase 2d cabins (cabins.py): `cabins: [Lot 5]` or `cabins: all`.
+    cabin_lots = shot.get("cabins", config.get("cabins", []))
+    if cabin_lots == "all":
+        cabin_lots = [f"Lot {i}" for i in range(1, 11)]
+    if cabin_lots:
+        wanted.add("Cabins")
     cleared = args.cleared_ground or shot.get("cleared_ground", config.get("cleared_ground", "soil"))
     node = bpy.data.materials["Ground_Site"].node_tree.nodes["LRH_Cleared_Grassed"]
     node.outputs[0].default_value = 1.0 if cleared == "grassed" else 0.0
@@ -272,6 +291,7 @@ def render_shot(name, shot, config, args, out):
                                                       config.get("haze_visibility_km")), scratch,
                               shot.get("haze_colour") == "all_azimuths")
     apply_collections(scene, wanted)
+    apply_cabins(cabin_lots)
 
     stem = f"{name}_{args.res}"
     if args.flooded_timber or args.cleared_ground or args.spanish_moss:
@@ -289,6 +309,8 @@ def render_shot(name, shot, config, args, out):
     text = config["caption"]
     if "Docks" in wanted:
         text += " " + config["caption_docks"]
+    if cabin_lots:
+        text += " " + config["caption_cabins"]
     if kind == "marketing":
         deliverable = out / f"{stem}.png"
         caption(master, deliverable, text)
@@ -322,6 +344,7 @@ def render_shot(name, shot, config, args, out):
         "flooded_timber": timber,
         "spanish_moss": moss,
         "cleared_ground": cleared,
+        "cabins": cabin_lots,
         "luminance": stats,
     }
     (out / f"{stem}.json").write_text(json.dumps(sidecar, indent=2) + "\n")

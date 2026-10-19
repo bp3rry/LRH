@@ -196,10 +196,12 @@ def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record):
 
 
 def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, clear=None,
-            open_sky=None, scrub_zone=None, scrub_max_height=4.0):
+            open_sky=None, scrub_zone=None, scrub_max_height=4.0, build_sites=None):
     """`clear`: footprints (driveways, dock paths and docks) where no tree may stand.
     `open_sky`: (lines, half width): no crown may overhang these corridors, so cleared
-    dock paths read from the air (owner, 14 Oct 2026)."""
+    dock paths read from the air (owner, 14 Oct 2026).
+    `build_sites`: {lot label: footprint}. Trees there go into a child collection
+    `Vegetation_BuildSite_<lot>`, so render.py can remove them when that lot's cabin is shown."""
     """Place trees; returns counts by species and records the vegetation checks."""
     import shapely  # from .blender-site via lrh
 
@@ -316,7 +318,7 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
                 species = rng.choice(list(mix), p=list(mix.values()))
             placed[species].append((x[i], y[i], z[i], np.nan, np.nan, boost))
 
-    counts = {}
+    counts, build_counts = {}, {}
     for species, rows in placed.items():
         if not rows:
             continue
@@ -340,13 +342,27 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
             rotations = np.column_stack([np.zeros(sel.sum()), np.zeros(sel.sum()),
                                          rng.uniform(0, 2 * math.pi, sel.sum())])
             pts = np.column_stack([arr[sel, 0], arr[sel, 1], arr[sel, 2] - 0.15])
-            point_cloud(f"Trees_{species}_{v}", pts, scales, rotations, prototypes[species][v], coll)
+            rest = np.ones(len(pts), bool)
+            for label, area in (build_sites or {}).items():
+                on = rest & shapely.contains_xy(area, pts[:, 0], pts[:, 1])
+                if on.any():
+                    key = f"Vegetation_BuildSite_{label.replace(' ', '_')}"
+                    sub = bpy.data.collections.get(key)
+                    if sub is None:
+                        sub = bpy.data.collections.new(key)
+                        coll.children.link(sub)
+                    point_cloud(f"Trees_{species}_{v}_{label.replace(' ', '_')}", pts[on], scales[on],
+                                rotations[on], prototypes[species][v], sub)
+                    build_counts[label] = build_counts.get(label, 0) + int(on.sum())
+                    rest &= ~on
+            point_cloud(f"Trees_{species}_{v}", pts[rest], scales[rest], rotations[rest],
+                        prototypes[species][v], coll)
         counts[species] = len(arr)
 
     flooded_timber(rng, timber_rows, prototypes, snags, proto_coll, record)
     total = sum(counts.values())
     record("trees_placed", total > 1000 and lstats["lidar_placed"] > 10000, total=total,
-           by_species=counts, **lstats, mask_scatter=stats,
+           by_species=counts, **lstats, mask_scatter=stats, on_build_sites=build_counts,
            height_source="StratMap 2025 lidar inside its coverage (source a); "
                          "species-random ranges outside it (source c)")
     # Preservation zone: trees present, and no zone cell was reclassified as cleared.
