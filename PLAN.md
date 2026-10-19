@@ -512,7 +512,7 @@ label is not yet tied to NAVD88 (see the PTM notes), so treat freeboard as appro
 
 | Lot | Site | Natural ground | Pad top | Fill, in place / loose | Trees on pad | Septic | Front drive | Rear drive |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Secluded wooded site (inside the road setback) | 565.9 ft | 567.9 ft | 653 / 751 cu yd | 2 | Road side, north half | 463 ft | none |
+| 1 | Secluded wooded site (inside the road setback) | 565.9 ft | 567.9 ft | 653 / 751 cu yd | 2 | Road side, north half | 264 ft | none |
 | 2 | Road-side half | 574.3 ft | 576.3 ft | 491 / 565 cu yd | 8 | Beside house | 165 ft | 34 ft |
 | 3 | Road-side half | 578.6 ft | 580.6 ft | 547 / 629 cu yd | 0 | Beside house | 141 ft | 70 ft |
 | 4 | Road-side half | 579.2 ft | 581.2 ft | 465 / 535 cu yd | 0 | Beside house | 140 ft | 84 ft |
@@ -529,6 +529,9 @@ label is not yet tied to NAVD88 (see the PTM notes), so treat freeboard as appro
   Lot 10 to CR 3640 instead of angling southwest across it. On Lot 10 it uses 112 ft of
   length (about 0.09 ac of the 35 ft road and corridor). That leaves 0.74 ac east of the
   road for the house and 1.18 ac to the west, open toward the lake. Each septic area has a sewer stub toward the corridor.
+- Every lot has its own front drive from CR 3635, with no connector along the road. The
+  mapped CR 3635 centreline stops at the bend by Lot 2, so Lot 1's drive leaves its own
+  frontage straight out to the road's continuation.
 - Siting prefers the road-side half over house size: a small house in the front half
   beats a standard house pushed onto the low lake side.
 - **Lot 10:** as a corner lot, 100 ft setbacks from both CR 3635 and CR 3640 leave about

@@ -272,6 +272,11 @@ def analyse():
         hit = row_line.intersection(poly.exterior)
         exit_pt = min(getattr(hit, "geoms", [hit]), key=lambda g: g.distance(Point(pad.bounds[2], y_d)))
         on_road = road.interpolate(road.project(exit_pt))
+        if on_road.distance(exit_pt) > 15.0:
+            # The mapped CR 3635 centreline stops at the bend by Lot 2 (the road continues
+            # north-west past Lot 1). Owner: individual drives, no connector along the road;
+            # run a short apron straight out from the lot's own frontage instead.
+            on_road = Point(exit_pt.x + 8.0, exit_pt.y)
         drive_front = LineString([on_road.coords[0], exit_pt.coords[0], (pad.bounds[2], y_d)])
         hit_access = LineString([(pad.bounds[0], cy), (pad.bounds[0] - 200, cy)]).intersection(access)
         drive_back = None
