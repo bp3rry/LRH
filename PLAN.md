@@ -642,7 +642,7 @@ trenches and fields out of random locations.
   the pads already sit at the 100 ft initial-review setback (98–107 ft from the road-side
   lot line), so this needs a smaller road setback confirmed with Fannin County. Each 25 ft
   closer adds 25 ft of room on the lake side and, at these lots' slopes, very roughly
-  0.5–1 ft of fall. Lot 1 (122 ft) and Lot 10 (222 ft) have room within the current
+  0.5–2 ft of fall. Lot 1 (122 ft) and Lot 10 (222 ft) have room within the current
   setback.
 
 **Lot 10:** the Hemlock footprint (and its porches) does not fit the 60 × 40 ft pad. Lot
