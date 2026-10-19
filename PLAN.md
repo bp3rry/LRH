@@ -858,6 +858,12 @@ is shown.
 - **Time of day:** golden hour (agreed).
 - **Previous run:** the first route's preview and R1 frames are kept in
   `out/2026-10-19/video/low_preview_r0a/` and `low_r1a/`.
+- **New preview and R1 baseline:**
+  - `out/2026-10-19/video/low_preview/flyover_low_preview.mp4`: 938 frames in 30 min.
+  - `benchmarks_R1.jpg`: frames 45, 511, 687, 1224, 1389, 1916 and 2767, at 11–18 s a
+    frame (1080p, 64 samples).
+  - Pacing note for review: around frame 750 the view is mostly open lawn, between the
+    lake gable and the walking path.
 
 **Covered parking (owner, 19 Oct 2026; until the architectural design is final):**
 - **Placement:** a 22 × 24 ft concrete slab at the end of the drive, off the cabin's
