@@ -8,6 +8,7 @@ and at most 1/3 of the cove width, 5 ft paths. Everything here is conceptual and
 to a UTRWD Shoreline Use Permit; the owner must also have an occupied residence.
 """
 
+import json
 import math
 
 import bmesh
@@ -82,12 +83,14 @@ def lots_by_label(context):
 
 # --------------------------------------------------------------------------- redline
 
-def number_material():
-    """Lot numbers: white at 45% opacity, so the ground reads through (owner, 15 Oct)."""
-    mat = bpy.data.materials.get("Redline_Number")
+def number_material(opacity=0.45):
+    """Lot numbers: white at 45% opacity, so the ground reads through (owner, 15 Oct).
+    The small acreage notes use a higher opacity so they stay legible."""
+    name = "Redline_Number" if opacity == 0.45 else f"Redline_Number_{round(opacity * 100)}"
+    mat = bpy.data.materials.get(name)
     if mat:
         return mat
-    mat = bpy.data.materials.new("Redline_Number")
+    mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nodes, links = mat.node_tree.nodes, mat.node_tree.links
     nodes.remove(nodes["Principled BSDF"])
@@ -96,7 +99,7 @@ def number_material():
     emit.inputs["Strength"].default_value = 1.2
     clear = nodes.new("ShaderNodeBsdfTransparent")
     mix = nodes.new("ShaderNodeMixShader")
-    mix.inputs["Fac"].default_value = 0.45
+    mix.inputs["Fac"].default_value = opacity
     links.new(clear.outputs[0], mix.inputs[1])
     links.new(emit.outputs[0], mix.inputs[2])
     links.new(mix.outputs[0], nodes["Material Output"].inputs["Surface"])
@@ -125,30 +128,37 @@ def build_redline(context, sampler, coll):
     for i, line in enumerate(context["conceptual_lots"]["division_lines_local_m"]):
         strip(f"Redline_LotLine_{i}", np.array(line)[:, :2], 0.9, sampler, 0.3, white, coll)
     trees = np.load(lrh.ROOT / "out/derived/lidar_trees.npz")["trees"][:, :2]
+    pads_path = lrh.ROOT / "out/derived/build_sites.geojson"  # Phase 2d plan, if present
+    pads = unary_union([shapely.geometry.shape(f["geometry"]) for f in
+                        json.loads(pads_path.read_text())["features"]
+                        if f["properties"]["kind"] in ("pad", "septic")]) \
+        if pads_path.exists() else Polygon()
     for label, poly in lots_by_label(context).items():
-        # Owner (19 Oct 2026): numbers sit in the western (lake-side) part of each lot,
-        # clear of the build sites and drives; within it, the most open ground, so canopy
-        # does not hide them.
-        inner = poly.buffer(-10.0)
-        x0, y0, x1, y1 = inner.bounds
-        gx, gy = np.meshgrid(np.arange(x0, x1, 3.0), np.arange(y0, y1, 3.0))
-        pts = np.column_stack([gx.ravel(), gy.ravel()])
-        pts = pts[shapely.contains_xy(inner, pts[:, 0], pts[:, 1])]
-        west = []
-        for x, y in pts:
+        # Owner (19 Oct 2026): numbers in a uniform spot at the far west (lake-side) edge,
+        # a fixed distance in from the west line near the lot's centroid latitude, with the
+        # lot's acreage in small type beneath. The spot may slide up to 20 m north or south
+        # to clear canopy and the Phase 2d pads.
+        best = None
+        for dy in np.arange(-20.0, 20.1, 2.0):
+            y = poly.centroid.y + dy
             row = LineString([(-1e4, y), (1e4, y)]).intersection(poly)
-            if not row.is_empty and x < row.bounds[0] + 0.25 * (row.bounds[2] - row.bounds[0]):
-                west.append((x, y))
-        if west:
-            pts = np.array(west)
-        near = trees[(trees[:, 0] > x0 - 30) & (trees[:, 0] < x1 + 30) &
-                     (trees[:, 1] > y0 - 30) & (trees[:, 1] < y1 + 30)]
-        if len(pts) and len(near):
-            clearance = np.min(np.hypot(pts[:, None, 0] - near[None, :, 0],
-                                        pts[:, None, 1] - near[None, :, 1]), axis=1)
-            cx, cy = pts[np.argmax(clearance)]
-        else:
-            cx, cy = poly.representative_point().coords[0]
+            if row.is_empty:
+                continue
+            x = row.bounds[0] + 18.0
+            spots = np.array([(x, y), (x, y - 11.0)])
+            if not all(poly.buffer(-3.0).contains(Point(p)) for p in spots):
+                continue
+            if any(pads.buffer(8.0).contains(Point(p)) for p in spots):
+                continue
+            clear = np.min(np.hypot(trees[:, 0, None] - spots[:, 0], trees[:, 1, None] - spots[:, 1]))
+            score = min(clear, 12.0) - 0.05 * abs(dy)
+            if best is None or score > best[0]:
+                best = (score, x, y)
+        if best is None:
+            cy = poly.centroid.y
+            row = LineString([(-1e4, cy), (1e4, cy)]).intersection(poly)
+            best = (0, row.bounds[0] + 18.0, cy)
+        _, cx, cy = best
         text = bpy.data.curves.new(f"Redline_{label}", "FONT")
         text.body = label.split()[-1]
         text.size = 16.0
@@ -157,6 +167,16 @@ def build_redline(context, sampler, coll):
         obj.location = (cx, cy, (sampler(cx, cy) or lrh.POOL_M) + 0.6)
         obj.data.materials.append(number_material())
         coll.objects.link(obj)
+        acres = poly.area / 4046.8564  # EPSG:6344 metres; grid-scale error is negligible here
+        note = bpy.data.curves.new(f"Redline_{label}_Acres", "FONT")
+        note.body = f"{acres:.2f} ac"
+        note.size = 4.5
+        note.align_x, note.align_y = "CENTER", "CENTER"
+        nobj = bpy.data.objects.new(f"Redline_{label.replace(' ', '_')}_Acres", note)
+        ay = cy - 11.0
+        nobj.location = (cx, ay, (sampler(cx, ay) or lrh.POOL_M) + 0.6)
+        nobj.data.materials.append(number_material(0.8))
+        coll.objects.link(nobj)
 
 
 # --------------------------------------------------------------------------- driveways
