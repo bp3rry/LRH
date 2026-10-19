@@ -865,16 +865,22 @@ significantly. Renders, stills and video for this phase:
 - **Seasonal and time-of-day variants:** golden hour, dusk with lights, early fall (owner
   favourite) and spring.
 
-**Representation cautions** (to settle with the owner, the co-owner/agent and counsel
-before publishing):
-- The name "Perry Lakeside Resort" needs a trademark or assumed-name check.
-- Captions must present the resort as a concept, not existing operations, until it
-  operates.
-- Any rental-income or occupancy figures need a factual basis and the agent's or counsel's
-  review.
-- Short-term rental use must be checked against County rules, UTRWD lake rules (draft LSMP),
-  deed restrictions and lender terms.
-- The open LSMP question on septic for lots under 5 ac (§9) still applies.
+Risk items for this phase are listed under RISK REVIEW below.
+
+### RISK REVIEW (future phase; owner)
+
+The owner has been advised and handles **all** safety, legal, regulatory and other risk
+items, and will review them in this phase (owner, 19 Oct 2026). Until then, work does not
+add caution statements, disclaimers or extra caution captions to renders, plans or
+replies. Items already raised, kept here for that review:
+- The LSMP Water Quality Protection Criteria versus the Lake Zoning septic exception for
+  lots under 5 ac (§9, before platting).
+- Septic options A and B: setbacks to the lake and any flood or flowage easement, and
+  UTRWD's view of lake-side fields.
+- The "Perry Lakeside Resort" name check, how a concept resort is described, any
+  rental-income figures, and short-term-rental rules (County, UTRWD, deed, lender).
+- The marketing items in §7 and the KwikImage licence.
+- Structural and geotechnical design for the walk-out, piers and backfilled walls.
 
 ### Phase 3+ — Later releases (planned after Phase 2 is accepted)
 
@@ -919,6 +925,11 @@ surveyor model did not have. Default behaviour is shown in **bold**; the owner d
    access trails: 4 m mown corridors with 5 ft gravel paths (owner, 14 Oct 2026).
 
 ## 8. Working Rules
+
+- **Risk and caution items (owner, 19 Oct 2026):** the owner has been advised and handles
+  all safety, legal and other cautions, in the future RISK REVIEW phase. Do not add
+  caution statements or extra caution captions now. The existing §7 marketing caption
+  stays as it is unless the owner changes it.
 
 - **End-of-day delivery (carried from PTM BR-1):** each workday ends with a saved
   `out/YYYY-MM-DD/lrh_baseline.blend` and preview renders, ready for owner review.
