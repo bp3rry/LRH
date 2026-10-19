@@ -126,12 +126,21 @@ def build_redline(context, sampler, coll):
         strip(f"Redline_LotLine_{i}", np.array(line)[:, :2], 0.9, sampler, 0.3, white, coll)
     trees = np.load(lrh.ROOT / "out/derived/lidar_trees.npz")["trees"][:, :2]
     for label, poly in lots_by_label(context).items():
-        # Put the number on the lot's most open ground, so canopy does not hide it.
+        # Owner (19 Oct 2026): numbers sit in the western (lake-side) part of each lot,
+        # clear of the build sites and drives; within it, the most open ground, so canopy
+        # does not hide them.
         inner = poly.buffer(-10.0)
         x0, y0, x1, y1 = inner.bounds
         gx, gy = np.meshgrid(np.arange(x0, x1, 3.0), np.arange(y0, y1, 3.0))
         pts = np.column_stack([gx.ravel(), gy.ravel()])
         pts = pts[shapely.contains_xy(inner, pts[:, 0], pts[:, 1])]
+        west = []
+        for x, y in pts:
+            row = LineString([(-1e4, y), (1e4, y)]).intersection(poly)
+            if not row.is_empty and x < row.bounds[0] + 0.25 * (row.bounds[2] - row.bounds[0]):
+                west.append((x, y))
+        if west:
+            pts = np.array(west)
         near = trees[(trees[:, 0] > x0 - 30) & (trees[:, 0] < x1 + 30) &
                      (trees[:, 1] > y0 - 30) & (trees[:, 1] < y1 + 30)]
         if len(pts) and len(near):
