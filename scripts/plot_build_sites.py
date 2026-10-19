@@ -5,7 +5,11 @@ house footprint and an outbuilding on each pad (illustrative), septic drip areas
 sewer stub-outs, main and rear drives, and the north-south access road with its utility
 corridor. Writes out/<date>/build_sites_plan.png and prints the per-lot table.
 
-Usage (Blender's Python): python3.11 scripts/plot_build_sites.py [out/<date>/check_build_sites_draft.png]
+Option A (default): septic drip area in front of the house. Option B: the drip area on
+the lake-side acre with a dose tank, fed by gravity along the private utility easement.
+Both show the easement (house to west edge) and the recreation site.
+
+Usage (Blender's Python): python3.11 scripts/plot_build_sites.py [--option B] [base.png]
 """
 
 import json
@@ -16,6 +20,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(ROOT / ".blender-site"))
 
 import shapely  # noqa: E402
+
+sys.path.insert(0, str(ROOT / "scripts/blender"))
+import grading  # noqa: E402
 from PIL import Image, ImageDraw, ImageFont  # noqa: E402
 
 FT = 0.3048
@@ -26,8 +33,12 @@ SMALL_HOUSE = (36 * FT, 28 * FT)      # illustrative 2 BR / 1 BA lake house (con
 
 
 def main():
-    base = Path(sys.argv[1]) if len(sys.argv) > 1 else \
-        sorted(ROOT.glob("out/*/check_build_sites_draft.png"))[-1]
+    args = sys.argv[1:]
+    option = "A"
+    if "--option" in args:
+        option = args[args.index("--option") + 1].upper()
+        del args[args.index("--option"):args.index("--option") + 2]
+    base = Path(args[0]) if args else sorted(ROOT.glob("out/*/check_build_sites_draft.png"))[-1]
     im = Image.open(base).convert("RGB")
     w, h = im.size
     m_per_px = ORTHO_M / max(w, h)
@@ -56,9 +67,28 @@ def main():
     for kind, colour in (("drive_front", (170, 170, 165, 255)), ("drive_rear", (170, 170, 165, 255))):
         for p, g in by(kind):
             d.line([px(*c) for c in g.coords], fill=colour, width=int(14 * FT / m_per_px))
-    for p, g in by("septic"):
+    for p, g in by("easement"):                                     # private utility easement
+        for gg in getattr(g, "geoms", [g]):
+            d.polygon(ring(gg), fill=(70, 170, 220, 55), outline=(70, 170, 220, 200))
+    for p, g in by("rec_site"):
+        for gg in getattr(g, "geoms", [g]):
+            d.polygon(ring(gg), fill=(240, 220, 120, 70), outline=(240, 220, 120, 230))
+    for p, g in by("trench_water_power"):
+        d.line([px(*c) for c in g.coords], fill=(40, 120, 255, 255), width=2)
+    for p, g in by("pedestal"):
+        x, y = px(g.x, g.y)
+        d.rectangle([x - 4, y - 4, x + 4, y + 4], fill=(40, 120, 255, 255), outline=(255, 255, 255, 255))
+    if option == "B":
+        for p, g in by("trench_effluent") + by("effluent_lateral"):
+            d.line([px(*c) for c in g.coords], fill=(150, 95, 40, 255), width=2)
+        for p, g in by("drip_lake"):
+            d.polygon(ring(g), fill=(150, 95, 40, 120), outline=(120, 70, 25, 255))
+        for p, g in by("dose_tank"):
+            x, y = px(g.x, g.y)
+            d.ellipse([x - 4, y - 4, x + 4, y + 4], fill=(70, 40, 15, 255), outline=(255, 255, 255, 255))
+    for p, g in (by("septic") if option == "A" else []):
         d.polygon(ring(g), fill=(150, 95, 40, 120), outline=(120, 70, 25, 255))
-    for p, g in by("sewer_stub"):
+    for p, g in (by("sewer_stub") if option == "A" else []):
         d.line([px(*c) for c in g.coords], fill=(120, 70, 25, 255), width=2)
     for p, g in by("septic_tank"):
         x, y = px(g.x, g.y)
@@ -69,29 +99,36 @@ def main():
         d.polygon(ring(g), fill=(205, 190, 150, 210), outline=(255, 255, 255, 255))
         cx, cy = g.centroid.x, g.centroid.y
         x0, y0, x1, y1 = g.bounds
-        hw, hd = SMALL_HOUSE if p.get("house") == "small" else HOUSE
-        house = shapely.box(x1 - 3 - hw, cy - hd / 2, x1 - 3, cy + hd / 2)
+        if p.get("house") == "small":
+            continue                                                  # Hemlock does not fit
+        L = grading.layout(g.bounds)
+        porches = shapely.box(L["xp"], L["ys"], L["xe"], L["yn"])
+        d.polygon(ring(porches), fill=(215, 175, 110, 255), outline=(90, 60, 30, 255))
+        house = shapely.box(L["xw"], L["y0"], L["xe"], L["y1"])
         d.polygon(ring(house), fill=(240, 240, 235, 255), outline=(60, 60, 60, 255))
-        if p.get("house") != "small":
-            shop = shapely.box(x0 + 3, y1 - 3 - SHOP[1], x0 + 3 + SHOP[0], y1 - 3)
-            d.polygon(ring(shop), fill=(200, 200, 195, 255), outline=(60, 60, 60, 255))
     im = Image.alpha_composite(im.convert("RGBA"), layer).convert("RGB")
     d = ImageDraw.Draw(im)
     font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 16)
-    legend = [("Raised pad 60x80 ft (+2 ft); Lot 10: 40x60 ft", (205, 190, 150)), ("4:1 fill slope", (120, 160, 60)),
-              ("Cabin 2 BR/1 BA up, opt. 1 BR/1 BA apt down; outbuilding", (240, 240, 235)),
-              ("Septic tank (front) + 4,000 sq ft drip area + sewer stub", (150, 95, 40)),
+    legend = [("Graded pad 60x80 ft (walk-out); Lot 10: 40x60 ft", (205, 190, 150)), ("Fill / cut slopes", (120, 160, 60)),
+              ("Hemlock cabin 30x42 ft; porches (tan); opt. apartment below", (240, 240, 235)),
+              (("Septic tank + 4,000 sq ft drip area in front + sewer stub" if option == "A" else
+                "Option B: drip area on lake-side acre, dose tank, gravity line"), (150, 95, 40)),
+              ("Private utility easement 20 ft (PEX water, power, conduit)", (70, 170, 220)),
+              ("Recreation / picnic / camp site + utility pedestal", (240, 220, 120)),
               ("Drives", (170, 170, 165)), ("N-S access road + utility corridor", (240, 200, 60)),
               ("Setback envelope (100 ft CR 3635, 20 ft sides)", (255, 255, 255))]
     y = 14
-    d.rectangle([8, 8, 500, 14 + 22 * len(legend)], fill=(0, 0, 0))
+    d.rectangle([8, 8, 540, 14 + 22 * (len(legend) + 1)], fill=(0, 0, 0))
+    d.text((16, 14 + 22 * len(legend)), f"Septic option {option}" + (
+        " (lake-side field, gravity to dose tank)" if option == "B" else " (field in front)"),
+        font=font, fill=(255, 220, 120))
     for text, colour in legend:
         d.rectangle([16, y + 3, 30, y + 15], fill=colour)
         d.text((38, y), text, font=font, fill=(255, 255, 255))
         y += 22
     d.text((14, h - 26), "Conceptual planning sketch. Not engineering; subject to survey, County and TCEQ/OSSF design.",
            font=font, fill=(255, 255, 255))
-    out = base.parent / "build_sites_plan.png"
+    out = base.parent / ("build_sites_plan.png" if option == "A" else "build_sites_plan_option_b.png")
     im.save(out)
     print(out)
 

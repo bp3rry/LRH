@@ -248,6 +248,120 @@ def walkout(dtm, pad, septic):
     }
 
 
+EASEMENT_W = 20 * FT          # private utility easement, house to the lot's west edge
+TRENCH_SEP = 10 * FT          # potable water kept 10 ft from effluent lines (two trenches)
+REC_R = 20 * FT               # recreation / picnic / rough-camp site at the west edge
+OSSF_LINE_SETBACK = 10 * FT   # drip field from lot lines, water lines and the rec site (planning)
+
+
+def utrwd_edge(lots):
+    """The parcel's lake-side boundary (UTRWD land beyond it): parcel exterior segments
+    west of each lot's east-west midpoint."""
+    ctx = json.loads((ROOT / "inputs/context/site-review-context-regional.json").read_text())
+    parcel = shapely.union_all([Polygon(np.array(b["lines_local_m"][0])[:, :2])
+                                for b in ctx["boundaries"] if b["kind"] == "owner_parcel_boundary"])
+    west = shapely.union_all([box(p.bounds[0] - 50, p.bounds[1] - 1, midline_x(p, p.centroid.y) or
+                                  p.centroid.x, p.bounds[3] + 1) for p in lots.values()])
+    return parcel.exterior.intersection(west)
+
+
+def lake_option(dtm, label, poly, pad, walk, corridor, edge):
+    """Option B (owner, 19 Oct 2026): the drip field on the lake-side acre, and a private
+    utility easement from the house to the lot's west edge with a recreation site there.
+
+    - Easement: 20 ft wide, from the treatment tank (south side yard) south to the lot's
+      south line, then west along it (centre 4 m inside) to the west edge, keeping the
+      lake-side acre in one piece. Two trenches 10 ft apart: (1) the gravity effluent line from the
+      treatment tank down to a pump (dose) tank beside the field, with the pump's power
+      and alarm conduit; (2) PEX water, a power circuit and a spare conduit to a utility
+      pedestal (frost-free hydrant, outlets) at the recreation site.
+    - Recreation site: a 40 ft circle at the west edge (picnic, rough camping).
+    - Drip field: 4,000 sq ft on the lowest ground of the lake-side acre that keeps 50 ft
+      from UTRWD land (draft LSMP), 10 ft from lot lines, the easement and the rec site,
+      and stays west of the access road corridor and clear of the house apron.
+    Returns (features, row)."""
+    tank = walk["gravity"]["tank_local_m"]
+
+    def south_y(x):
+        col = LineString([(x, -1e4), (x, 1e4)]).intersection(poly)
+        return None if col.is_empty else col.bounds[1] + EASEMENT_W / 2 + 1.0
+
+    pts = [tuple(tank)]
+    x = tank[0]
+    while True:
+        y = south_y(x)
+        if y is None or not poly.buffer(-1.0).contains(Point(x - 3.0, y)):
+            break
+        pts.append((x, y))
+        x -= 5.0
+    if len(pts) < 3:
+        return [], {"possible": False, "reason": "no easement route to the west edge"}
+    ped = pts[-1]
+    easement_line = LineString(pts).simplify(0.5)
+    easement = easement_line.buffer(EASEMENT_W / 2, cap_style="flat").intersection(poly)
+    ty = ped[1]
+    rec = Point(ped[0] + REC_R, ty + REC_R * 0.6)
+    rec_area = rec.buffer(REC_R).intersection(poly)
+    lake_edge = edge.intersection(poly.buffer(1.0))
+    allowed = poly.buffer(-OSSF_LINE_SETBACK, join_style="mitre")
+    if not lake_edge.is_empty:
+        allowed = allowed.difference(lake_edge.buffer(50 * FT))
+    mid = midline_x(poly, poly.centroid.y) or poly.centroid.x
+    allowed = (allowed.intersection(box(poly.bounds[0] - 1, poly.bounds[1] - 1, mid, poly.bounds[3] + 1))
+               .difference(corridor.buffer(OSSF_LINE_SETBACK))
+               .difference(easement.buffer(OSSF_LINE_SETBACK))
+               .difference(rec_area.buffer(OSSF_LINE_SETBACK))
+               .difference(pad.buffer(9.0)))
+    # Keep the lot number and acreage label (lotplan.build_redline: 18 m in from the west
+    # line near the centroid latitude) readable on the plan.
+    cy_l = poly.centroid.y
+    row = LineString([(-1e4, cy_l), (1e4, cy_l)]).intersection(poly)
+    if not row.is_empty:
+        allowed = allowed.difference(box(row.bounds[0] + 6, cy_l - 16, row.bounds[0] + 32, cy_l + 10))
+    W, D = SEPTIC
+    best = None
+    x0, y0, x1, y1 = allowed.bounds if not allowed.is_empty else (0, 0, 0, 0)
+    for orient in ((W, D), (D, W)):
+        for fx in np.arange(x0 + orient[0] / 2, x1 - orient[0] / 2 + 0.1, 2.0):
+            for fy in np.arange(y0 + orient[1] / 2, y1 - orient[1] / 2 + 0.1, 2.0):
+                f = box(fx - orient[0] / 2, fy - orient[1] / 2, fx + orient[0] / 2, fy + orient[1] / 2)
+                if not allowed.contains(f):
+                    continue
+                gx, gy = np.meshgrid(np.linspace(f.bounds[0], f.bounds[2], 8),
+                                     np.linspace(f.bounds[1], f.bounds[3], 6))
+                z = dtm(gx.ravel(), gy.ravel())
+                if best is None or z.max() < best[1]:
+                    best = (f, float(z.max()), float(z.mean()))
+    feats = [("easement", easement, {"width_ft": 20}),
+             ("trench_effluent", easement_line.parallel_offset(TRENCH_SEP / 2, "left"), {}),
+             ("trench_water_power", easement_line.parallel_offset(TRENCH_SEP / 2, "right"), {}),
+             ("pedestal", Point(ped), {}), ("rec_site", rec_area, {})]
+    row = {"possible": best is not None, "easement_ft": round(easement_line.length / FT),
+           "pedestal_local_m": [round(ped[0], 1), round(ped[1], 1)]}
+    if best is None:
+        row["reason"] = "no 4,000 sq ft field fits the lake-side acre under the setbacks"
+        return feats, row
+    field, zmax, zmean = best
+    # Dose tank on the field's side nearest the easement; the effluent line tees off there.
+    near = shapely.ops.nearest_points(field, easement_line)
+    dose = (near[0].x, near[0].y)
+    tee = (near[1].x, near[1].y)
+    outlet = walk["gravity"]["ground_at_tank_ft"] * FT - walk["gravity"]["tank_inlet_depth_ft"] * FT - 0.25 * FT
+    run = easement_line.project(Point(tee)) + math.dist(tee, dose)
+    fall = outlet - (float(dtm(np.array([dose[0]]), np.array([dose[1]]))[0]) - 3.0 * FT)
+    feats += [("drip_lake", field, {}), ("dose_tank", Point(dose), {}),
+              ("effluent_lateral", LineString([tee, dose]), {})]
+    row.update({
+        "field_ground_ft": {"mean": round(zmean / FT, 1), "high": round(zmax / FT, 1)},
+        "treatment_tank_outlet_ft": round(outlet / FT, 1),
+        "fall_tank_outlet_to_field_high_ft": round((outlet - zmax) / FT, 1),
+        "gravity_to_dose_tank": bool(fall > run * SEWER_SLOPE),
+        "effluent_line_ft": round(run / FT),
+        "field_to_utrwd_ft": round(field.distance(lake_edge) / FT) if not lake_edge.is_empty else None,
+    })
+    return feats, row
+
+
 def analyse():
     dtm = Surface(DERIVED / "lidar_dtm_1m.tif")
     trees = np.load(DERIVED / "lidar_trees.npz")["trees"]
@@ -255,6 +369,7 @@ def analyse():
     features, rows = [], []
     access = access_road(lots)
     corridor = access.buffer(ACCESS_HALF_M + 3.0)  # road + utility corridor + clearance
+    edge = utrwd_edge(lots)
     for label, poly in lots.items():
         envelope = poly.buffer(-SIDE_SETBACK, join_style="mitre")
         front = east_edge(poly)
@@ -363,6 +478,7 @@ def analyse():
 
         walk = walkout(dtm, pad, septic) if septic is not None else None
         gravity = walk["gravity"] if walk else None
+        option_b, lake = lake_option(dtm, label, poly, pad, walk, corridor, edge) if walk else ([], None)
 
         rows.append({
             "lot": label, "fits": True, "siting": tier,
@@ -382,6 +498,7 @@ def analyse():
             "septic_fits": septic is not None, "septic_clear_of_drive": not septic_conflict,
             "front_drive_ft": round(drive_front.length / FT),
             "rear_drive_to_access_road_ft": round(drive_back.length / FT) if drive_back else None,
+            "option_b_lake_field": lake,
         })
         props = {"lot": label}
         features.append({"type": "Feature", "properties": {**props, "kind": "pad", "house": htype["name"],
@@ -408,6 +525,9 @@ def analyse():
         if drive_back is not None:
             features.append({"type": "Feature", "properties": {**props, "kind": "drive_rear"},
                              "geometry": mapping(drive_back)})
+        for kind, geom, extra in option_b:
+            features.append({"type": "Feature", "properties": {**props, "kind": kind, "option": "B", **extra},
+                             "geometry": mapping(geom)})
 
     features.append({"type": "Feature", "properties": {"kind": "access_road",
                                                        "width_ft": 20, "utility_corridor_ft": 15},

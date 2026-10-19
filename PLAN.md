@@ -590,6 +590,54 @@ tucked into the hill, with a boat / storage door added on the north side.
 - **Front stair:** a short run with a top landing at the porch's east end, down to the
   entry yard.
 
+**Septic Option B and private utility easement** (owner, 19 Oct 2026; `build_sites.py`
+`lake_option()`, plan `out/2026-10-19/build_sites_plan_option_b.png`; Option A, the field
+in front, stays in `build_sites_plan.png`). Showing these in the site plan keeps later
+trenches and fields out of random locations.
+- **Private utility easement (both options):** 20 ft wide on each lot. It runs from the
+  house's treatment tank (south side yard) to the lot's south line, then along it to the
+  west edge. It holds two trenches about 10 ft apart, because potable water stays away
+  from effluent lines:
+  - trench 1: the gravity effluent line to the dose tank, plus the pump's power and alarm
+    conduit (Option B);
+  - trench 2: PEX water, at least one power circuit and a spare conduit, out to a utility
+    pedestal (frost-free hydrant, outlets).
+- **Recreation site:** a 40 ft site at the west edge for picnics or rough camping. It is
+  kept at least 10 ft from the field.
+- **Option B drip field:** 4,000 sq ft on the lowest workable ground of the lake-side acre.
+  It sits at least 50 ft from UTRWD land (draft LSMP), 10 ft from lot lines, the easement
+  and the rec site, west of the access road, and clear of the house apron and the lot
+  label. The field is buried and mown, so the lake-side acre stays open.
+- **Dose tank:** sits beside the field. The treatment tank drains to it by gravity. The dose
+  tank's pump pressurises the drip field, as TCEQ drip rules require.
+
+| Lot | Easement, house to west edge | Field ground (mean) | Fall, tank outlet to field high side | Effluent line | Field to UTRWD land |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 238 ft | no field fits (house site lower than the lake-side acre) | | | |
+| 2 | 326 ft | 564.7 ft | 6.2 ft | 242 ft | 79 ft |
+| 3 | 330 ft | 568.6 ft | 5.8 ft | 271 ft | 107 ft |
+| 4 | 372 ft | 568.4 ft | 7.3 ft | 304 ft | 107 ft |
+| 5 | 400 ft | 568.0 ft | 9.7 ft | 273 ft | 105 ft |
+| 6 | 477 ft | 567.4 ft | 12.8 ft | 334 ft | 121 ft |
+| 7 | 507 ft | 565.6 ft | 18.3 ft | 381 ft | 101 ft |
+| 8 | 504 ft | 567.2 ft | 19.3 ft | 394 ft | 108 ft |
+| 9 | 461 ft | 569.3 ft | 18.2 ft | 405 ft | 66 ft |
+| 10 | 611 ft | 564.6 ft | 14.1 ft | 302 ft | 52 ft |
+
+- **Outages:** the fall does not make the drip field itself gravity-fed, because emitters
+  need pressure. It keeps the long line by gravity and the pump lift small. The pump tank's
+  reserve above the alarm level carries a day or so with careful water use, and a generator
+  inlet or small battery backup covers longer outages. With 12–19 ft of fall (Lots 6–10), a
+  dosing siphon to a low-pressure field is worth asking the designer about. Gravity
+  trenches are unlikely on this clay.
+- **To confirm:** TCEQ and County setbacks to the lake and to any UTRWD flood or flowage
+  easement (the reservoir's flood-pool elevation is not yet in the project). Also UTRWD's
+  view of lake-side fields on a water-supply reservoir, and the open LSMP question on
+  septic for lots under 5 ac. The Lot 8 field sits in a tree clump that would need
+  clearing.
+- **Lot 1:** the secluded house site is lower than its lake-side acre, so Lot 1 keeps the
+  field near the house. Its easement still reaches the west edge.
+
 **Lot 10:** the Hemlock footprint (and its porches) does not fit the 60 × 40 ft pad. Lot
 10 is left without a cabin in the model until a smaller plan is chosen or the re-survey
 enlarges the lot.
