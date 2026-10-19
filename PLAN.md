@@ -716,12 +716,111 @@ trees and close-range textures. The plan, capture spec and import steps are in
 [docs/DRONE-CAPTURE-PLAN.md](docs/DRONE-CAPTURE-PLAN.md). The DJI Mini 5 Pro's lidar
 is for obstacle sensing only; the 3D scan comes from photogrammetry.
 
+### Phase 3a — Low-altitude drone flyover, refined toward photoreal (planned; owner direction, 19 Oct 2026)
+
+**Goal.** A drone-style flyover close to the ground, about 50–150 ft up, over the lake,
+the flooded timber, the shoreline and the lots, past a cabin at golden hour. It starts
+rough and is refined in stages until the frames are photoreal enough for marketing video.
+
+**Method: fixed benchmark frames.** Pick seven frames from the approved flight path. They
+are re-rendered at the end of every refinement stage and put side by side with the
+previous stage, so progress is visible and regressions are caught. Each stage ends with
+an owner review, about 1–2 hours of work and render per checkpoint (owner, 15 Oct 2026).
+
+**Draft flight path** (about 75–90 s; owner to approve in R0):
+1. Over the open main lake at about 40 m, low sun behind or to the side, the ski boat
+   below. Glide toward the timbered arm.
+2. Down to about 20 m over the flooded timber (the Fish and Wildlife Habitat zone stays
+   wooded) and along the arm.
+3. Across the mown shoreline path at a lot's dock circle (no docks shown), then up the
+   open lake-side acre.
+4. A slow reveal of the Lot 5 cabin's glazed gable, porch and fire-pit patio, with a
+   partial orbit.
+5. South along the row of lots at about 30 m. Finish rising over CR 3635, looking back
+   west to the lake at sunset.
+
+Path rules:
+- The existing `flyover.py` machinery: spline, arc-length pacing, ease in and out, tilt
+  cap, per-frame blank-frame checks.
+- New clearance checks: at least 15 m above ground and at least 8 m from any lidar tree
+  crown, every frame.
+- Turn rates no faster than the approved oval (about 4.3°/s); drone speed 8–12 m/s.
+- Under 400 ft above ground, so it reads as a real drone.
+
+**Benchmark frames:**
+
+| Frame | What it shows | Height |
+| --- | --- | --- |
+| B1 | Open lake, boat and glitter path | 40 m |
+| B2 | Flooded timber close by, moss, ducks later | 20 m |
+| B3 | Shoreline path and dock circle | 15–20 m |
+| B4 | Lake-side acre looking east to the cabin | 20 m |
+| B5 | Cabin, porch and patio up close | 15 m, about 40 m away |
+| B6 | Along the lots | 30 m |
+| B7 | Over CR 3635 looking west at sunset | 45 m |
+
+**Refinement stages** (each ends with the benchmark contact sheet and owner review):
+- **R0 — Path and animatic.**
+  - Work: design the path with the clearance checks. Render a fast, rough animatic of the
+    whole path at 960 × 540 and very low samples (about an hour).
+  - Accept: the owner approves the route, pacing and height.
+- **R1 — Rough baseline.**
+  - Work: render B1–B7 at 1080p draft quality with today's assets.
+  - Accept: this becomes the reference sheet the later stages are measured against.
+- **R2 — Ground near the camera.**
+  - Work: grass scattered in clumps along a corridor about 150 m either side of the path,
+    thinning with distance. Separate mown lawn, pasture and riparian looks. Fine terrain
+    detail to remove the faceting, gravel and soil textures, and a wet edge at the
+    shoreline.
+  - Accept: at 15–20 m above ground, B3–B5 read as grass, with no tiling or facets.
+- **R3 — Trees near the camera.**
+  - Work: better post oak, cedar elm, eastern red cedar and bois d'arc models, with bark
+    texture and leaf-card crowns. Detailed models within about 120 m of the path, the
+    current instanced trees beyond. Gentle wind sway. Sources: free tools only (Blender's
+    Sapling tree generator, CC0 textures and models from Poly Haven or ambientCG).
+  - Accept: no blob crowns in B2–B5. The lidar tree positions are unchanged.
+- **R4 — Sky and light.**
+  - Work: clouds, from a CC0 sky photo matched to the sun position or a volumetric cloud
+    layer. The physical sun stays as the key light. Golden-hour and sunset variants.
+  - Accept: the mood of the owner's sunset reference (`benchmark-cam02-sunset.jpg`).
+- **R5 — Water.**
+  - Work: near-field ripple detail, reflections of the timber and the shore, a wet line
+    and light foam at the edge, a finer boat wake.
+- **R6 — Cabin and site detail.**
+  - Work: CC0 photo textures for the logs, stone, shingles and flagstone. Warm interior
+    glow. Porch props (rockers, hanging ferns), a split-rail fence (Hemlock photos), and
+    dusk lighting.
+- **R7 — Life and motion.**
+  - Work: ducks in the timber, herons and egrets on the edge, gulls and the boat. Tree and
+    grass wind, and motion blur.
+- **R8 — Production.**
+  - Work: a flicker test on a 2-second segment (denoiser fed albedo and normal passes).
+    Then a 1080p preview master, then the 4K30 master. Caption, MP4 encode.
+
+**Compute budget** (measured: the 60 s oval flyover at 1080p and 64 samples took 8.5 h,
+about 17 s a frame on this M4):
+- With grass and detailed near-field trees, expect about 40–90 s a frame.
+- A 90 s video at 30 fps is 2,700 frames: roughly 30–70 h at 1080p, and 3–4× that at 4K.
+- So iterate on stills and the low-resolution animatic. Render a 1080p preview master
+  overnight, resuming across nights (`flyover.py` resumes). Render 4K only for the
+  approved cut.
+- 24 fps would save 20%.
+- A paid cloud render farm is an owner decision if 4K turnaround matters.
+
+**Marketing decisions needed before R8** (§7):
+- Whether the video shows one illustrative cabin (Lot 5) or a build-out of all lots.
+- Whether the access road and utility easements appear (default: no, planning only).
+- The time of day.
+
+The usual rules apply: no overlays or docks, the creek zone stays wooded, and the caption
+is shown.
+
 ### Phase 3+ — Later releases (planned after Phase 2 is accepted)
 
 - **Per-lot stills:** templated cameras for each lot (lot-to-lake, lot-from-water,
   aerial with lot highlight), in clean and outlined variants.
-- **Flyover video:** drone-photo-to-lake reveal. Use EEVEE or a render farm, because
-  local Cycles at 4K for about 1,800 frames is a multi-day render on this machine.
+- **Flyover video:** drone-photo-to-lake reveal. Superseded by the low-altitude plan in
+  Phase 3a, which includes the compute budget.
 - **Lot-plan graphic:** north-up plan over orthoimagery with lot numbers and acreage.
 
 ## 6. Compute Notes
@@ -783,6 +882,7 @@ owner was told its natural range at Lake Ralph Hall is unconfirmed).
 | Lots 9–10 dock: **deferred by owner (14 Oct 2026), no action**; options remain share 7–8, fishing dock, or re-pair | Owner | When the owner revisits |
 | Lot 1 driveway access (connects at the mapped CR 3635 end) | Owner | Phase 2b finals |
 | Phase 2d: whether the access road and utility corridor appear in marketing (Lot 10 takes the small house unless the County allows a smaller CR 3640 setback) | Owner | Before Phase 2d renders |
+| Phase 3a flyover: one illustrative cabin (Lot 5) or a build-out; whether the access road and easements appear; time of day; approve the R0 flight path | Owner | Before R8 (path approval at R0) |
 | **LSMP Water Quality Protection Criteria vs Lake Zoning OSSF exception:** would ten ~2 ac lots on septic still qualify for individual Shoreline Use Permits (docks, paths, shoreline clearing)? | Owner, UTRWD, attorney | **Before platting** |
 | Drone capture: Part 107 or a contracted pilot for marketing imagery; UTRWD permission to fly over its land and water (docs/DRONE-CAPTURE-PLAN.md §3) | Owner | Before Phase 2c flights |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |
