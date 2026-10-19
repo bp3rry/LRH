@@ -522,9 +522,77 @@ label is not yet tied to NAVD88 (see the PTM notes), so treat freeboard as appro
     on the road end;
   - stairs from the front porch and from the lake deck down to the patio.
 
-  Test shots: `C5_cabin_sunset` (lake gable, open lot) and `C2_cabin_sunset` (wooded
-  clearing, lidar trees). On Lot 10's 60 × 40 ft pad the lake deck overhangs the pad's west
-  edge by about 0.5 m, so Lot 10 needs a shorter variant before it is shown.
+  Test shots: `C5_cabin_sunset` (lake gable, open lot), `C2_cabin_sunset` (wooded
+  clearing, lidar trees) and `check_cabin5_back` (road side).
+
+**Hemlock dimensions** (Satterwhite's published floor plans):
+- **Main level:** 30 × 42 ft with an 8 × 30 ft gable porch, a 6 × 50 ft porch on one long
+  side and a 4 × 50 ft porch on the other. It holds the master bedroom, kitchen, dining
+  room, an 18 × 18 ft great room vaulted to the gable, 1½ baths, and a loft bedroom above.
+- **Terrace level:** the same 30 × 42 ft footprint. At the lake end: an 11 × 12 ft bedroom,
+  a 6 × 10 ft bath and an 18 × 18 ft rec room, opening onto an 8 × 30 ft covered porch.
+  At the uphill end: mechanical/storage (16 × 19 ft) and storage (13 × 19 ft).
+
+The terrace level carries the owner's optional 1 BR / 1 BA apartment. Its storage is
+tucked into the hill, with a boat / storage door added on the north side.
+
+**Walk-out built into the slope** (owner, 19 Oct 2026; `scripts/blender/grading.py`,
+`build_sites.py` `walkout()`):
+- **Terrace floor:** 6 in above natural grade along the lake wall, so the lake end walks
+  out at grade.
+- **Road end:** backfilled 5 ft against a concrete back wall.
+- **Side walls:** concrete stepping down toward the lake, faced with stone where they
+  show.
+- **Yard levels:** the side yards slope from the lake terrace up to the entry yard. The
+  entry yard on the road side sits 5.5 ft below the main floor, so the front stair is
+  short.
+- **Earthwork:** the natural fall across the house is only 1–3½ ft, so most of the
+  backfill is imported or borrowed from the lot.
+
+**Septic with the walk-out:**
+- **Tank in front:** with 5 ft of earth against the road-side wall, a front tank would need
+  its inlet about 6½ ft deep. That means a deep-bury tank, or an ejector pump for the
+  downstairs bath.
+- **Tank beside the house:** the model puts the tank in the south side yard at the lake end
+  instead, where grade is near the floor. The downstairs bath drains to it by gravity
+  (inlet 1.9 ft deep, about 28 ft of sewer).
+- **Drip field:** stays in front, dosed by the tank's pump chamber. TCEQ drip systems are
+  pump-dosed anyway.
+
+| Lot | Natural grade, lake wall | Natural grade, back wall | Terrace floor | Main floor | Back-yard grade | Fill / cut | Side tank inlet depth | Front tank would need |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 565.7 ft | 566.6 ft | 566.2 ft | 576.7 ft | 571.2 ft | 673 / 8 cu yd | 1.9 ft | 6.5 ft |
+| 2 | 573.7 ft | 573.4 ft | 574.2 ft | 584.7 ft | 579.2 ft | 632 / 3 cu yd | 1.9 ft | 6.5 ft |
+| 3 | 577.7 ft | 579.3 ft | 578.2 ft | 588.7 ft | 583.2 ft | 379 / 99 cu yd | 1.9 ft | 6.5 ft |
+| 4 | 578.8 ft | 580.0 ft | 579.3 ft | 589.8 ft | 584.3 ft | 395 / 22 cu yd | 1.9 ft | 6.5 ft |
+| 5 | 580.9 ft | 582.6 ft | 581.4 ft | 591.9 ft | 586.4 ft | 371 / 24 cu yd | 1.9 ft | 6.5 ft |
+| 6 | 583.0 ft | 585.9 ft | 583.5 ft | 594.0 ft | 588.5 ft | 291 / 58 cu yd | 1.9 ft | 6.5 ft |
+| 7 | 587.6 ft | 590.5 ft | 588.1 ft | 598.6 ft | 593.1 ft | 289 / 59 cu yd | 1.9 ft | 6.5 ft |
+| 8 | 590.2 ft | 593.7 ft | 590.7 ft | 601.2 ft | 595.7 ft | 225 / 60 cu yd | 1.9 ft | 6.5 ft |
+| 9 | 591.6 ft | 592.5 ft | 592.1 ft | 602.6 ft | 597.1 ft | 394 / 8 cu yd | 1.9 ft | 6.5 ft |
+| 10 (Hemlock does not fit this pad) | 582.2 ft | 585.4 ft | 582.7 ft | 593.2 ft | 587.7 ft | 133 / 46 cu yd | 1.9 ft | 6.5 ft |
+
+**Structure (conceptual; for the builder and a structural engineer):**
+- **Foundation:** Satterwhite builds any plan on a basement, given the required structural
+  elements. The walk-out here is that basement, partly above grade: footings, a cast
+  concrete back wall and side walls, and log walls above them.
+- **Porches:** the porches and the covered terrace stand on concrete piers on footings, with
+  round log posts above. This is the "stilt" structure, with log accents.
+- **Soils:** on Fannin County's expansive clays, drilled concrete piers with grade beams are
+  common. A geotechnical report sets the foundation type.
+- **Back wall:** the backfilled wall needs waterproofing, a footing drain and an uphill
+  swale.
+
+**Stairs, Hemlock style:**
+- **Lake stair:** a switchback tucked alongside the south porch's lake end. A top landing
+  leads to a flight running along the porch, a mid landing on posts, and a flight back
+  down to the lake terrace.
+- **Front stair:** a short run with a top landing at the porch's east end, down to the
+  entry yard.
+
+**Lot 10:** the Hemlock footprint (and its porches) does not fit the 60 × 40 ft pad. Lot
+10 is left without a cabin in the model until a smaller plan is chosen or the re-survey
+enlarges the lot.
 
 **Gravity check for a downstairs bath.** The septic is in front, on the road side, where
 the ground is higher. So the check is whether a ground-floor bath on the raised pad can

@@ -1,23 +1,34 @@
-"""Phase 2d cabins: raised pads, lake-house cabins, patios and fire pits (switchable).
+"""Phase 2d cabins: graded walk-out sites, lake-house cabins, patios and fire pits
+(switchable per shot).
 
-Owner (19 Oct 2026): every lot gets a lake-house / rustic cabin, 2 BR / 1 BA on a raised
-upper floor with an optional 1 BR / 1 BA apartment, parking and boat storage at ground
-level. Style follows the owner's reference renders (inputs/reference/benchmark-cam02-
-sunset.jpg) for light and mood; the cabin itself follows Satterwhite's Hemlock plan
-(inputs/reference/hemlock-photo-04.jpg and the plan's published renderings): honey-tone
-logs, board-and-batten gables, a glazed lake gable over a deck on tall posts with
-Y-brackets, a dormered front porch and a walk-out terrace level. A flagstone patio with
-a stone fire pit sits on the lake side. All massing is illustrative.
+Owner (19 Oct 2026): every lot gets a lake-house / rustic cabin, 2 BR / 1 BA on the main
+floor (Hemlock: master and loft bedroom) with an optional 1 BR / 1 BA apartment, storage
+and boat storage on the terrace level below. The cabin follows Satterwhite's Hemlock plan
+(inputs/reference/hemlock-photo-04.jpg; satterwhite-log-homes.com/floor-plans/hemlock),
+with the owner's reference renders (benchmark-cam02-sunset.jpg) for light and mood:
+- 30 x 42 ft main floor in honey-tone logs, steep shingle roof, ridge east-west, board-
+  and-batten gables; the glazed gable end faces the lake over an 8 x 30 ft gable porch
+  with an exposed truss; 6 ft (south, three dormers above) and 4 ft (north) side porches,
+  50 ft long; log posts with Y-brackets on concrete piers.
+- Terrace level partly built into the slope (grading.py): walk-out at the lake end, a
+  concrete back wall with 5 ft of earth against it on the road end, concrete side walls
+  stepping down toward the lake with stone veneer where they show; a covered terrace
+  porch under the gable porch; a boat / storage door on the north side.
+- Hemlock-style stairs tucked against the house: a switchback with a landing from the
+  gable porch down to the lake terrace, and a short run with a top landing from the
+  front porch to the entry yard, both alongside the south porch.
+- A flagstone patio with a stone fire pit, chairs and log benches on the lake terrace.
 
 Per lot (from out/derived/build_sites.geojson, written by scripts/build_sites.py):
-- `Pad_<lot>`: the graded surface (flat top 2 ft above mean ground, 4:1 fill slopes),
-  laid just above the terrain, with the site ground material.
-- `Cabin_<lot>`: the cabin, patio, fire pit, chairs, lamp post and lights.
-- `Drive_<lot>`: the gravel front drive from CR 3635 to the house.
+- `Pad_<lot>`: the finished-grade surface (lawn), laid just above the terrain; where the
+  grading cuts, the terrain's `Grade_<lot>` shape key lowers it.
+- `Cabin_<lot>`: the cabin, patio and lights. `Drive_<lot>`: the gravel front drive.
 
 Each lot is its own child collection of `Cabins`; render.py includes the lots a shot
-lists (`cabins: [Lot 5]` or `cabins: all`) and hides the trees build_baseline set aside
-on those lots' footprints (`Vegetation_BuildSite_<lot>`).
+lists (`cabins: [Lot 5]` or `cabins: all`), turns on their shape keys and hides the trees
+build_baseline set aside on their footprints (`Vegetation_BuildSite_<lot>`). Massing is
+illustrative; foundations, piers and walls need a structural engineer (and, on the area's
+expansive clay, a geotechnical report).
 """
 
 import json
@@ -28,25 +39,23 @@ import bpy
 import numpy as np
 from mathutils import Vector
 
+import grading
 import lrh
 
 import shapely  # noqa: E402
 from shapely.geometry import Point  # noqa: E402
 
 FT = 0.3048
-BODY = (42 * FT, 30 * FT)       # main floor E-W x N-S: 1,260 sq ft (Hemlock), 2 BR / 1 BA
-PORCH_DEPTH = 10 * FT           # lake deck across the west (glazed gable) end
-WRAP_DEPTH = 8 * FT             # front porch along the south side
-# Porches: 10 x 38 ft lake deck + 8 x 42 ft front porch = 716 sq ft (Hemlock: 723).
-GROUND_STOREY = 3.2             # pad top to upper floor (9.5 ft clear + framing)
-WALL = 2.9                      # upper-floor wall height to the eave
+BODY = grading.BODY             # main floor E-W x N-S: 1,260 sq ft (Hemlock)
+GROUND_STOREY = grading.GROUND_STOREY
+WALL = 2.9                      # main-floor wall height to the eave
 PITCH = 10 / 12                 # main roof (steep, as in the owner's reference photo)
 PORCH_PITCH = 4 / 12
 OVERHANG = 0.6
-EAST_MARGIN = 3.0               # house's east wall this far inside the pad's east edge
-PATIO_R = 3.0
-FILL_SKIRT = 2 * FT * 4         # 2 ft raise at 4:1
-LIFT = 0.03                     # pad surface above the terrain
+PATIO_R = 2.8
+LIFT = 0.03                     # finished-grade surface above the terrain
+RISER, TREAD, STAIR_W = 0.19, 0.27, 1.05
+FITS = {"standard"}             # the Hemlock footprint does not fit Lot 10's 60 x 40 ft pad
 
 
 def build_sites():
@@ -59,32 +68,29 @@ def build_sites():
         p = f["properties"]
         if "lot" in p:
             lots.setdefault(p["lot"], {})[p["kind"]] = (p, shapely.geometry.shape(f["geometry"]))
-    return {k: v for k, v in lots.items() if "pad" in v}
+    return {k: v for k, v in lots.items()
+            if "pad" in v and v["pad"][0].get("house") in FITS and "terrace_floor_m" in v["pad"][0]}
 
 
 def clearing(site):
-    """Footprint where no tree may stand once the lot is built: the graded pad, the
+    """Footprint where no tree may stand once the lot is built: the graded area, the
     patio and the front drive."""
     _, pad = site["pad"]
-    parts = [pad.buffer(FILL_SKIRT + 1.5, join_style="mitre"), patio_centre(pad).buffer(PATIO_R + 2)]
+    parts = [pad.buffer(8.0, join_style="mitre"), patio_centre(pad).buffer(PATIO_R + 2)]
     if "drive_front" in site:
         parts.append(site["drive_front"][1].buffer(3.5))
     return shapely.union_all(parts)
 
 
 def house_box(pad):
-    """Main-floor footprint: east wall EAST_MARGIN inside the pad, north wall 1 m inside,
-    leaving the front porch and its stair room on the pad's south side."""
-    x0, y0, x1, y1 = pad.bounds
-    xe = x1 - EAST_MARGIN
-    yn = min(y1 - 1.0, (y0 + y1) / 2 + BODY[1] / 2 + WRAP_DEPTH / 2)
-    return xe - BODY[0], yn - BODY[1], xe, yn
+    L = grading.layout(pad.bounds)
+    return L["xw"], L["y0"], L["xe"], L["y1"]
 
 
 def patio_centre(pad):
-    """Below the lake deck, south of the deck stair's landing."""
-    xw, y0, _, y1 = house_box(pad)
-    return Point(xw - PORCH_DEPTH - PATIO_R - 1.2, (y0 + y1) / 2 - 1.8)
+    """On the lake terrace, west of the gable porch."""
+    L = grading.layout(pad.bounds)
+    return Point(L["xp"] - PATIO_R - 0.5, (L["y0"] + L["y1"]) / 2 + 0.8)
 
 
 # --------------------------------------------------------------------------- materials
@@ -553,68 +559,135 @@ def dormer(m, xc, y_face, z_sill, roof_mat, bb, glow, dark, w=1.9):
         m.beam((xa, y_face - 0.2, z_eave - 0.15), (xc, y_face - 0.2, z_ridge), 0.06, 0.16, dark)
 
 
-def cabin(m, coll, pad, top, name):
-    """The 2 BR stilt cabin on its pad, after Satterwhite's Hemlock plan (owner reference:
-    inputs/reference/hemlock-photo-04.jpg; satterwhite-log-homes.com/floor-plans/hemlock).
 
-    Main floor 30 x 42 ft (1,260 sq ft, as the Hemlock) in honey-tone logs, ridge east-west
-    so the glazed gable end faces the lake (west). The main roof is carried 10 ft further
-    west over a full-width lake deck on tall posts with Y-brackets and an exposed timber
-    truss. A full-length front porch along the south side, under a lower-pitch extension
-    of the main roof with three gable dormers, wraps onto the lake deck. Below, the terrace
-    level (optional 1 BR / 1 BA apartment toward the lake, boat storage and parking behind
-    a garage door on the road end) in logs on a concrete stem wall. Stairs: the front
-    porch down to the drive side, and the lake deck down to the patio."""
-    logs, wood, dark, bb = log_siding(), timber(), trim(), board_batten()
-    roof, glow = shingles(), window_glow()
-    slab = plain("Cabin_Slab", (0.2, 0.19, 0.18), 0.9)
-    xw, y0, xe, y1 = house_box(pad)
+
+def concrete():
+    mat, tree = _mat("Cabin_Concrete")
+    if tree is None:
+        return mat
+    tc, _ = _coord(tree)
+    noise = tree.nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 2.5
+    tree.links.new(tc.outputs["Object"], noise.inputs["Vector"])
+    _finish(tree, _ramp(tree, noise.outputs["Fac"], (0.30, 0.29, 0.27), (0.42, 0.41, 0.38)), 0.9)
+    return mat
+
+
+def sloped_wall(m, xa, xb, y0, y1, za_lo, za_hi, zb_lo, zb_hi, mat):
+    """A wall slab from x = xa to xb, y0..y1 thick, with sloping bottom and top."""
+    m.hexa([(xa, y0, za_lo), (xb, y0, zb_lo), (xb, y1, zb_lo), (xa, y1, za_lo),
+            (xa, y0, za_hi), (xb, y0, zb_hi), (xb, y1, zb_hi), (xa, y1, za_hi)], mat)
+
+
+def pier_post(m, x, y, z_grade, z_top, wood, conc):
+    """A round log post on a concrete pier (pier 18 in above grade)."""
+    m.box(x - 0.2, y - 0.2, z_grade - 0.3, x + 0.2, y + 0.2, z_grade + 0.45, conc)
+    m.cylinder(x, y, z_grade + 0.45, z_top, 0.12, wood, n=12)
+
+
+def stair_flight(m, x0, y0, y1, z_top, n, direction, wood, z_floor):
+    """n treads in the lane y0..y1, starting at x0 at z_top and stepping down by RISER
+    each TREAD in `direction` (+1 east, -1 west). Returns the x at the bottom."""
+    for k in range(n):
+        zt = z_top - (k + 1) * RISER
+        xa = x0 + direction * k * TREAD
+        xb = xa + direction * (TREAD + 0.03)
+        m.box(min(xa, xb), y0, zt - 0.04, max(xa, xb), y1, zt, wood)
+    x_end = x0 + direction * n * TREAD
+    for y in (y0 + 0.03, y1 - 0.03):                               # stringers
+        m.beam((x0, y, z_top - 0.15), (x_end, y, max(z_floor, z_top - n * RISER) + 0.05), 0.06, 0.28, wood)
+    return x_end
+
+
+def stair_rail(m, x0, x1, y, z0, z1, wood):
+    """Sloping handrail with balusters from (x0, z0) to (x1, z1) along y."""
+    m.beam((x0, y, z0 + 0.95), (x1, y, z1 + 0.95), 0.07, 0.07, wood)
+    n = max(2, int(abs(x1 - x0) / 0.12))
+    for k in range(1, n):
+        t = k / n
+        x, z = x0 + (x1 - x0) * t, z0 + (z1 - z0) * t
+        m.box(x - 0.02, y - 0.02, z, x + 0.02, y + 0.02, z + 0.92, wood)
+
+
+def log_bench(m, cx, cy, z, face_deg, wood):
+    """A half-log bench on two log stumps (log accents round the fire)."""
+    h = math.radians(face_deg)
+    side = np.array([math.cos(h), -math.sin(h)])
+    for s in (-0.6, 0.6):
+        p = np.array([cx, cy]) + side * s
+        m.cylinder(p[0], p[1], z, z + 0.38, 0.17, wood, n=10)
+    a = np.array([cx, cy]) - side * 0.85
+    b = np.array([cx, cy]) + side * 0.85
+    m.beam((a[0], a[1], z + 0.45), (b[0], b[1], z + 0.45), 0.36, 0.14, wood)
+
+
+def cabin(m, coll, pad, T, E, grade, name):
+    """The Hemlock-style cabin on its walk-out site; `grade(x, y)` is finished grade."""
+    logs, wood, dark, bb, rock = log_siding(), timber(), trim(), board_batten(), stone()
+    roof, glow, conc = shingles(), window_glow(), concrete()
+    L = grading.layout(pad.bounds)
+    xw, xe, y0, y1, xp, ys, yn = (L[k] for k in ("xw", "xe", "y0", "y1", "xp", "ys", "yn"))
     cy = (y0 + y1) / 2
-    z0 = top
-    F = z0 + GROUND_STOREY
+    F = T + GROUND_STOREY
     eave = F + WALL
-    xp = xw - PORCH_DEPTH          # lake deck outer line (west)
-    ys = y0 - WRAP_DEPTH           # front porch outer line (south)
+    side_top = lambda x: T + (E - T) * (x - xw) / (xe - xw) + 0.45   # concrete above side grade
+    door0, door1 = xw + grading.BOAT_DOOR[0], xw + grading.BOAT_DOOR[1]
+    north_grade = lambda x: T if x <= door1 + 0.6 else T + (E - T) * (x - door1 - 0.6) / (xe - door1 - 0.6)
 
-    # Terrace level: logs on a concrete stem wall; apartment toward the lake, storage east.
-    m.box(xp - 0.3, ys - 0.3, z0 - 0.15, xe + 0.3, y1 + 0.3, z0 + 0.08, slab)
-    m.box(xw, y0, z0, xe, y1, z0 + 0.35, slab)
-    m.box(xw, y0, z0 + 0.35, xe, y1, F - 0.35, logs)
-    window(m, xw, cy, z0 + 0.1, 1.6, 2.1, "W", glow, dark)          # apartment French doors
-    for yy in (y0 + 1.6, y1 - 1.6):
-        window(m, xw, yy, z0 + 0.9, 1.4, 1.4, "W", glow, dark)
-    window(m, xw + 2.2, y0, z0 + 0.9, 1.2, 1.3, "S", glow, dark)
-    m.box(xe, cy - 1.5, z0 + 0.08, xe + 0.05, cy + 1.5, z0 + 2.45,
-          plain("Cabin_Garage_Door", (0.30, 0.17, 0.07), 0.6))      # boat / parking door
-    m.box(xe + 0.05, cy - 1.6, z0 + 2.45, xe + 0.1, cy + 1.6, z0 + 2.6, dark)
+    # ---- Terrace level (walk-out): concrete back and side walls, logs above.
+    m.box(xw, y0, T - 0.3, xe, y1, T + 0.02, conc)                       # slab
+    m.box(xp, y0, T - 0.2, xw, y1, T + 0.02, conc)                       # covered terrace porch
+    m.box(xe - 0.3, y0, T - 0.3, xe, y1, E + 0.45, conc)                 # back wall, buried 5 ft
+    m.box(xe - 0.3, y0, E + 0.45, xe, y1, F - 0.35, logs)
+    # South side wall: concrete stepping down to the lake, stone veneer where it shows.
+    sloped_wall(m, xw, xe - 0.3, y0, y0 + 0.3, T - 0.3, side_top(xw), T - 0.3, side_top(xe), conc)
+    sloped_wall(m, xw, xe, y0 - 0.08, y0, side_top(xw) - 0.5, side_top(xw), E - 0.05, side_top(xe), rock)
+    sloped_wall(m, xw, xe - 0.3, y0, y0 + 0.3, side_top(xw), F - 0.35, side_top(xe), F - 0.35, logs)
+    # North side wall, with the boat / storage door at the lake end.
+    nt = lambda x: north_grade(x) + 0.45
+    m.box(xw, y1 - 0.3, T - 0.3, door0, y1, nt(xw), conc)
+    m.box(xw, y1 - 0.3, nt(xw), door0, y1, F - 0.35, logs)
+    m.box(door0, y1 - 0.3, T + 2.5, door1, y1, F - 0.35, logs)
+    m.box(door0 + 0.05, y1 - 0.05, T + 0.02, door1 - 0.05, y1 + 0.02, T + 2.45,
+          plain("Cabin_Boat_Door", (0.30, 0.17, 0.07), 0.6))
+    for xa, xb in ((door1, door1 + 0.6), (door1 + 0.6, xe - 0.3)):
+        sloped_wall(m, xa, xb, y1 - 0.3, y1, T - 0.3, nt(xa), T - 0.3, nt(xb), conc)
+        sloped_wall(m, xa, xb, y1, y1 + 0.08, north_grade(xa) - 0.05, nt(xa), north_grade(xb) - 0.05, nt(xb), rock)
+        sloped_wall(m, xa, xb, y1 - 0.3, y1, nt(xa), F - 0.35, nt(xb), F - 0.35, logs)
+    # Lake (west) wall: logs on a stem, rec room glass doors, bedroom window.
+    m.box(xw, y0, T - 0.3, xw + 0.3, y1, T + 0.3, conc)
+    m.box(xw, y0, T + 0.3, xw + 0.3, y1, F - 0.35, logs)
+    window(m, xw, cy + 1.2, T + 0.05, 2.4, 2.1, "W", glow)          # sliding doors
+    window(m, xw, y0 + 1.7, T + 0.9, 1.4, 1.3, "W", glow)           # bedroom
+    window(m, xw, y1 - 1.2, T + 0.9, 1.2, 1.3, "W", glow)
+    window(m, xw + 2.4, y0, T + 1.0, 1.2, 1.2, "S", glow)           # bedroom, south
     m.box(xw - 0.1, y0 - 0.1, F - 0.35, xe + 0.1, y1 + 0.1, F, wood)  # floor beams
 
-    # Main floor: logs with corner posts.
+    # ---- Main floor: logs with corner posts; windows and doors.
     m.box(xw, y0, F, xe, y1, eave, logs)
     for x in (xw, xe):
         for y in (y0, y1):
             m.box(x - 0.15, y - 0.15, F, x + 0.15, y + 0.15, eave, logs)
     for yy in (y0 + 1.6, y1 - 1.6):                                  # lake wall: big glass
-        window(m, xw, yy, F + 0.5, 1.6, 1.9, "W", glow, dark)
-    window(m, xw, cy, F + 0.05, 1.8, 2.3, "W", glow, dark)
-    for xx in (xw + 2.0, xe - 4.5):                                  # front (south) wall
-        window(m, xx, y0, F + 0.7, 1.6, 1.5, "S", glow, dark)
-    window(m, (xw + xe) / 2 + 0.6, y0, F + 0.05, 1.6, 2.15, "S", glow, dark)  # front door
-    for xx in (xw + 3.0, (xw + xe) / 2, xe - 2.5):
-        window(m, xx, y1, F + 0.85, 1.0, 1.3, "N", glow, dark)
-    for yy in (cy - 2.2, cy + 2.2):
-        window(m, xe, yy, F + 0.85, 0.9, 1.3, "E", glow, dark)
+        window(m, xw, yy, F + 0.5, 1.6, 1.9, "W", glow)
+    window(m, xw, cy, F + 0.05, 1.8, 2.3, "W", glow)
+    for xx in (xw + 2.0, xw + 5.0):
+        window(m, xx, y0, F + 0.7, 1.4, 1.5, "S", glow)
+    window(m, xw + 8.0, y0, F + 0.05, 1.0, 2.15, "S", glow)         # front door
+    window(m, xe - 2.4, y0, F + 0.8, 1.2, 1.4, "S", glow)
+    for xx in (xw + 3.0, xe - 4.5, xe - 1.6):
+        window(m, xx, y1, F + 0.85, 1.0, 1.3, "N", glow)
+    window(m, xe, cy, F + 0.85, 0.9, 1.3, "E", glow)
 
-    # Main roof: ridge east-west, carried west over the lake deck; board-and-batten gables.
+    # ---- Roof: ridge east-west, carried over the gable porch; truss; side porch roofs.
     rise = (BODY[1] / 2) * PITCH
     ridge = eave + rise
-    for x, depth in ((xw, 0.15), (xe - 0.15, 0.15)):
-        m.gable_x(y0, y1, x, eave, ridge, depth, bb)
-    # Glazed lake gable: a tall centre window and stepped side windows (Hemlock back view).
-    window(m, xw, cy, eave + 0.15, 1.5, rise - 1.0, "W", glow, dark)
+    for x in (xw, xe - 0.15):
+        m.gable_x(y0, y1, x, eave, ridge, 0.15, bb)
+    window(m, xw, cy, eave + 0.15, 1.5, rise - 1.0, "W", glow)
     for dy in (-1.75, 1.75):
-        window(m, xw, cy + dy, eave + 0.15, 1.5, (rise - 1.0) * 0.55, "W", glow, dark)
-    window(m, xe, cy, eave + 0.4, 1.0, 1.1, "E", glow, dark)
+        window(m, xw, cy + dy, eave + 0.15, 1.5, (rise - 1.0) * 0.55, "W", glow)
+    window(m, xe, cy, eave + 0.4, 1.0, 1.1, "E", glow)
     th = 0.16
     drop = OVERHANG * PITCH
     xr0, xr1 = xp - 0.45, xe + OVERHANG
@@ -622,86 +695,100 @@ def cabin(m, coll, pad, top, name):
         za = eave - drop
         lo = [(xr0, ya, za), (xr1, ya, za), (xr1, cy, ridge), (xr0, cy, ridge)]
         m.hexa(lo + [(x, y, z + th) for x, y, z in lo], roof)
-    for x in (xr0, xr1 - 0.08):                                     # rake boards
+    for x in (xr0, xr1 - 0.08):
         for ya in (y0 - OVERHANG, y1 + OVERHANG):
             m.beam((x + 0.04, ya, eave - drop), (x + 0.04, cy, ridge), 0.08, 0.26, dark)
     m.beam((xr0, cy, ridge + th), (xr1, cy, ridge + th), 0.2, 0.08, dark)
-    # Exposed timber truss at the outer end of the lake deck roof.
     xt = xp + 0.1
-    m.beam((xt, y0 - 0.1, eave - 0.1), (xt, y1 + 0.1, eave - 0.1), 0.2, 0.3, wood)   # tie beam
-    m.beam((xt, cy, eave - 0.1), (xt, cy, ridge - 0.2), 0.2, 0.2, wood)              # king post
+    m.beam((xt, y0 - 0.1, eave - 0.1), (xt, y1 + 0.1, eave - 0.1), 0.2, 0.3, wood)
+    m.beam((xt, cy, eave - 0.1), (xt, cy, ridge - 0.2), 0.2, 0.2, wood)
     for ya in (y0, y1):
-        m.beam((xt, ya, eave), (xt, cy, ridge - 0.15), 0.2, 0.22, wood)              # rafters
+        m.beam((xt, ya, eave), (xt, cy, ridge - 0.15), 0.2, 0.22, wood)
         m.beam((xt, (ya + cy) / 2, eave - 0.1), (xt, cy, eave + rise * 0.55), 0.14, 0.14, wood)
-
-    # Front porch roof: a lower-pitch extension of the south slope; three dormers above.
     over = 0.4
-    z_lo = eave - drop - (WRAP_DEPTH - OVERHANG + over) * PORCH_PITCH
-    lo = [(xp - 0.45, y0 - OVERHANG, eave - drop), (xe + 0.3, y0 - OVERHANG, eave - drop),
-          (xe + 0.3, ys - over, z_lo), (xp - 0.45, ys - over, z_lo)]
-    m.hexa(lo + [(x, y, z + 0.12) for x, y, z in lo], roof)
+    porch_z = {}
+    for side, depth in (("S", grading.SOUTH_PORCH), ("N", grading.NORTH_PORCH)):
+        z_lo = eave - drop - (depth - OVERHANG + over) * PORCH_PITCH
+        porch_z[side] = z_lo - 0.05
+        if side == "S":
+            ya, yb = y0 - OVERHANG, ys - over
+        else:
+            ya, yb = y1 + OVERHANG, yn + over
+        lo = [(xr0, ya, eave - drop), (xe + 0.3, ya, eave - drop), (xe + 0.3, yb, z_lo), (xr0, yb, z_lo)]
+        m.hexa(lo + [(x, y, z + 0.12) for x, y, z in lo], roof)
     for k in range(3):
-        xc = xw + BODY[0] * (k + 1) / 4
-        dormer(m, xc, y0 + 0.35, eave + 0.15, roof, bb, glow, dark)
+        dormer(m, xw + BODY[0] * (k + 1) / 4, y0 + 0.35, eave + 0.15, roof, bb, glow, dark)
 
-    # Decks on tall square posts (concrete footings) with Y-brackets.
-    beam_z = z_lo - 0.05
-    m.box(xp, ys, F - 0.25, xw, y1, F, wood)                        # lake deck
-    m.box(xw, ys, F - 0.25, xe, y0, F, wood)                        # front porch
-    lake_posts = [(xp + 0.15, y) for y in np.linspace(ys + 0.15, y1 - 0.15, 5)]
-    front_posts = [(x, ys + 0.15) for x in np.linspace(xp + 0.15, xe - 0.15, 7)[1:]]
-    lake_top = lambda y: eave - 0.4 if y > y0 - 0.6 else beam_z   # under the porch roof at the corner
-    for (x, y), top_z in [(p, beam_z) for p in front_posts] + [(p, lake_top(p[1])) for p in lake_posts]:
-        m.box(x - 0.22, y - 0.22, z0, x + 0.22, y + 0.22, z0 + 0.3, slab)
-        m.box(x - 0.1, y - 0.1, z0 + 0.3, x + 0.1, y + 0.1, top_z, wood)
-    m.box(xp - 0.02, y0 - 0.6, eave - 0.4, xp + 0.3, y1 + 0.2, eave - 0.15, wood)   # lake beam
-    m.box(xp - 0.02, ys, beam_z - 0.25, xp + 0.3, y0 - 0.6, beam_z, wood)
-    m.box(xp, ys - 0.02, beam_z - 0.25, xe + 0.2, ys + 0.3, beam_z, wood)     # front beam
-    for x, y in lake_posts:
-        y_braces(m, x, y, lake_top(y), "y", wood)
-        y_braces(m, x, y, F - 0.25, "y", wood)                       # and under the deck
-    for x, y in front_posts:
-        y_braces(m, x, y, beam_z - 0.25, "x", wood)
-        y_braces(m, x, y, F - 0.25, "x", wood)
+    # ---- Porch decks on log posts and concrete piers, with Y-brackets.
+    m.box(xp, y0, F - 0.25, xw, y1, F, wood)                        # gable porch 8 x 30
+    m.box(xp, ys, F - 0.25, xe, y0, F, wood)                        # south porch 6 x 50
+    m.box(xp, y1, F - 0.25, xe, yn, F, wood)                        # north porch 4 x 50
+    xs = np.linspace(xp + 0.15, xe - 0.15, 8)
+    for side, yy in (("S", ys + 0.15), ("N", yn - 0.15)):
+        top = porch_z[side]
+        for x in xs:
+            pier_post(m, x, yy, grade(x, yy), top, wood, conc)
+            y_braces(m, x, yy, top - 0.25, "x", wood)
+        m.box(xp, yy - 0.15, top - 0.25, xe + 0.2, yy + 0.15, top, wood)
+    for y in np.linspace(y0 + 0.5, y1 - 0.5, 4):                    # gable porch posts
+        pier_post(m, xp + 0.15, y, T, eave - 0.4, wood, conc)
+        y_braces(m, xp + 0.15, y, eave - 0.4, "y", wood)
+        y_braces(m, xp + 0.15, y, F - 0.25, "y", wood)
+    m.box(xp - 0.02, y0 - 0.3, eave - 0.4, xp + 0.3, y1 + 0.3, eave - 0.15, wood)
     for y in (cy - 2.0, cy + 2.0):
-        point_light(f"{name}_Deck_{y:.0f}", (xp + 1.5, y, eave - 0.6), 40.0, (1.0, 0.7, 0.42), 0.08, coll)
-    m.box(xw + 4.0, y0 - 0.06, F + 1.6, xw + 4.2, y0, F + 1.9,
-          emitter("Cabin_Sconce", (1.0, 0.62, 0.3), 4.0))
+        point_light(f"{name}_Porch_{y:.0f}", (xp + 1.2, y, eave - 0.6), 40.0, (1.0, 0.7, 0.42), 0.08, coll)
+        point_light(f"{name}_Terrace_{y:.0f}", (xp + 1.2, y, F - 0.5), 30.0, (1.0, 0.7, 0.42), 0.08, coll)
 
-    # Railings (dense balusters) and the two stairs.
-    stair_w = 1.1
-    rise_total = F - z0
-    steps = int(math.ceil(rise_total / 0.19))
-    run = 0.27
-    sy0, sy1 = y1 - 0.4 - stair_w, y1 - 0.4                          # lake stair, north end
-    sx0, sx1 = xe - 0.4 - stair_w, xe - 0.4                          # front stair, east end
-    railing(m, (xp + 0.15, ys + 0.15), (xp + 0.15, sy0), F, wood, spacing=0.11)
-    railing(m, (xp + 0.15, sy1), (xp + 0.15, y1 - 0.1), F, wood, spacing=0.11)
-    railing(m, (xp + 0.15, y1 - 0.1), (xw, y1 - 0.1), F, wood, spacing=0.11)
-    railing(m, (xp + 0.15, ys + 0.15), (sx0, ys + 0.15), F, wood, spacing=0.11)
-    railing(m, (sx1, ys + 0.15), (xe - 0.1, ys + 0.15), F, wood, spacing=0.11)
-    railing(m, (xe - 0.1, ys + 0.15), (xe - 0.1, y0), F, wood, spacing=0.11)
-    for axis, a0, a1, edge in (("x", sy0, sy1, xp), ("y", sx0, sx1, ys)):
-        for k in range(steps):
-            zt = F - (k + 1) * rise_total / steps
-            d = edge - (k + 1) * run
-            if axis == "x":
-                m.box(d, a0, zt - 0.04, d + run + 0.03, a1, zt, wood)
-            else:
-                m.box(a0, d, zt - 0.04, a1, d + run + 0.03, zt, wood)
-        end = edge - steps * run
-        for a in (a0 + 0.03, a1 - 0.03):
-            p = (lambda d, z: (d, a, z)) if axis == "x" else (lambda d, z: (a, d, z))
-            m.beam(p(edge, F - 0.1), p(end, z0 + 0.1), 0.06, 0.28, wood)
-            m.beam(p(edge, F + 0.95), p(end, z0 + 0.95), 0.07, 0.07, wood)
-            for k in range(1, steps):
-                q = p(edge - k * run, F - k * rise_total / steps)
-                m.box(q[0] - 0.02, q[1] - 0.02, q[2], q[0] + 0.02, q[1] + 0.02, q[2] + 0.9, wood)
-    return F
+    # ---- Stairs, Hemlock style: tucked alongside the south porch.
+    # Lake stair: top landing off the porch, a flight east along the porch, a mid landing,
+    # and a flight back west down to the lake terrace.
+    inner = (ys - 0.05 - STAIR_W, ys - 0.05)
+    outer = (inner[0] - 0.05 - STAIR_W, inner[0] - 0.05)
+    xl0 = xp + 0.1                                                  # top landing west edge
+    xa0 = xl0 + STAIR_W
+    g_bottom = grade(xl0 + 0.5, outer[0] + 0.5)
+    risers = max(2, int(math.ceil((F - g_bottom) / RISER)))
+    n1 = risers // 2
+    m.box(xl0, inner[0], F - 0.25, xa0, inner[1], F, wood)          # top landing
+    xa1 = stair_flight(m, xa0, inner[0], inner[1], F, n1, +1, wood, g_bottom)
+    z_mid = F - n1 * RISER
+    m.box(xa1, outer[0], z_mid - 0.25, xa1 + STAIR_W, inner[1], z_mid, wood)   # mid landing
+    n2 = int(math.ceil((z_mid - g_bottom) / RISER))
+    xb1 = stair_flight(m, xa1, outer[0], outer[1], z_mid, n2, -1, wood, g_bottom)
+    for x, y, zt in ((xl0 + 0.1, inner[0] + 0.1, F - 0.25), (xa0 - 0.1, inner[0] + 0.1, F - 0.25),
+                     (xa1 + 0.1, outer[0] + 0.1, z_mid - 0.25), (xa1 + STAIR_W - 0.1, outer[0] + 0.1, z_mid - 0.25),
+                     (xa1 + STAIR_W - 0.1, inner[1] - 0.1, z_mid - 0.25)):
+        pier_post(m, x, y, grade(x, y), zt + 1.2, wood, conc)
+    stair_rail(m, xa1 + STAIR_W, xb1, outer[0] + 0.03, z_mid, g_bottom, wood)
+    stair_rail(m, xa0, xa1, inner[0] - 0.02, F, z_mid, wood)
+    railing(m, (xl0, inner[0] + 0.03), (xl0, inner[1]), F, wood, spacing=0.11)
+    railing(m, (xa1 + STAIR_W - 0.03, outer[0]), (xa1 + STAIR_W - 0.03, inner[1]), z_mid, wood, spacing=0.11)
+    # Front stair: a top landing at the porch's east end and a short run east to the yard.
+    xf0 = xe - 3.7
+    g_front = grade(xe + 0.3, inner[0] + 0.5)
+    nf = max(2, int(math.ceil((F - g_front) / RISER)))
+    m.box(xf0, inner[0], F - 0.25, xf0 + STAIR_W, inner[1], F, wood)
+    xf1 = stair_flight(m, xf0 + STAIR_W, inner[0], inner[1], F, nf, +1, wood, g_front)
+    stair_rail(m, xf0 + STAIR_W, xf1, inner[0] + 0.03, F, g_front, wood)
+    railing(m, (xf0, inner[0] + 0.03), (xf0 + STAIR_W, inner[0] + 0.03), F, wood, spacing=0.11)
+    for x in (xf0 + 0.1, xf0 + STAIR_W - 0.1):
+        pier_post(m, x, inner[0] + 0.1, grade(x, inner[0] + 0.1), F - 0.25, wood, conc)
+
+    # ---- Porch railings, with openings onto the two stair landings.
+    yr = ys + 0.15
+    for a, b in ((xp + 0.15, xl0), (xa0, xf0), (xf0 + STAIR_W, xe - 0.1)):
+        if b - a > 0.2:
+            railing(m, (a, yr), (b, yr), F, wood, spacing=0.11)
+    railing(m, (xp + 0.15, ys + 0.15), (xp + 0.15, yn - 0.15), F, wood, spacing=0.11)
+    railing(m, (xp + 0.15, yn - 0.15), (xe - 0.1, yn - 0.15), F, wood, spacing=0.11)
+    for yy in (ys + 0.15, yn - 0.15):
+        railing(m, (xe - 0.1, yy), (xe - 0.1, y0 if yy < y0 else y1), F, wood, spacing=0.11)
+    m.box(xw + 8.7, y0 - 0.06, F + 1.6, xw + 8.9, y0, F + 1.9, emitter("Cabin_Sconce", (1.0, 0.62, 0.3), 4.0))
+    return {"stair_bottom": (xb1, (outer[0] + outer[1]) / 2, g_bottom)}
 
 
 def lawn():
-    """Mown lawn around the house: fine colour variation and a little bump."""
+    """Mown lawn on the graded site: fine colour variation and a little bump."""
     mat, tree = _mat("Cabin_Lawn")
     if tree is None:
         return mat
@@ -719,70 +806,116 @@ def lawn():
     return mat
 
 
-def pad_surface(name, pad, top, sampler, ground_mat, coll):
-    """The graded pad: flat top, 4:1 slopes down to natural ground, 0.5 m grid."""
-    region = pad.buffer(FILL_SKIRT + 2.0, join_style="mitre")
-    x0, y0, x1, y1 = region.bounds
-    xs = np.arange(x0, x1 + 0.01, 0.5)
-    ys = np.arange(y0, y1 + 0.01, 0.5)
-    verts, idx = [], {}
-    for j, y in enumerate(ys):
-        for i, x in enumerate(xs):
-            g = sampler(x, y)
-            if g is None:
-                continue
-            d = pad.distance(Point(x, y))
-            z = max(top - d / 4.0, g) + LIFT
-            idx[(i, j)] = len(verts)
-            verts.append((x, y, z))
+REGION = 12.0   # graded area reaches at most this far past the pad (5 ft berm at 4:1 = 6 m)
+LAWN = 9.0      # mown lawn apron round the pad
+
+
+def site_surface(name, pad, T, E, sampler, mat, coll):
+    """Finished grade over the pad and its slopes, 0.5 m grid, just above the terrain."""
+    x0, y0, x1, y1 = pad.buffer(REGION).bounds
+    xs, ys = np.arange(x0, x1 + 0.01, 0.5), np.arange(y0, y1 + 0.01, 0.5)
+    gx, gy = np.meshgrid(xs, ys)
+    nat = np.array([sampler(x, y) if sampler(x, y) is not None else np.nan
+                    for x, y in zip(gx.ravel(), gy.ravel())])
+    fin = grading.design(gx.ravel(), gy.ravel(), np.nan_to_num(nat), pad.bounds, T, E)
+    # A clean mown apron: everything within LAWN of the pad (covers the 4:1 / 3:1 slopes).
+    keep = ~np.isnan(nat) & shapely.contains_xy(pad.buffer(LAWN), gx.ravel(), gy.ravel())
+    idx = -np.ones(gx.size, int)
+    idx[keep] = np.arange(keep.sum())
+    # Feather the lift over the apron's outer metre so its edge meets the terrain.
+    edge = shapely.distance(shapely.points(gx.ravel(), gy.ravel()), pad)
+    lift = 0.004 + (LIFT - 0.004) * np.clip(LAWN - edge, 0.0, 1.0)
+    verts = np.column_stack([gx.ravel(), gy.ravel(), fin + lift])[keep]
+    nx = len(xs)
     faces = []
     for j in range(len(ys) - 1):
-        for i in range(len(xs) - 1):
-            q = [(i, j), (i + 1, j), (i + 1, j + 1), (i, j + 1)]
-            if all(k in idx for k in q):
-                faces.append(tuple(idx[k] for k in q))
+        for i in range(nx - 1):
+            q = [j * nx + i, j * nx + i + 1, (j + 1) * nx + i + 1, (j + 1) * nx + i]
+            if all(idx[k] >= 0 for k in q):
+                faces.append(tuple(int(idx[k]) for k in q))
     mesh = bpy.data.meshes.new(name)
-    mesh.from_pydata(verts, [], faces)
+    mesh.from_pydata(verts.tolist(), [], faces)
     for p in mesh.polygons:
         p.use_smooth = True
-    mesh.materials.append(ground_mat)
+    mesh.materials.append(mat)
     obj = bpy.data.objects.new(name, mesh)
     coll.objects.link(obj)
     return obj
 
 
-def build(root, sampler, ribbon, sampler_class, ground_mat, record):
-    """All lots' pads, cabins, patios and drives, one child collection per lot."""
+def grade_terrain(terrain, key, pad, T, E):
+    """Shape key on the site terrain lowering it where the grading cuts (so the finished
+    surface shows); render.py turns it on with the lot's cabin."""
+    mesh = terrain.data
+    co = np.empty(len(mesh.vertices) * 3, np.float32)
+    mesh.vertices.foreach_get("co", co)
+    co = co.reshape(-1, 3)
+    x0, y0, x1, y1 = pad.buffer(REGION).bounds
+    sel = (co[:, 0] > x0) & (co[:, 0] < x1) & (co[:, 1] > y0) & (co[:, 1] < y1)
+    fin = grading.design(co[sel, 0], co[sel, 1], co[sel, 2], pad.bounds, T, E)
+    lower = fin < co[sel, 2] - 0.01                      # cut only
+    if not lower.any():
+        return 0
+    if mesh.shape_keys is None:
+        terrain.shape_key_add(name="Basis", from_mix=False)
+    sk = terrain.shape_key_add(name=f"Grade_{key}", from_mix=False)
+    new = co.copy()
+    z = new[sel, 2]
+    z[lower] = fin[lower] - 0.06
+    new[sel, 2] = z
+    sk.data.foreach_set("co", new.ravel())
+    sk.value = 0.0
+    return int(lower.sum())
+
+
+def build(root, sampler, ribbon, sampler_class, terrain, record):
+    """All lots' graded sites, cabins, patios and drives, one child collection per lot."""
     sites = build_sites()
     gravel = plain("Cabin_Drive_Gravel", (0.24, 0.22, 0.19), 0.95)
     built = {}
     for label, site in sorted(sites.items(), key=lambda kv: int(kv[0].split()[-1])):
         props, pad = site["pad"]
-        top = props["top_m"]
+        T, E = props["terrace_floor_m"], props["back_grade_m"]
         key = label.replace(" ", "_")
         coll = bpy.data.collections.new(f"Cabin_{key}")
         root.children.link(coll)
-        surface = pad_surface(f"Pad_{key}", pad, top, sampler, lawn(), coll)
+        surface = site_surface(f"Pad_{key}", pad, T, E, sampler, lawn(), coll)
+        lowered = grade_terrain(terrain, key, pad, T, E)
+        on_site = sampler_class([surface])
+
+        def grade(x, y, on_site=on_site, pad=pad, T=T, E=E):
+            z = on_site(x, y)
+            if z is not None:
+                return z - LIFT
+            nat = sampler(x, y)
+            return float(grading.design([x], [y], [nat or T], pad.bounds, T, E)[0])
+
         m = Mesh()
-        cabin(m, coll, pad, top + LIFT, key)
+        info = cabin(m, coll, pad, T, E, grade, key)
         pc = patio_centre(pad)
-        on_pad = sampler_class([surface])
-        pz = on_pad(pc.x, pc.y) or top
+        pz = grade(pc.x, pc.y) + LIFT
         m.cylinder(pc.x, pc.y, pz - 0.05, pz + 0.04, PATIO_R, flagstone(), n=40)
         fire_pit(m, coll, pc.x, pc.y, pz + 0.04, stone(), timber(),
                  emitter("Cabin_Fire", (1.0, 0.22, 0.02), 10.0), key)
-        for k, a in enumerate((40, 130, 220, 310)):  # chairs around the fire, facing it
-            r = 1.85
-            cxy = (pc.x + r * math.sin(math.radians(a)), pc.y + r * math.cos(math.radians(a)))
+        for a in (60, 300):                                         # chairs facing the fire
+            cxy = (pc.x + 1.85 * math.sin(math.radians(a)), pc.y + 1.85 * math.cos(math.radians(a)))
             chair(m, cxy[0], cxy[1], pz + 0.04, (a + 180) % 360, timber())
-        xw, y0, _, _ = house_box(pad)
-        lamp_post(m, coll, pc.x + PATIO_R + 0.6, pc.y - PATIO_R + 0.4, pz, plain(
-            "Cabin_Iron", (0.03, 0.03, 0.03), 0.4, 0.8), emitter("Cabin_Lantern", (1.0, 0.62, 0.3), 4.0), key)
+        for a in (160, 220):                                        # log benches
+            cxy = (pc.x + 1.9 * math.sin(math.radians(a)), pc.y + 1.9 * math.cos(math.radians(a)))
+            log_bench(m, cxy[0], cxy[1], pz + 0.04, (a + 180) % 360, timber())
+        sx, sy, sz = info["stair_bottom"]
+        lamp_post(m, coll, sx - 0.8, sy - 0.6, sz, plain("Cabin_Iron", (0.03, 0.03, 0.03), 0.4, 0.8),
+                  emitter("Cabin_Lantern", (1.0, 0.62, 0.3), 4.0), key)
         m.object(f"Cabin_{key}", coll)
         if "drive_front" in site:
             line = list(site["drive_front"][1].coords)
-            ribbon(f"Drive_{key}", line, 3.6, lambda x, y: max(filter(None, (on_pad(x, y), sampler(x, y)))),
+            ribbon(f"Drive_{key}", line, 3.6,
+                   lambda x, y, on_site=on_site: on_site(x, y) if on_site(x, y) is not None else sampler(x, y),
                    0.06, gravel, coll)
-        built[label] = {"pad_top_m": top, "patio": [round(pc.x, 1), round(pc.y, 1)]}
-    record("cabins_built", len(built) >= 9, lots=sorted(built), basis="out/derived/build_sites.geojson")
+        built[label] = {"terrace_floor_m": T, "back_grade_m": E, "terrain_vertices_cut": lowered,
+                        "patio": [round(pc.x, 1), round(pc.y, 1)]}
+    skipped = sorted(set(f"Lot {i}" for i in range(1, 11)) - set(built))
+    record("cabins_built", len(built) >= 9, lots=sorted(built), skipped=skipped,
+           note="the Hemlock footprint does not fit Lot 10's 60 x 40 ft pad",
+           basis="out/derived/build_sites.geojson")
     return built

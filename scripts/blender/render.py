@@ -222,6 +222,11 @@ def apply_cabins(lots):
         for child in layer.children["Vegetation"].children:
             if child.name.startswith("Vegetation_BuildSite_"):
                 child.exclude = child.name.removeprefix("Vegetation_BuildSite_") in keys
+    terrain = bpy.data.objects.get("Site_Terrain_1m")
+    if terrain is not None and terrain.data.shape_keys is not None:
+        for block in terrain.data.shape_keys.key_blocks:
+            if block.name.startswith("Grade_"):
+                block.value = 1.0 if block.name.removeprefix("Grade_") in keys else 0.0
 
 
 def caption(src, dst, text):

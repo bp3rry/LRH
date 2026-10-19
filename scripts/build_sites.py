@@ -51,6 +51,9 @@ from shapely.ops import unary_union  # noqa: E402
 
 from kwik_ortho import Surface  # noqa: E402
 
+sys.path.insert(0, str(ROOT / "scripts/blender"))
+import grading  # noqa: E402
+
 FT = 0.3048
 PAD = (80 * FT, 60 * FT)          # east-west, north-south (m)
 SMALL_PAD = (60 * FT, 40 * FT)    # 2 BR / 1 BA lake house for constrained lots
@@ -186,6 +189,65 @@ def place_septic(poly, pad, cy, corridor=None, SEPTIC=SEPTIC):
     return None, None
 
 
+def walkout(dtm, pad, septic):
+    """Partly buried terrace level (Hemlock walk-out) on this pad, with the gravity check
+    from the downstairs bath to the septic tank.
+
+    Terrace floor T is 6 in above the natural grade along the lake (west) wall; the road
+    (east) end is backfilled BURY against a concrete back wall. With that much earth on
+    the road side, a tank there would need its inlet BURY + about 1.5 ft deep, so the tank
+    goes beside the house at the lake end of the south side yard, where finished grade is
+    close to the floor. The bath drains to it by gravity; the tank's pump chamber doses the
+    drip field in front of the house, as TCEQ drip systems require anyway. The depth a
+    front tank would need is reported for comparison."""
+    L = grading.layout(pad.bounds)
+    ys = np.linspace(L["y0"], L["y1"], 12)
+    g_w = float(np.mean(dtm(np.full(12, L["xw"]), ys)))
+    g_e = float(np.mean(dtm(np.full(12, L["xe"]), ys)))
+    T = g_w + 0.5 * FT
+    E = T + grading.BURY
+    bath = (L["xw"] + 4.5, L["y0"] + 2.0)
+
+    def inlet_depth(tank):
+        g = float(dtm(np.array([tank[0]]), np.array([tank[1]]))[0])
+        ground = float(grading.design([tank[0]], [tank[1]], [g], pad.bounds, T, E)[0])
+        run = abs(tank[0] - bath[0]) + abs(tank[1] - bath[1])
+        depth = max(ground - (T - DRAIN_BELOW_FLOOR - run * SEWER_SLOPE), 1.0 * FT)
+        return depth, ground, run
+
+    side = (L["xw"] + 1.5, L["ys"] - 1.6)                 # south side yard, lake end
+    front = (L["xe"] + 1.5, min(max(septic.centroid.y, L["y0"] + 1.0), L["y1"] - 1.0))
+    depth, ground, run = inlet_depth(side)
+    front_depth, _, _ = inlet_depth(front)
+    # Cut and fill against natural ground, 0.5 m grid over the pad and its slopes.
+    x0, y0, x1, y1 = pad.buffer(25.0).bounds
+    gx, gy = np.meshgrid(np.arange(x0, x1, 0.5), np.arange(y0, y1, 0.5))
+    nat = dtm(gx.ravel(), gy.ravel())
+    fin = grading.design(gx.ravel(), gy.ravel(), nat, pad.bounds, T, E)
+    fill = float(np.clip(fin - nat, 0, None).sum() * 0.25)
+    cut = float(np.clip(nat - fin, 0, None).sum() * 0.25)
+    extra = max(0.0, depth - MAX_INLET_DEPTH)
+    return {
+        "terrace_floor_m": round(T, 3), "terrace_floor_ft": round(T / FT, 1),
+        "main_floor_ft": round((T + grading.GROUND_STOREY) / FT, 1),
+        "back_grade_m": round(E, 3), "back_grade_ft": round(E / FT, 1),
+        "natural_at_lake_wall_ft": round(g_w / FT, 1), "natural_at_back_wall_ft": round(g_e / FT, 1),
+        "natural_fall_across_house_ft": round((g_e - g_w) / FT, 1),
+        "back_wall_buried_ft": round(grading.BURY / FT, 1),
+        "front_porch_above_back_yard_ft": round((T + grading.GROUND_STOREY - E) / FT, 1),
+        "fill_cu_yd": round(fill / CU_YD), "cut_cu_yd": round(cut / CU_YD),
+        "front_tank_inlet_depth_ft": round(front_depth / FT, 1),
+        "gravity": {"tank_local_m": [round(side[0], 1), round(side[1], 1)],
+                    "tank_position": "beside the house, south side yard at the lake end; "
+                                     "pump-dosed drip field in front",
+                    "sewer_run_ft": round(run / FT),
+                    "ground_at_tank_ft": round(ground / FT, 1),
+                    "tank_inlet_depth_ft": round(depth / FT, 1),
+                    "ground_floor_bath_ok": extra == 0.0,
+                    "extra_pad_height_ft": round(extra / FT, 1)},
+    }
+
+
 def analyse():
     dtm = Surface(DERIVED / "lidar_dtm_1m.tif")
     trees = np.load(DERIVED / "lidar_trees.npz")["trees"]
@@ -299,33 +361,8 @@ def analyse():
             drive_back = LineString([(pad.bounds[0], cy), hp.coords[0]])
         septic_conflict = septic is not None and drive_front.buffer(DRIVE_W / 2).intersects(septic)
 
-        # Gravity check: ground-floor bath -> tank. The tank sits between the house and the
-        # drip area, past the fill toe on the drip area's side of the pad.
-        gravity = None
-        if septic is not None:
-            sx, sy = septic.centroid.x, septic.centroid.y
-            if septic.bounds[0] >= pad.bounds[2]:          # front (road side)
-                tank = (pad.bounds[2] + TANK_OFF_PAD, min(max(sy, pad.bounds[1] + 3), pad.bounds[3] - 3))
-                wall = (pad.bounds[2] - 3.0, tank[1])
-            elif sy < pad.bounds[1]:                          # south of the pad
-                tank = (sx, pad.bounds[1] - TANK_OFF_PAD)
-                wall = (sx, cy - 6.0)
-            else:                                             # north of the pad
-                tank = (sx, pad.bounds[3] + TANK_OFF_PAD)
-                wall = (sx, cy + 6.0)
-            run = math.dist(tank, wall)
-            ground = max(float(dtm(np.array([tank[0]]), np.array([tank[1]]))[0]),
-                         top - shapely.distance(Point(tank), pad) / SLOPE)
-            inlet = top - DRAIN_BELOW_FLOOR - run * SEWER_SLOPE
-            depth = max(ground - inlet, 1.0 * FT)  # at least 1 ft of cover over the inlet
-            extra = max(0.0, depth - MAX_INLET_DEPTH)
-            gravity = {"tank_local_m": [round(tank[0], 1), round(tank[1], 1)],
-                       "sewer_run_ft": round(run / FT),
-                       "ground_at_tank_ft": round(ground / FT, 1),
-                       "fall_floor_to_tank_ground_ft": round((top - ground) / FT, 1),
-                       "tank_inlet_depth_ft": round(depth / FT, 1),
-                       "ground_floor_bath_ok": extra == 0.0,
-                       "extra_pad_height_ft": round(extra / FT, 1)}
+        walk = walkout(dtm, pad, septic) if septic is not None else None
+        gravity = walk["gravity"] if walk else None
 
         rows.append({
             "lot": label, "fits": True, "siting": tier,
@@ -341,13 +378,17 @@ def analyse():
             "graded_area_sq_ft": round(fill_area / (FT * FT)),
             "septic_placement": side,
             "gravity_ground_floor_bath": gravity,
+            "walkout": {k: v for k, v in walk.items() if k != "gravity"} if walk else None,
             "septic_fits": septic is not None, "septic_clear_of_drive": not septic_conflict,
             "front_drive_ft": round(drive_front.length / FT),
             "rear_drive_to_access_road_ft": round(drive_back.length / FT) if drive_back else None,
         })
         props = {"lot": label}
         features.append({"type": "Feature", "properties": {**props, "kind": "pad", "house": htype["name"],
-                                                         "top_m": round(top, 2)},
+                                                         "top_m": round(top, 2),
+                                                         **({"terrace_floor_m": walk["terrace_floor_m"],
+                                                             "back_grade_m": walk["back_grade_m"]}
+                                                            if walk else {})},
                          "geometry": mapping(pad)})
         features.append({"type": "Feature", "properties": {**props, "kind": "envelope"},
                          "geometry": mapping(envelope)})

@@ -838,7 +838,7 @@ def main():
                                  lotplan.MOWN_CORRIDOR_M / 2), scrub_zone=parcels,
                        build_sites={label: cabins.clearing(site) for label, site in sites.items()})
     colls["Cabins"] = collection("Cabins")
-    cabins.build(colls["Cabins"], sampler, ribbon, HeightSampler, terrain.data.materials[0], record)
+    cabins.build(colls["Cabins"], sampler, ribbon, HeightSampler, terrain, record)
     (out / "lot_sites.json").write_text(json.dumps(
         {label: {**site, "shore_circle": shore_access[label]["circle"]}
          for label, site in lotplan.house_sites(context).items()}, indent=1) + "\n")
