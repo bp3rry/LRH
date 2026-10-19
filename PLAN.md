@@ -507,6 +507,24 @@ label is not yet tied to NAVD88 (see the PTM notes), so treat freeboard as appro
 - **Style:** massing and any later house models follow the cabin style, for example
   board-and-batten or log-look siding, metal roofs, deep covered porches and timber or
   stone piers under the raised floor.
+- **Cabin design reference (owner, 19 Oct 2026):** Satterwhite Log Homes' Hemlock plan
+  (`inputs/reference/hemlock-photo-04.jpg`;
+  satterwhite-log-homes.com/floor-plans/hemlock). The Hemlock has a 1,260 sq ft main
+  floor, 723 sq ft of porches, a 379 sq ft loft and a walk-out terrace level. The model in
+  `scripts/blender/cabins.py` follows it:
+  - a 30 × 42 ft main floor in honey-tone logs;
+  - a steep (10:12) brown-grey shingle roof with its ridge east–west, so the glazed gable
+    faces the lake;
+  - the roof carried over a 10 ft lake deck on posts with Y-brackets and an exposed truss;
+  - an 8 ft front porch along the south side with three gable dormers, and dark green
+    window trim;
+  - a terrace level with the optional apartment toward the lake and a boat or parking door
+    on the road end;
+  - stairs from the front porch and from the lake deck down to the patio.
+
+  Test shots: `C5_cabin_sunset` (lake gable, open lot) and `C2_cabin_sunset` (wooded
+  clearing, lidar trees). On Lot 10's 60 × 40 ft pad the lake deck overhangs the pad's west
+  edge by about 0.5 m, so Lot 10 needs a shorter variant before it is shown.
 
 **Gravity check for a downstairs bath.** The septic is in front, on the road side, where
 the ground is higher. So the check is whether a ground-floor bath on the raised pad can
