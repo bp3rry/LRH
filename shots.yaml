@@ -95,6 +95,17 @@ shots:
     shoreline: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
 
+  check_build_sites:
+    kind: check
+    description: North-up base for the Phase 2d build-site plan (overlays drawn by scripts/plot_build_sites.py).
+    camera: {type: ortho, center: [0.0, 35.0], ortho_scale_m: 600.0}
+    haze_visibility_km: 0
+    resolution: [1200, 1500]
+    sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
+    cleared_ground: grassed
+    redline: true
+    collections: [Terrain, Water, Roads, Vegetation]
+
   # --- Phase 2 hero stills (marketing: no overlays or docks; caption added) ---
   H1_arrival:
     kind: marketing

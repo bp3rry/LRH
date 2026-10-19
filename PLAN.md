@@ -385,7 +385,7 @@ lake views from each lot.
 - Ducks, herons and egrets wait for the close-range quality pass: they are sub-pixel at
   aerial distances.
 
-### Phase 2d — Build sites, grading and shared access (planned; owner direction, 19 Oct 2026)
+### Phase 2d — Build sites, grading and shared access (in progress; owner direction, 19 Oct 2026)
 
 **Goal.** Identify a raised build site on each lot. The home site goes in the front
 (CR 3635) half, where the ground is highest, as is usual for properties in the area. The
@@ -492,9 +492,43 @@ label is not yet tied to NAVD88 (see the PTM notes), so treat freeboard as appro
      garage, clearly labelled as illustrative;
    - all with the §7 caption.
 
-**Still open:** setbacks from CR 3635 and the lot lines; bedroom count for septic sizing;
-whether the access road and utility corridor appear in marketing images or stay
-planning-only.
+**Owner parameters for initial review (19 Oct 2026)**
+- Setbacks: 100 ft from CR 3635, 20 ft from side lot lines.
+- House: 3 BR / 1 bath upstairs, plus a roughed-in 1 BR / 1 bath apartment on the ground
+  floor with boat storage and parking. Septic is sized for 4 bedrooms: about 300 gal/day
+  under TCEQ Chapter 285. The drip area is a 100 × 50 ft (5,000 sq ft) placeholder on
+  clay soils until a soil evaluation is done.
+- The front drive may reach the front or the side of the house. A second, rear entry from
+  the shared access road allows drive-through with a boat or RV.
+
+**First results (`scripts/build_sites.py`, plan drawn by `scripts/plot_build_sites.py`
+→ `out/2026-10-19/build_sites_plan.png`)**
+
+| Lot | Site | Natural ground | Pad top | Fill, in place / loose | Trees on pad | Septic | Front drive | Rear drive |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Secluded wooded site (inside the road setback) | 565.9 ft | 567.9 ft | 653 / 751 cu yd | 2 | Road side, north half | 463 ft | none |
+| 2 | Road-side half | 574.3 ft | 576.3 ft | 491 / 565 cu yd | 8 | Beside house | 165 ft | 43 ft |
+| 3 | Road-side half | 578.6 ft | 580.6 ft | 547 / 629 cu yd | 0 | Beside house | 141 ft | 59 ft |
+| 4 | Road-side half | 579.2 ft | 581.2 ft | 465 / 535 cu yd | 0 | Beside house | 140 ft | 72 ft |
+| 5 | Road-side half | 580.3 ft | 582.3 ft | 498 / 572 cu yd | 0 | Road side, north half | 175 ft | 58 ft |
+| 6 | Road-side half | 584.9 ft | 586.9 ft | 559 / 642 cu yd | 0 | Beside house | 141 ft | 123 ft |
+| 7 | Road-side half | 587.3 ft | 589.3 ft | 622 / 716 cu yd | 0 | Road side, north half | 159 ft | 114 ft |
+| 8 | Road-side half | 588.9 ft | 590.9 ft | 596 / 685 cu yd | 0 | Road side, north half | 183 ft | 107 ft |
+| 9 | Road-side half | 589.2 ft | 591.2 ft | 704 / 810 cu yd | 2 | Road side, north half | 187 ft | 100 ft |
+| 10 | **No site fits** | — | — | — | — | — | — | — |
+
+- The access road runs about 1,645 ft from Lot 2 south to the CR 3640 route, with the
+  utility corridor along it. Each septic area has a sewer stub toward the corridor.
+- **Lot 10:** as a corner lot, 100 ft setbacks from both CR 3635 and CR 3640 leave less
+  than the 60 ft pad depth. Options: a smaller side-street setback on CR 3640 (to be
+  confirmed with Fannin County), or reshaping the lot in the planned re-survey.
+- **Lot 1:** the road-side half is inside the setback or too low, so the secluded wooded
+  site is kept.
+- Fill per lot is 465–704 cu yd in place. Cut is assumed to come from levelling elsewhere
+  on the same lot; no cut/fill surface has been modelled yet.
+
+**Still open:** the Lot 10 setback; whether the access road and utility corridor appear in
+marketing images or stay planning-only.
 
 ### Phase 2c — Owner drone capture (planned)
 
@@ -571,7 +605,7 @@ owner was told its natural range at Lake Ralph Hall is unconfirmed).
 | Optional: UTRWD's official georeferenced water-surface classification map, to replace the digitized draft LSMP outline | Owner (request from UTRWD) | Before publication |
 | Lots 9–10 dock: **deferred by owner (14 Oct 2026), no action**; options remain share 7–8, fishing dock, or re-pair | Owner | When the owner revisits |
 | Lot 1 driveway access (connects at the mapped CR 3635 end) | Owner | Phase 2b finals |
-| Phase 2d: setbacks from CR 3635 and lot lines; bedroom count (septic sizing); whether the access road and utility corridor appear in marketing | Owner | Before Phase 2d renders |
+| Phase 2d: Lot 10 corner setback on CR 3640 (no 60 × 80 ft pad fits with 100 ft from both roads); whether the access road and utility corridor appear in marketing | Owner (County for setback) | Before Phase 2d renders |
 | **LSMP Water Quality Protection Criteria vs Lake Zoning OSSF exception:** would ten ~2 ac lots on septic still qualify for individual Shoreline Use Permits (docks, paths, shoreline clearing)? | Owner, UTRWD, attorney | **Before platting** |
 | Drone capture: Part 107 or a contracted pilot for marketing imagery; UTRWD permission to fly over its land and water (docs/DRONE-CAPTURE-PLAN.md §3) | Owner | Before Phase 2c flights |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |
