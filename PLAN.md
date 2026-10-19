@@ -829,6 +829,18 @@ is shown.
 - **Shown:** the Lot 5 cabin and a simple 5 ft gravel walking path. The path runs from the
   lake stair to the lot's shoreline access path (owner: simple walking paths for now).
 
+**R0 preview and R1 baseline (19 Oct 2026):**
+- **Animatic:** `out/2026-10-19/video/low_preview/flyover_low_preview.mp4`, 1,136 frames
+  in 35 min.
+- **R1 benchmark sheet:** `out/2026-10-19/video/benchmarks_R1.jpg`, frames 45, 545, 1463,
+  1699, 2152, 2917 and 3360. At 1080p and 64 samples they take 10–21 s a frame, about
+  the same as the oval flyover.
+- **Gaps to fix in R2–R4:**
+  - the ground is flat and blotchy near the camera (B3, B4, B6, B7);
+  - near trees have blob crowns (B2, B3, B6);
+  - the sky is a clear gradient with no clouds;
+  - views into the sun (B6, B7) are washed out.
+
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
 One illustrative cabin (Lot 5) is enough for now. A later phase renders a cabin on every
