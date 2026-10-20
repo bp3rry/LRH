@@ -289,3 +289,14 @@ shots:
     ground_detail: true
     cabins: [Lot 5]
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_cabin5_terraces:
+    kind: check
+    description: Lot 5 garden and orchard terraces stepping down toward the lake below the fire-pit terrace (owner, 20 Oct 2026).
+    camera: {position: [2.0, -14.0, 190.0], target: [27.0, 11.0, 178.0], lens_mm: 26.0}
+    sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
+    haze_visibility_km: 0
+    cleared_ground: grassed
+    ground_detail: true
+    cabins: [Lot 5]
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]

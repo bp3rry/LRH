@@ -933,6 +933,40 @@ is shown.
   - two fruiting pears flanking the drive, with red fall colour.
 - **Check shots:** `check_cabin5_walkout` and `check_cabin5_parking`.
 
+**Owner changes, 20 Oct 2026 (afternoon):**
+- **Finishes:** the log, timber, board-and-batten and trim stain is darker and redder. The
+  driveway gravel is darker, and the decomposed granite is browner.
+- **Garden and orchard terraces** below the fire-pit terrace (`build_sites.py`
+  `garden_terraces()`, `grading.terrace_boxes()`, `cabins.py` `garden_terraces()`):
+  - **Layout:** up to three terraces about 20 ft wide (east–west) across the walk-out
+    terrace's north–south extent. They run as far west as 2 m short of the access-road
+    corridor, at most 18 m.
+  - **Steps:** each drops 1–2 ft toward natural grade, with a dry-stacked stone retaining
+    wall, stone steps on the centre line, and a decomposed-granite centre path.
+  - **Upper terrace:** a vegetable garden of four cedar raised beds with fall greens and
+    peppers, plus pumpkins.
+  - **Lower terraces:** a small fruit orchard (peach/apple) in two rows about 11 ft apart,
+    with mulch rings.
+  - **Shore path:** the gravel walk to the shoreline now starts from the bottom terrace.
+  - **Option B:** lake-side drip fields keep 3 m clear of the terraces and still fit on
+    Lots 2–10.
+  - Check shot: `check_cabin5_terraces`.
+
+| Lot | Terraces | Levels (ft) |
+| --- | --- | --- |
+| 1 | 3 | 564.6, 563.6, 562.6 |
+| 2 | 0 | — |
+| 3 | 1 | 576.6 |
+| 4 | 2 | 578.0, 577.0 |
+| 5 | 2 | 579.5, 578.5 |
+| 6 | 3 | 581.4, 580.4, 579.4 |
+| 7 | 3 | 586.5, 584.6, 582.6 |
+| 8 | 3 | 589.0, 587.5, 585.9 |
+| 9 | 3 | 589.9, 588.0, 586.0 |
+| 10 | 1 | 580.7 |
+
+  Lot 2 has no room (the access road passes close); Lot 1 (no corridor) has three.
+
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
 One illustrative cabin (Lot 5) is enough for now. A later phase renders a cabin on every

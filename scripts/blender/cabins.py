@@ -74,7 +74,7 @@ def build_sites():
             if "pad" in v and v["pad"][0].get("house") in FITS and "terrace_floor_m" in v["pad"][0]}
 
 
-def walk_line(label, pad):
+def walk_line(label, pad, terraces=None):
     """Owner, 19 Oct 2026: a simple 5 ft gravel walking path from the lake stair down
     across the lake-side acre to the lot's shoreline access path (which starts at the
     lot's west line; lotplan.shoreline_layout). Later phases add the full site network."""
@@ -87,6 +87,8 @@ def walk_line(label, pad):
     L = grading.layout(pad.bounds)
     fx, fy = L["firepit"]
     start = (fx - grading.FIREPIT_R + 0.3, fy)      # from the fire-pit circle's lake edge
+    if terraces:                                    # or down the terraces' centre path
+        start = (min(t[0] for t in terraces) + 0.2, (terraces[0][1] + terraces[0][3]) / 2)
     mid = (start[0] - 10.0, start[1])
     return shapely.geometry.LineString([start, mid, tuple(west)])
 
@@ -94,11 +96,12 @@ def walk_line(label, pad):
 def clearing(site, label=None):
     """Footprint where no tree may stand once the lot is built: the graded area, the
     patio and the front drive."""
-    _, pad = site["pad"]
-    parts = [pad.buffer(8.0, join_style="mitre"), patio_centre(pad).buffer(PATIO_R + 2)]
+    props, pad = site["pad"]
+    parts = [graded_area(pad, props.get("terraces")).buffer(8.0, join_style="mitre"),
+             patio_centre(pad).buffer(PATIO_R + 2)]
     if "drive_front" in site:
         parts.append(site["drive_front"][1].buffer(3.5))
-    walk = walk_line(label, pad) if label else None
+    walk = walk_line(label, pad, props.get("terraces")) if label else None
     if walk is not None:
         parts.append(walk.buffer(2.5))
     return shapely.union_all(parts)
@@ -181,7 +184,7 @@ def _grain(tree, tc, scale=(0.4, 0.4, 6.0), detail=6.0):
 
 
 def log_siding():
-    """Horizontal 8 in round logs, natural honey pine (owner reference photo)."""
+    """Horizontal 8 in round logs in a dark red-brown stain (owner, 20 Oct 2026)."""
     mat, tree = _mat("Cabin_Log_Siding")
     if tree is None:
         return mat
@@ -191,7 +194,7 @@ def log_siding():
     profile = _math(tree, "SQRT", _math(tree, "MAXIMUM", _math(tree, "SUBTRACT", 1.0,
                                                                  _math(tree, "POWER", u, 2.0)), 0.0))
     grain = _grain(tree, tc, scale=(0.15, 0.15, 4.0))
-    wood = _ramp(tree, grain, (0.42, 0.22, 0.07), (0.60, 0.35, 0.12), 0.3, 0.7)
+    wood = _ramp(tree, grain, (0.17, 0.055, 0.022), (0.29, 0.10, 0.04), 0.3, 0.7)
     seam = _ramp(tree, profile, (0.12, 0.1, 0.09), (1, 1, 1), 0.05, 0.5)
     mix = tree.nodes.new("ShaderNodeMix")
     mix.data_type = "RGBA"
@@ -209,7 +212,7 @@ def timber():
         return mat
     tc, _ = _coord(tree)
     grain = _grain(tree, tc, scale=(1.0, 1.0, 8.0))
-    _finish(tree, _ramp(tree, grain, (0.38, 0.19, 0.06), (0.55, 0.31, 0.11), 0.3, 0.75),
+    _finish(tree, _ramp(tree, grain, (0.15, 0.05, 0.02), (0.26, 0.09, 0.035), 0.3, 0.75),
             0.55, grain, 0.004, 0.4)
     return mat
 
@@ -220,7 +223,7 @@ def trim():
         return mat
     tc, _ = _coord(tree)
     grain = _grain(tree, tc, scale=(1.0, 1.0, 8.0))
-    _finish(tree, _ramp(tree, grain, (0.16, 0.075, 0.025), (0.26, 0.13, 0.045)), 0.5)
+    _finish(tree, _ramp(tree, grain, (0.06, 0.022, 0.01), (0.11, 0.04, 0.018)), 0.5)
     return mat
 
 
@@ -234,7 +237,7 @@ def board_batten():
     f = _math(tree, "FRACT", _math(tree, "DIVIDE", along, 0.3048))
     batten = _math(tree, "LESS_THAN", _math(tree, "ABSOLUTE", _math(tree, "SUBTRACT", f, 0.5)), 0.08)
     grain = _grain(tree, tc, scale=(4.0, 4.0, 0.3))
-    _finish(tree, _ramp(tree, grain, (0.40, 0.21, 0.07), (0.56, 0.32, 0.11), 0.3, 0.75), 0.6,
+    _finish(tree, _ramp(tree, grain, (0.16, 0.055, 0.022), (0.27, 0.095, 0.038), 0.3, 0.75), 0.6,
             batten, 0.015, 0.6)
     return mat
 
@@ -659,12 +662,12 @@ def _speckled(name, c0, c1, scale, bump_dist):
 
 def gravel():
     """Crushed-limestone driveway gravel (owner, 20 Oct 2026)."""
-    return _speckled("Cabin_Gravel", (0.15, 0.13, 0.105), (0.34, 0.31, 0.26), 38.0, 0.012)
+    return _speckled("Cabin_Gravel", (0.085, 0.075, 0.062), (0.22, 0.20, 0.17), 38.0, 0.012)
 
 
 def decomposed_granite():
     """Decomposed granite, the fire-pit area (owner's preference)."""
-    return _speckled("Cabin_DG", (0.30, 0.20, 0.10), (0.48, 0.35, 0.19), 90.0, 0.004)
+    return _speckled("Cabin_DG", (0.19, 0.11, 0.055), (0.33, 0.20, 0.10), 90.0, 0.004)
 
 
 def mulch():
@@ -1050,6 +1053,76 @@ def landscaping(m, L, info, grade, drive, key):
             pear(m, x, y, grade(x, y), rng)
 
 
+def raised_bed(m, x0, y0, x1, y1, z, rng):
+    """A cedar raised bed, 18 in tall, with a fall crop: greens in rows, a few peppers."""
+    cedar = plain("Cabin_Cedar_Bed", (0.26, 0.12, 0.06), 0.7)
+    t, h = 0.05, 0.45
+    for a, b, c, d in ((x0, y0, x1, y0 + t), (x0, y1 - t, x1, y1), (x0, y0, x0 + t, y1), (x1 - t, y0, x1, y1)):
+        m.box(a, b, z, c, d, z + h, cedar)
+    m.box(x0 + t, y0 + t, z, x1 - t, y1 - t, z + h - 0.05, plain("Cabin_Soil", (0.045, 0.03, 0.02), 0.95))
+    greens = _foliage("garden_greens", (0.05, 0.13, 0.03))
+    for yy in np.arange(y0 + 0.3, y1 - 0.2, 0.4):
+        for xx in np.linspace(x0 + 0.3, x1 - 0.3, 3):
+            m.blob(xx, yy, z + h, 0.17, 0.17, 0.13, greens, seg=7, rings=5, rng=rng)
+            if rng.random() < 0.12:
+                m.blob(xx + 0.08, yy, z + h + 0.12, 0.05, 0.05, 0.06,
+                       plain("Cabin_Pepper", (0.55, 0.04, 0.02), 0.4), seg=6, rings=4)
+
+
+def fruit_tree(m, x, y, z, rng):
+    """A young orchard tree (peach / apple): short trunk, open vase crown, some fall colour."""
+    m.cylinder(x, y, z, z + 0.7, 0.08, plain("Cabin_Fruit_Bark", (0.07, 0.05, 0.04), 0.8), n=8)
+    m.cylinder(x, y, z, z + 0.05, 0.9, mulch(), n=16)
+    leaf, fall = _foliage("orchard_leaf", (0.07, 0.11, 0.03)), _foliage("orchard_fall", (0.30, 0.17, 0.03))
+    for k in range(7):
+        a = 2 * math.pi * k / 7 + rng.uniform(-0.3, 0.3)
+        r = rng.uniform(0.5, 1.0)
+        m.blob(x + math.cos(a) * r, y + math.sin(a) * r, z + rng.uniform(1.8, 2.6), 0.75, 0.75, 0.6,
+               fall if rng.random() < 0.3 else leaf, rng=rng)
+    if rng.random() < 0.5:                                          # apples
+        for k in range(10):
+            a, r = rng.uniform(0, 2 * math.pi), rng.uniform(0.9, 1.5)
+            m.blob(x + math.cos(a) * r, y + math.sin(a) * r, z + rng.uniform(1.6, 2.5), 0.05, 0.05, 0.05,
+                   plain("Cabin_Apple", (0.45, 0.04, 0.03), 0.4), seg=6, rings=4)
+
+
+def garden_terraces(m, terraces, T, key):
+    """Owner, 20 Oct 2026: terraces stepping down toward the lake below the fire-pit
+    terrace - low dry-stacked stone walls with steps on the centre line, a vegetable
+    garden of cedar raised beds on the upper terrace, a small fruit orchard below, and a
+    decomposed-granite path down the middle."""
+    rng = random.Random(f"terraces-{key}")
+    rock, dg = stone(), decomposed_granite()
+    prev = T
+    for i, (x0, y0, x1, y1, level) in enumerate(terraces):
+        cy = (y0 + y1) / 2
+        drop = prev - level
+        gap = 0.7
+        for ya, yb in ((y0, cy - gap), (cy + gap, y1)):                       # retaining wall
+            m.box(x1 - 0.4, ya, level - 0.3, x1, yb, prev + 0.12, rock)
+        n = max(1, int(math.ceil(drop / 0.17)))
+        for k in range(n):                                                    # stone steps
+            zt = prev - (k + 1) * drop / n
+            m.box(x1 - 0.4 - (k + 1) * 0.35, cy - gap, zt - 0.1, x1 - 0.4 - k * 0.35 + 0.02, cy + gap, zt + 0.02,
+                  rock)
+        m.box(x0, cy - gap, level - 0.03, x1 - 0.4 - n * 0.35, cy + gap, level + 0.03, dg)  # DG path
+        if i == 0:                                                            # vegetable garden
+            for bx in (x0 + 1.0, x1 - 0.4 - n * 0.35 - 2.2):
+                for by in (y0 + 1.2, cy + gap + 0.8):
+                    raised_bed(m, bx, by, bx + 1.2, by + min(3.0, cy - gap - y0 - 2.0), level, rng)
+            for k in range(5):                                                # pumpkins
+                px, py = x0 + rng.uniform(0.4, 1.0), y1 - rng.uniform(0.5, 2.5)
+                m.blob(px, py, level + 0.14, 0.18, 0.18, 0.14, plain("Cabin_Pumpkin", (0.55, 0.16, 0.02), 0.5),
+                       seg=10, rings=6)
+        else:                                                                 # orchard
+            for tx in (x0 + 1.5, x1 - 0.4 - n * 0.35 - 1.3):          # two rows, ~11 ft apart
+                for ty in np.arange(y0 + 1.6, y1 - 0.8, 3.4):
+                    if abs(ty - cy) < 1.5:
+                        continue
+                    fruit_tree(m, tx, ty, level, rng)
+        prev = level
+
+
 def lawn():
     """Mown lawn on the graded site: fine colour variation and a little bump."""
     mat, tree = _mat("Cabin_Lawn")
@@ -1086,20 +1159,27 @@ REGION = 12.0   # graded area reaches at most this far past the pad (5 ft berm a
 LAWN = 9.0      # mown lawn apron round the pad
 
 
-def site_surface(name, pad, T, E, sampler, mat, coll):
-    """Finished grade over the pad and its slopes, 0.5 m grid, just above the terrain."""
-    x0, y0, x1, y1 = pad.buffer(REGION).bounds
+def graded_area(pad, terraces=()):
+    """The pad plus any garden / orchard terraces."""
+    return shapely.union_all([pad] + [shapely.box(*t[:4]) for t in terraces or ()])
+
+
+def site_surface(name, pad, T, E, sampler, mat, coll, terraces=()):
+    """Finished grade over the pad, terraces and slopes, 0.5 m grid, above the terrain."""
+    area = graded_area(pad, terraces)
+    x0, y0, x1, y1 = area.buffer(REGION).bounds
     xs, ys = np.arange(x0, x1 + 0.01, 0.5), np.arange(y0, y1 + 0.01, 0.5)
     gx, gy = np.meshgrid(xs, ys)
     nat = np.array([sampler(x, y) if sampler(x, y) is not None else np.nan
                     for x, y in zip(gx.ravel(), gy.ravel())])
-    fin = grading.design(gx.ravel(), gy.ravel(), np.nan_to_num(nat), pad.bounds, T, E)
-    # A clean mown apron: everything within LAWN of the pad (covers the 4:1 / 3:1 slopes).
-    keep = ~np.isnan(nat) & shapely.contains_xy(pad.buffer(LAWN), gx.ravel(), gy.ravel())
+    fin = grading.design(gx.ravel(), gy.ravel(), np.nan_to_num(nat), pad.bounds, T, E, terraces)
+    # A clean mown apron: everything within LAWN of the pad (covers the 4:1 / 3:1 slopes)
+    # and of the terraces.
+    keep = ~np.isnan(nat) & shapely.contains_xy(area.buffer(LAWN), gx.ravel(), gy.ravel())
     idx = -np.ones(gx.size, int)
     idx[keep] = np.arange(keep.sum())
     # Feather the lift over the apron's outer metre so its edge meets the terrain.
-    edge = shapely.distance(shapely.points(gx.ravel(), gy.ravel()), pad)
+    edge = shapely.distance(shapely.points(gx.ravel(), gy.ravel()), area)
     lift = 0.004 + (LIFT - 0.004) * np.clip(LAWN - edge, 0.0, 1.0)
     verts = np.column_stack([gx.ravel(), gy.ravel(), fin + lift])[keep]
     nx = len(xs)
@@ -1119,16 +1199,16 @@ def site_surface(name, pad, T, E, sampler, mat, coll):
     return obj
 
 
-def grade_terrain(terrain, key, pad, T, E):
+def grade_terrain(terrain, key, pad, T, E, terraces=()):
     """Shape key on the site terrain lowering it where the grading cuts (so the finished
     surface shows); render.py turns it on with the lot's cabin."""
     mesh = terrain.data
     co = np.empty(len(mesh.vertices) * 3, np.float32)
     mesh.vertices.foreach_get("co", co)
     co = co.reshape(-1, 3)
-    x0, y0, x1, y1 = pad.buffer(REGION).bounds
+    x0, y0, x1, y1 = graded_area(pad, terraces).buffer(REGION).bounds
     sel = (co[:, 0] > x0) & (co[:, 0] < x1) & (co[:, 1] > y0) & (co[:, 1] < y1)
-    fin = grading.design(co[sel, 0], co[sel, 1], co[sel, 2], pad.bounds, T, E)
+    fin = grading.design(co[sel, 0], co[sel, 1], co[sel, 2], pad.bounds, T, E, terraces)
     lower = fin < co[sel, 2] - 0.01                      # cut only
     if not lower.any():
         return 0
@@ -1155,16 +1235,17 @@ def build(root, sampler, ribbon, sampler_class, terrain, record):
         key = label.replace(" ", "_")
         coll = bpy.data.collections.new(f"Cabin_{key}")
         root.children.link(coll)
-        surface = site_surface(f"Pad_{key}", pad, T, E, sampler, lawn(), coll)
-        lowered = grade_terrain(terrain, key, pad, T, E)
+        terraces = props.get("terraces", [])
+        surface = site_surface(f"Pad_{key}", pad, T, E, sampler, lawn(), coll, terraces)
+        lowered = grade_terrain(terrain, key, pad, T, E, terraces)
         on_site = sampler_class([surface])
 
-        def grade(x, y, on_site=on_site, pad=pad, T=T, E=E):
+        def grade(x, y, on_site=on_site, pad=pad, T=T, E=E, terraces=terraces):
             z = on_site(x, y)
             if z is not None:
                 return z - LIFT
             nat = sampler(x, y)
-            return float(grading.design([x], [y], [nat or T], pad.bounds, T, E)[0])
+            return float(grading.design([x], [y], [nat or T], pad.bounds, T, E, terraces)[0])
 
         m = Mesh()
         info = cabin(m, coll, pad, T, E, grade, key)
@@ -1194,13 +1275,14 @@ def build(root, sampler, ribbon, sampler_class, terrain, record):
         lamp_post(m, coll, sx - 1.6, sy - 1.0, sz, plain("Cabin_Iron", (0.03, 0.03, 0.03), 0.4, 0.8),
                   emitter("Cabin_Lantern", (1.0, 0.62, 0.3), 4.0), key)
         landscaping(m, Lc, info, grade, site.get("drive_front", (None, None))[1], key)
+        garden_terraces(m, terraces, T, key)
         m.object(f"Cabin_{key}", coll)
         if "drive_front" in site:
             line = list(site["drive_front"][1].coords)
             ribbon(f"Drive_{key}", line, 3.6,
                    lambda x, y, on_site=on_site: on_site(x, y) if on_site(x, y) is not None else sampler(x, y),
                    0.06, drive_gravel, coll)
-        walk = walk_line(label, pad)
+        walk = walk_line(label, pad, terraces)
         if walk is not None:
             path_mat = drive_gravel
             ribbon(f"Walk_{key}", list(walk.coords), 5 * FT,

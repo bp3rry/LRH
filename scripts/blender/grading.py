@@ -72,8 +72,21 @@ def nearest_flat(x, y, pad_bounds):
     return best[0], best[1], best[2]
 
 
-def design(x, y, ground, pad_bounds, T, E):
-    """Finished grade at points (x, y) given natural `ground` there (arrays)."""
+def terrace_boxes(pad_bounds, room_m, n_max=3, width=6.0):
+    """Garden / orchard terraces stepping down toward the lake below the fire-pit terrace
+    (owner, 20 Oct 2026): up to n_max boxes, each about `width` m east-west, across the
+    terrace's north-south extent. Levels are set by the caller from the natural grade."""
+    tf = layout(pad_bounds)["terrace_flat"]
+    n = int(min(n_max, room_m // 5.0))
+    if n < 1:
+        return []
+    w = min(width, room_m / n)
+    return [(tf[0] - (i + 1) * w, tf[1], tf[0] - i * w, tf[3]) for i in range(n)]
+
+
+def design(x, y, ground, pad_bounds, T, E, terraces=()):
+    """Finished grade at points (x, y) given natural `ground` there (arrays). `terraces`:
+    [(x0, y0, x1, y1, level)] flat steps below the walk-out terrace."""
     x, y, ground = (np.asarray(a, float) for a in (x, y, ground))
     L = layout(pad_bounds)
     cx, cy, d = nearest_flat(x, y, pad_bounds)             # nearest point on the graded area
@@ -86,6 +99,12 @@ def design(x, y, ground, pad_bounds, T, E):
     edge = np.where(ramp, T + (E - T) * tr, edge)
     house = (cx >= L["xw"]) & (cx <= L["xe"]) & (cy >= L["y0"]) & (cy <= L["y1"])
     edge = np.where(house, T, edge)                         # terrace slab
+    for b0, b1, b2, b3, level in terraces or ():           # garden / orchard terraces
+        qx, qy = np.clip(x, b0, b2), np.clip(y, b1, b3)
+        dq = np.hypot(x - qx, y - qy)
+        use = dq < d
+        edge = np.where(use, level, edge)
+        d = np.where(use, dq, d)
     out = np.where(ground > edge, np.minimum(ground, edge + d / CUT_SLOPE),
                    np.maximum(ground, edge - d / FILL_SLOPE))
     return np.where(d == 0, edge, out)

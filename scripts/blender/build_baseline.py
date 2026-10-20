@@ -947,11 +947,11 @@ def main():
     aprons = {}
     for label, site in sites.items():
         _, pad = site["pad"]
-        parts = [pad.buffer(cabins.LAWN),
+        parts = [cabins.graded_area(pad, site["pad"][0].get("terraces")).buffer(cabins.LAWN),
                  box(*cabins.grading.layout(pad.bounds)["carport"]).buffer(1.0)]
         if "drive_front" in site:
             parts.append(site["drive_front"][1].buffer(3.0))
-        walk = cabins.walk_line(label, pad)
+        walk = cabins.walk_line(label, pad, site["pad"][0].get("terraces"))
         if walk is not None:
             parts.append(walk.buffer(1.5))
         aprons[label] = unary_union(parts)

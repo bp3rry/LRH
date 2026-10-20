@@ -195,7 +195,29 @@ def place_septic(poly, pad, cy, corridor=None, SEPTIC=SEPTIC):
     return None, None
 
 
-def walkout(dtm, pad, septic):
+def garden_terraces(dtm, pad, T, corridor):
+    """Garden / orchard terraces below the fire-pit terrace (owner, 20 Oct 2026), as far
+    west as 2 m short of the access-road corridor (at most 18 m). Each step drops 1-2 ft
+    toward the natural grade, so the stone walls stay low."""
+    tf = grading.layout(pad.bounds)["terrace_flat"]
+    ys = np.linspace(tf[1], tf[3], 9)
+    east = -1e9
+    for y in ys:
+        hit = corridor.intersection(LineString([(-1e4, y), (1e4, y)]))
+        if not hit.is_empty and hit.bounds[2] < tf[0]:
+            east = max(east, hit.bounds[2])
+    room = min(18.0, tf[0] - (east + 2.0)) if east > -1e8 else 18.0
+    out, prev = [], T
+    for b in grading.terrace_boxes(pad.bounds, room):
+        gx, gy = np.meshgrid(np.linspace(b[0], b[2], 6), np.linspace(b[1], b[3], 6))
+        nat = float(np.mean(dtm(gx.ravel(), gy.ravel())))
+        level = float(np.clip(nat + 0.1, prev - 0.6, prev - 0.3))
+        out.append([round(v, 3) for v in b] + [round(level, 3)])
+        prev = level
+    return out
+
+
+def walkout(dtm, pad, septic, corridor=None):
     """Partly buried terrace level (Hemlock walk-out) on this pad, with the gravity check
     from the downstairs bath to the septic tank.
 
@@ -212,11 +234,12 @@ def walkout(dtm, pad, septic):
     g_e = float(np.mean(dtm(np.full(12, L["xe"]), ys)))
     T = g_w + 0.5 * FT
     E = T + grading.BURY
+    terr = garden_terraces(dtm, pad, T, corridor) if corridor is not None else []
     bath = (L["xw"] + 4.5, L["y0"] + 2.0)
 
     def inlet_depth(tank):
         g = float(dtm(np.array([tank[0]]), np.array([tank[1]]))[0])
-        ground = float(grading.design([tank[0]], [tank[1]], [g], pad.bounds, T, E)[0])
+        ground = float(grading.design([tank[0]], [tank[1]], [g], pad.bounds, T, E, terr)[0])
         run = abs(tank[0] - bath[0]) + abs(tank[1] - bath[1])
         depth = max(ground - (T - DRAIN_BELOW_FLOOR - run * SEWER_SLOPE), 1.0 * FT)
         return depth, ground, run
@@ -229,7 +252,7 @@ def walkout(dtm, pad, septic):
     x0, y0, x1, y1 = pad.buffer(25.0).bounds
     gx, gy = np.meshgrid(np.arange(x0, x1, 0.5), np.arange(y0, y1, 0.5))
     nat = dtm(gx.ravel(), gy.ravel())
-    fin = grading.design(gx.ravel(), gy.ravel(), nat, pad.bounds, T, E)
+    fin = grading.design(gx.ravel(), gy.ravel(), nat, pad.bounds, T, E, terr)
     fill = float(np.clip(fin - nat, 0, None).sum() * 0.25)
     cut = float(np.clip(nat - fin, 0, None).sum() * 0.25)
     extra = max(0.0, depth - MAX_INLET_DEPTH)
@@ -243,6 +266,8 @@ def walkout(dtm, pad, septic):
         "front_porch_above_back_yard_ft": round((T + grading.GROUND_STOREY - E) / FT, 1),
         "fill_cu_yd": round(fill / CU_YD), "cut_cu_yd": round(cut / CU_YD),
         "front_tank_inlet_depth_ft": round(front_depth / FT, 1),
+        "terraces": terr,
+        "terrace_levels_ft": [round(t[4] / FT, 1) for t in terr],
         "gravity": {"tank_local_m": [round(side[0], 1), round(side[1], 1)],
                     "tank_position": "beside the house, south side yard at the lake end; "
                                      "pump-dosed drip field in front",
@@ -317,7 +342,9 @@ def lake_option(dtm, label, poly, pad, walk, corridor, edge):
                .difference(corridor.buffer(OSSF_LINE_SETBACK))
                .difference(easement.buffer(OSSF_LINE_SETBACK))
                .difference(rec_area.buffer(OSSF_LINE_SETBACK))
-               .difference(pad.buffer(9.0)))
+               .difference(pad.buffer(9.0))
+               .difference(shapely.union_all([box(*t[:4]) for t in walk.get("terraces", [])] or
+                                             [Polygon()]).buffer(3.0)))
     # Keep the lot number and acreage label (lotplan.build_redline: 18 m in from the west
     # line near the centroid latitude) readable on the plan.
     cy_l = poly.centroid.y
@@ -484,7 +511,7 @@ def analyse():
             drive_back = LineString([(pad.bounds[0], cy), hp.coords[0]])
         septic_conflict = septic is not None and drive_front.buffer(DRIVE_W / 2).intersects(septic)
 
-        walk = walkout(dtm, pad, septic) if septic is not None else None
+        walk = walkout(dtm, pad, septic, corridor) if septic is not None else None
         gravity = walk["gravity"] if walk else None
         option_b, lake = lake_option(dtm, label, poly, pad, walk, corridor, edge) if walk else ([], None)
 
@@ -512,7 +539,8 @@ def analyse():
         features.append({"type": "Feature", "properties": {**props, "kind": "pad", "house": htype["name"],
                                                          "top_m": round(top, 2),
                                                          **({"terrace_floor_m": walk["terrace_floor_m"],
-                                                             "back_grade_m": walk["back_grade_m"]}
+                                                             "back_grade_m": walk["back_grade_m"],
+                                                             "terraces": walk["terraces"]}
                                                             if walk else {})},
                          "geometry": mapping(pad)})
         features.append({"type": "Feature", "properties": {**props, "kind": "envelope"},
