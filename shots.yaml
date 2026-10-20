@@ -246,6 +246,7 @@ shots:
     haze_visibility_km: 25
     cleared_ground: grassed
     cabins: [Lot 5]
+    ground_detail: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
 
   check_cabin5_back:
@@ -261,10 +262,11 @@ shots:
   check_cabin5_parking:
     kind: check
     description: Phase 2d check. Lot 5 covered parking at the end of the drive, off the cabin's south-east corner, with the concrete walks to the front stair and along the south side yard to the lake stair.
-    camera: {position: [78.0, -14.0, 186.0], target: [55.0, 7.0, 180.5], lens_mm: 28.0}
+    camera: {position: [72.0, -10.0, 185.0], target: [55.0, 8.0, 180.0], lens_mm: 28.0}
     sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
     haze_visibility_km: 0
     cleared_ground: grassed
+    ground_detail: true
     cabins: [Lot 5]
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
 
@@ -275,4 +277,15 @@ shots:
     sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
     haze_visibility_km: 0
     cleared_ground: grassed
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_cabin5_walkout:
+    kind: check
+    description: Lot 5 walk-out (lake) end close up - terrace patio under the gable porch, fire-pit area, lake stair, landscaping.
+    camera: {position: [22.0, -12.0, 186.0], target: [41.0, 8.0, 179.5], lens_mm: 28.0}
+    sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
+    haze_visibility_km: 0
+    cleared_ground: grassed
+    ground_detail: true
+    cabins: [Lot 5]
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]

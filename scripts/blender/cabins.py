@@ -33,6 +33,7 @@ expansive clay, a geotechnical report).
 
 import json
 import math
+import random
 
 import bmesh
 import bpy
@@ -43,6 +44,7 @@ import grading
 import lrh
 
 import shapely  # noqa: E402
+import shapely.ops  # noqa: E402
 from shapely.geometry import Point  # noqa: E402
 
 FT = 0.3048
@@ -52,7 +54,7 @@ WALL = 2.9                      # main-floor wall height to the eave
 PITCH = 10 / 12                 # main roof (steep, as in the owner's reference photo)
 PORCH_PITCH = 4 / 12
 OVERHANG = 0.6
-PATIO_R = 2.8
+PATIO_R = grading.FIREPIT_R
 LIFT = 0.03                     # finished-grade surface above the terrain
 RISER, TREAD, STAIR_W = 0.19, 0.27, 1.05
 FITS = {"standard"}             # the Hemlock footprint does not fit Lot 10's 60 x 40 ft pad
@@ -83,8 +85,9 @@ def walk_line(label, pad):
     if west is None:
         return None
     L = grading.layout(pad.bounds)
-    start = (L["xp"] - 0.3, L["ys"] - 1.6)          # below the switchback stair
-    mid = (start[0] - 12.0, start[1])
+    fx, fy = L["firepit"]
+    start = (fx - grading.FIREPIT_R + 0.3, fy)      # from the fire-pit circle's lake edge
+    mid = (start[0] - 10.0, start[1])
     return shapely.geometry.LineString([start, mid, tuple(west)])
 
 
@@ -107,9 +110,8 @@ def house_box(pad):
 
 
 def patio_centre(pad):
-    """On the lake terrace, west of the gable porch."""
-    L = grading.layout(pad.bounds)
-    return Point(L["xp"] - PATIO_R - 0.5, (L["y0"] + L["y1"]) / 2 + 0.8)
+    """The decomposed-granite fire-pit circle beyond the walk-out patio."""
+    return Point(*grading.layout(pad.bounds)["firepit"])
 
 
 # --------------------------------------------------------------------------- materials
@@ -422,6 +424,32 @@ class Mesh:
             self.faces.append((i + k, i + (k + 1) % n, i + n + (k + 1) % n, i + n + k))
             self.mats.append(s)
 
+    def blob(self, cx, cy, cz, rx, ry, rz, mat, seg=10, rings=7, rng=None):
+        """A low-poly ellipsoid (shrub masses, tree crowns), optionally lumpy."""
+        i = len(self.verts)
+        for r in range(1, rings):
+            phi = math.pi * r / rings
+            for k in range(seg):
+                th = 2 * math.pi * k / seg
+                j = 1.0 + (rng.uniform(-0.12, 0.12) if rng else 0.0)
+                self.verts.append((cx + rx * j * math.sin(phi) * math.cos(th),
+                                   cy + ry * j * math.sin(phi) * math.sin(th),
+                                   cz + rz * math.cos(phi)))
+        top, bottom = len(self.verts), len(self.verts) + 1
+        self.verts += [(cx, cy, cz + rz), (cx, cy, cz - rz)]
+        sl = self._slot(mat)
+        for r in range(rings - 2):
+            for k in range(seg):
+                a, b = i + r * seg + k, i + r * seg + (k + 1) % seg
+                self.faces.append((a, b, b + seg, a + seg))
+                self.mats.append(sl)
+        for k in range(seg):
+            self.faces.append((top, i + (k + 1) % seg, i + k))
+            self.mats.append(sl)
+            last = i + (rings - 2) * seg
+            self.faces.append((bottom, last + k, last + (k + 1) % seg))
+            self.mats.append(sl)
+
     def gable(self, x0, x1, y, z_eave, z_ridge, depth, mat):
         """Triangular gable wall in the x-z plane at y, `depth` thick toward +y."""
         xm = (x0 + x1) / 2
@@ -581,15 +609,66 @@ def dormer(m, xc, y_face, z_sill, roof_mat, bb, glow, dark, w=1.9):
 
 
 def concrete():
+    """Broom-finished concrete with tooled control joints every 10 ft (slab, walks, patio)."""
     mat, tree = _mat("Cabin_Concrete")
     if tree is None:
         return mat
-    tc, _ = _coord(tree)
+    tc, sep = _coord(tree)
     noise = tree.nodes.new("ShaderNodeTexNoise")
     noise.inputs["Scale"].default_value = 2.5
     tree.links.new(tc.outputs["Object"], noise.inputs["Vector"])
-    _finish(tree, _ramp(tree, noise.outputs["Fac"], (0.30, 0.29, 0.27), (0.42, 0.41, 0.38)), 0.9)
+    broom = _grain(tree, tc, scale=(0.6, 60.0, 0.6), detail=3.0)
+    joint = None
+    for axis in ("X", "Y"):
+        f = _math(tree, "FRACT", _math(tree, "DIVIDE", sep.outputs[axis], 3.048))
+        j = _math(tree, "LESS_THAN", _math(tree, "MINIMUM", f, _math(tree, "SUBTRACT", 1.0, f)), 0.004)
+        joint = j if joint is None else _math(tree, "MAXIMUM", joint, j)
+    base = _ramp(tree, noise.outputs["Fac"], (0.36, 0.35, 0.32), (0.47, 0.45, 0.41))
+    groove = tree.nodes.new("ShaderNodeMix")
+    groove.data_type = "RGBA"
+    groove.inputs["B"].default_value = (0.16, 0.155, 0.145, 1)
+    tree.links.new(joint, groove.inputs["Factor"])
+    tree.links.new(base, groove.inputs["A"])
+    height = _math(tree, "SUBTRACT", _math(tree, "MULTIPLY", broom, 0.3), joint)
+    _finish(tree, groove.outputs["Result"], 0.85, height, 0.006, 0.6)
     return mat
+
+
+def _speckled(name, c0, c1, scale, bump_dist):
+    """Granular surfaces (gravel, decomposed granite, mulch): Voronoi stones with colour
+    jitter and a fine bump."""
+    mat, tree = _mat(name)
+    if tree is None:
+        return mat
+    tc, _ = _coord(tree)
+    cell = tree.nodes.new("ShaderNodeTexVoronoi")
+    cell.inputs["Scale"].default_value = scale
+    tree.links.new(tc.outputs["Object"], cell.inputs["Vector"])
+    edge = tree.nodes.new("ShaderNodeTexVoronoi")
+    edge.feature = "DISTANCE_TO_EDGE"
+    edge.inputs["Scale"].default_value = scale
+    tree.links.new(tc.outputs["Object"], edge.inputs["Vector"])
+    patch = tree.nodes.new("ShaderNodeTexNoise")
+    patch.inputs["Scale"].default_value = 0.8
+    tree.links.new(tc.outputs["Object"], patch.inputs["Vector"])
+    jitter = _math(tree, "ADD", _math(tree, "MULTIPLY", cell.outputs["Distance"], 0.7),
+                   _math(tree, "MULTIPLY", patch.outputs["Fac"], 0.3))
+    _finish(tree, _ramp(tree, jitter, c0, c1), 0.95, edge.outputs["Distance"], bump_dist, 0.8)
+    return mat
+
+
+def gravel():
+    """Crushed-limestone driveway gravel (owner, 20 Oct 2026)."""
+    return _speckled("Cabin_Gravel", (0.15, 0.13, 0.105), (0.34, 0.31, 0.26), 38.0, 0.012)
+
+
+def decomposed_granite():
+    """Decomposed granite, the fire-pit area (owner's preference)."""
+    return _speckled("Cabin_DG", (0.30, 0.20, 0.10), (0.48, 0.35, 0.19), 90.0, 0.004)
+
+
+def mulch():
+    return _speckled("Cabin_Mulch", (0.045, 0.026, 0.016), (0.13, 0.075, 0.04), 22.0, 0.015)
 
 
 def sloped_wall(m, xa, xb, y0, y1, za_lo, za_hi, zb_lo, zb_hi, mat):
@@ -655,7 +734,10 @@ def cabin(m, coll, pad, T, E, grade, name):
 
     # ---- Terrace level (walk-out): concrete back and side walls, logs above.
     m.box(xw, y0, T - 0.3, xe, y1, T + 0.02, conc)                       # slab
-    m.box(xp, y0, T - 0.2, xw, y1, T + 0.02, conc)                       # covered terrace porch
+    # Walk-out patio (owner, 20 Oct 2026): concrete under the gable porch, PATIO_EXT
+    # beyond it, and under the south porch's lake end where the switchback stair lands.
+    px0, py0, px1, py1 = L["patio"]
+    m.box(px0, py0, T - 0.2, px1, py1, T + 0.05, conc)
     m.box(xe - 0.3, y0, T - 0.3, xe, y1, E + 0.45, conc)                 # back wall, buried 5 ft
     m.box(xe - 0.3, y0, E + 0.45, xe, y1, F - 0.35, logs)
     # South side wall: concrete stepping down to the lake, stone veneer where it shows.
@@ -803,7 +885,13 @@ def cabin(m, coll, pad, T, E, grade, name):
     for yy in (ys + 0.15, yn - 0.15):
         railing(m, (xe - 0.1, yy), (xe - 0.1, y0 if yy < y0 else y1), F, wood, spacing=0.11)
     m.box(xw + 8.7, y0 - 0.06, F + 1.6, xw + 8.9, y0, F + 1.9, emitter("Cabin_Sconce", (1.0, 0.62, 0.3), 4.0))
-    return {"stair_bottom": (xb1, (outer[0] + outer[1]) / 2, g_bottom)}
+    # Concrete landing pads at the foot of both stairs.
+    m.box(xb1 - 1.3, outer[0] - 0.15, g_bottom - 0.15, xb1 + 0.15, max(outer[1] + 0.1, L["patio"][1]),
+          g_bottom + 0.06, conc)
+    m.box(xf1 - 0.1, inner[0] - 0.2, g_front - 0.15, xf1 + 1.3, inner[1] + 0.1, g_front + 0.06, conc)
+    return {"stair_bottom": (xb1, (outer[0] + outer[1]) / 2, g_bottom),
+            "front_bottom": (xf1 + 1.3, (inner[0] + inner[1]) / 2, g_front),
+            "stairs_x": ((xl0, xa1 + STAIR_W), (xf0, xf1)), "lane": inner}
 
 
 def carport(m, coll, L, E, name):
@@ -846,12 +934,120 @@ def walkways(L, info, E):
     """Concrete walks (owner, 19 Oct 2026): carport to the front stair (front door), and
     along the south side yard to the lake-side switchback stair."""
     x0, y0, x1, y1 = L["carport"]
-    xe, ys, xp = L["xe"], L["ys"], L["xp"]
-    lane = ys - 0.57                                                  # front stair lane
+    xe, ys = L["xe"], L["ys"]
+    fx, fy, _ = info["front_bottom"]
     yw = ys - 2.9                                                     # south side-yard walk
     sx, sy, _ = info["stair_bottom"]
-    return [[(x0, lane), (xe - 0.2, lane)],
-            [(xe + 0.6, lane), (xe + 0.6, yw), (sx - 0.3, yw), (sx - 0.3, sy)]]
+    return [[(x0, fy), (fx - 0.1, fy)],
+            [(fx - 0.6, fy - 0.5), (fx - 0.6, yw), (sx - 0.6, yw), (sx - 0.6, sy - 0.5)]]
+
+
+# --------------------------------------------------------------------------- landscaping
+# Owner, 20 Oct 2026: minimal, common treatments - mulched foundation beds with rounded
+# evergreen shrubs (dwarf yaupon holly) and pink muhly grass (plumes in October), two
+# fruiting pear trees by the drive (fall colour) and three crape myrtles for colour.
+
+def _foliage(name, rgb):
+    import trees
+    return trees.foliage_material(name, rgb)
+
+
+def bed(m, x0, x1, y0, y1, grade, step=1.5):
+    """A mulched bed following the grade in short flat steps along x."""
+    xs = np.arange(x0, x1, step)
+    for xa in xs:
+        xb = min(xa + step, x1)
+        z = grade((xa + xb) / 2, (y0 + y1) / 2)
+        m.box(xa, y0, z - 0.05, xb + 0.02, y1, z + 0.07, mulch())
+
+
+def shrub(m, x, y, z, r, rng):
+    m.blob(x, y, z + r * 0.75, r, r, r * 0.8, plain("Cabin_Shrub_Core", (0.02, 0.045, 0.015), 0.8),
+           rng=rng)
+    m.blob(x, y, z + r * 0.8, r * 1.12, r * 1.12, r * 0.9, _foliage("yaupon", (0.035, 0.075, 0.02)),
+           rng=rng)
+
+
+def muhly(m, x, y, z, rng):
+    m.blob(x, y, z + 0.18, 0.22, 0.22, 0.18, plain("Cabin_Muhly_Base", (0.10, 0.11, 0.05), 0.9))
+    m.blob(x, y, z + 0.5, 0.5, 0.5, 0.36, _foliage("muhly_plume", (0.42, 0.13, 0.22)), rng=rng)
+
+
+def crape_myrtle(m, x, y, z, rng, h=4.2):
+    """Multi-trunk crape myrtle: smooth cinnamon trunks in a vase, pink bloom clusters."""
+    bark = plain("Cabin_Crape_Bark", (0.30, 0.17, 0.10), 0.5)
+    for k in range(5):                     # trunks curve out from the base, then branch
+        a = 2 * math.pi * k / 5 + rng.uniform(-0.3, 0.3)
+        mid = (x + math.cos(a) * 0.35, y + math.sin(a) * 0.35, z + h * 0.32)
+        top = (x + math.cos(a) * 0.9, y + math.sin(a) * 0.9, z + h * 0.55)
+        m.beam((x + math.cos(a) * 0.06, y + math.sin(a) * 0.06, z), mid, 0.08, 0.08, bark)
+        m.beam(mid, top, 0.06, 0.06, bark)
+    leaf, bloom = _foliage("crape_leaf", (0.06, 0.10, 0.03)), _foliage("crape_bloom", (0.62, 0.07, 0.24))
+    for k in range(16):                    # a broad, rounded vase crown
+        a = rng.uniform(0, 2 * math.pi)
+        r = rng.uniform(0.2, 1.25)
+        m.blob(x + math.cos(a) * r, y + math.sin(a) * r, z + h * rng.uniform(0.55, 0.85),
+               0.6, 0.6, 0.5, leaf, rng=rng)
+    for k in range(40):                    # panicles of bloom on the outer crown
+        a = rng.uniform(0, 2 * math.pi)
+        r = rng.uniform(0.8, 1.7)
+        m.blob(x + math.cos(a) * r, y + math.sin(a) * r, z + h * rng.uniform(0.62, 0.96),
+               0.2, 0.2, 0.26, bloom, seg=6, rings=4, rng=rng)
+
+
+def pear(m, x, y, z, rng, h=6.0):
+    """A fruiting pear: straight trunk, upright oval crown turning red in fall."""
+    m.cylinder(x, y, z, z + h * 0.42, 0.13, plain("Cabin_Pear_Bark", (0.09, 0.07, 0.06), 0.8), n=10)
+    red, green = _foliage("pear_fall", (0.30, 0.05, 0.035)), _foliage("pear_leaf", (0.12, 0.13, 0.03))
+    for k in range(11):
+        a = rng.uniform(0, 2 * math.pi)
+        zz = z + h * rng.uniform(0.45, 0.92)
+        r = rng.uniform(0.0, 1.0) * (1.0 - abs((zz - z) / h - 0.68) * 1.2)
+        m.blob(x + math.cos(a) * r, y + math.sin(a) * r, zz, 1.05, 1.05, 1.15,
+               red if rng.random() < 0.65 else green, rng=rng)
+
+
+def landscaping(m, L, info, grade, drive, key):
+    rng = random.Random(f"landscape-{key}")
+    xe, xw, xp, ys, y0, y1 = L["xe"], L["xw"], L["xp"], L["ys"], L["y0"], L["y1"]
+    (sw0, sw1), (fw0, fw1) = info["stairs_x"]
+    # Front bed along the south porch, between the two stairs.
+    bx0, bx1, by0, by1 = sw1 + 0.4, fw0 - 0.4, ys - 1.4, ys - 0.25
+    if bx1 - bx0 > 2:
+        bed(m, bx0, bx1, by0, by1, grade)
+        for k, x in enumerate(np.arange(bx0 + 0.6, bx1 - 0.3, 1.25)):
+            z = grade(x, (by0 + by1) / 2) + 0.07
+            if k % 3 == 1:
+                muhly(m, x, (by0 + by1) / 2, z, rng)
+            else:
+                shrub(m, x, (by0 + by1) / 2, z, rng.uniform(0.38, 0.48), rng)
+    # Corner beds at the lake end of the patio, each with a crape myrtle.
+    px0 = L["patio"][0]
+    fx, fy = L["firepit"]
+    for cy0, cy1 in ((L["patio"][1], fy - grading.FIREPIT_R - 0.4), (fy + grading.FIREPIT_R + 0.4, y1 + 0.2)):
+        if cy1 - cy0 < 1.2:
+            continue
+        bx0, bx1 = px0 - 2.6, px0 - 0.2
+        bed(m, bx0, bx1, cy0, cy1, grade)
+        cx, cyc = (bx0 + bx1) / 2, (cy0 + cy1) / 2
+        z = grade(cx, cyc) + 0.07
+        crape_myrtle(m, cx, cyc, z, rng)
+        for dx in (-0.8, 0.8):
+            muhly(m, cx + dx, cyc + (cy1 - cy0) * 0.3 * (1 if dx > 0 else -1), z, rng)
+    # A crape myrtle in the south yard by the front walk.
+    tx, ty = xe - 5.0, ys - 4.6
+    bed(m, tx - 1.2, tx + 1.2, ty - 1.2, ty + 1.2, grade)
+    crape_myrtle(m, tx, ty, grade(tx, ty) + 0.07, rng)
+    # Two fruiting pears flanking the drive near the entry yard.
+    if drive is not None:
+        d = shapely.ops.substring(drive, max(0.0, drive.length - 14.0), drive.length - 13.0)
+        (ax, ay), (bx, by) = list(d.coords)[0], list(d.coords)[-1]
+        ux, uy = bx - ax, by - ay
+        n = math.hypot(ux, uy) or 1.0
+        nx, ny = -uy / n, ux / n
+        for side in (-1, 1):
+            x, y = ax + nx * 4.5 * side, ay + ny * 4.5 * side
+            pear(m, x, y, grade(x, y), rng)
 
 
 def lawn():
@@ -872,7 +1068,7 @@ def lawn():
     # Mowing stripes, 1.5 m wide, running east-west (Phase 3a R2).
     _, sep = _coord(tree)
     band = _math(tree, "LESS_THAN", _math(tree, "FRACT", _math(tree, "DIVIDE", sep.outputs["Y"], 3.0)), 0.5)
-    shade = _math(tree, "ADD", _math(tree, "MULTIPLY", band, 0.16), 0.92)
+    shade = _math(tree, "ADD", _math(tree, "MULTIPLY", band, 0.08), 0.96)
     stripe = tree.nodes.new("ShaderNodeMix")
     stripe.data_type = "RGBA"
     stripe.blend_type = "MULTIPLY"
@@ -951,7 +1147,7 @@ def grade_terrain(terrain, key, pad, T, E):
 def build(root, sampler, ribbon, sampler_class, terrain, record):
     """All lots' graded sites, cabins, patios and drives, one child collection per lot."""
     sites = build_sites()
-    gravel = plain("Cabin_Drive_Gravel", (0.24, 0.22, 0.19), 0.95)
+    drive_gravel = gravel()
     built = {}
     for label, site in sorted(sites.items(), key=lambda kv: int(kv[0].split()[-1])):
         props, pad = site["pad"]
@@ -974,15 +1170,20 @@ def build(root, sampler, ribbon, sampler_class, terrain, record):
         info = cabin(m, coll, pad, T, E, grade, key)
         pc = patio_centre(pad)
         pz = grade(pc.x, pc.y) + LIFT
-        m.cylinder(pc.x, pc.y, pz - 0.05, pz + 0.04, PATIO_R, flagstone(), n=40)
+        m.cylinder(pc.x, pc.y, pz - 0.06, pz + 0.03, PATIO_R, decomposed_granite(), n=48)
+        for k in range(48):                                         # steel edging
+            a0, a1 = 2 * math.pi * k / 48, 2 * math.pi * (k + 1) / 48
+            m.beam((pc.x + PATIO_R * math.cos(a0), pc.y + PATIO_R * math.sin(a0), pz + 0.02),
+                   (pc.x + PATIO_R * math.cos(a1), pc.y + PATIO_R * math.sin(a1), pz + 0.02),
+                   0.012, 0.06, plain("Cabin_Edging", (0.06, 0.04, 0.03), 0.6, 0.6))
         fire_pit(m, coll, pc.x, pc.y, pz + 0.04, stone(), timber(),
                  emitter("Cabin_Fire", (1.0, 0.22, 0.02), 10.0), key)
-        for a in (60, 300):                                         # chairs facing the fire
-            cxy = (pc.x + 1.85 * math.sin(math.radians(a)), pc.y + 1.85 * math.cos(math.radians(a)))
-            chair(m, cxy[0], cxy[1], pz + 0.04, (a + 180) % 360, timber())
-        for a in (160, 220):                                        # log benches
+        for a in (40, 100, 320):                                    # chairs facing the fire
             cxy = (pc.x + 1.9 * math.sin(math.radians(a)), pc.y + 1.9 * math.cos(math.radians(a)))
-            log_bench(m, cxy[0], cxy[1], pz + 0.04, (a + 180) % 360, timber())
+            chair(m, cxy[0], cxy[1], pz + 0.03, (a + 180) % 360, timber())
+        for a in (190, 250):                                        # log benches
+            cxy = (pc.x + 2.0 * math.sin(math.radians(a)), pc.y + 2.0 * math.cos(math.radians(a)))
+            log_bench(m, cxy[0], cxy[1], pz + 0.03, (a + 180) % 360, timber())
         Lc = grading.layout(pad.bounds)
         carport(m, coll, Lc, E, key)
         for k, line in enumerate(walkways(Lc, info, E)):
@@ -990,17 +1191,18 @@ def build(root, sampler, ribbon, sampler_class, terrain, record):
                    lambda x, y, on_site=on_site: on_site(x, y) if on_site(x, y) is not None else sampler(x, y),
                    0.05, concrete(), coll)
         sx, sy, sz = info["stair_bottom"]
-        lamp_post(m, coll, sx - 0.8, sy - 0.6, sz, plain("Cabin_Iron", (0.03, 0.03, 0.03), 0.4, 0.8),
+        lamp_post(m, coll, sx - 1.6, sy - 1.0, sz, plain("Cabin_Iron", (0.03, 0.03, 0.03), 0.4, 0.8),
                   emitter("Cabin_Lantern", (1.0, 0.62, 0.3), 4.0), key)
+        landscaping(m, Lc, info, grade, site.get("drive_front", (None, None))[1], key)
         m.object(f"Cabin_{key}", coll)
         if "drive_front" in site:
             line = list(site["drive_front"][1].coords)
             ribbon(f"Drive_{key}", line, 3.6,
                    lambda x, y, on_site=on_site: on_site(x, y) if on_site(x, y) is not None else sampler(x, y),
-                   0.06, gravel, coll)
+                   0.06, drive_gravel, coll)
         walk = walk_line(label, pad)
         if walk is not None:
-            path_mat = bpy.data.materials.get("Path_Gravel_Grey") or plain("Path_Gravel_Grey", (0.46, 0.46, 0.44), 0.95)
+            path_mat = drive_gravel
             ribbon(f"Walk_{key}", list(walk.coords), 5 * FT,
                    lambda x, y, on_site=on_site: on_site(x, y) if on_site(x, y) is not None else sampler(x, y),
                    0.08, path_mat, coll)

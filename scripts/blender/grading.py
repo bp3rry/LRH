@@ -26,6 +26,8 @@ FILL_SLOPE, CUT_SLOPE = 4.0, 3.0
 BOAT_DOOR = (0.6, 3.6)             # boat / storage door on the north wall, metres from the lake wall
 CARPORT = (22 * FT, 24 * FT)       # covered parking (owner, 19 Oct 2026), E-W x N-S
 CARPORT_GAP = 1.2                  # back wall to the carport's west edge (walkway)
+PATIO_EXT = 2.4                    # concrete patio beyond the gable porch line (owner, 20 Oct 2026)
+FIREPIT_R = 3.0                    # decomposed-granite fire-pit circle beyond the patio
 
 
 def layout(pad_bounds):
@@ -38,21 +40,36 @@ def layout(pad_bounds):
     yb1 = yb0 + BODY[1]
     cx0 = xe + CARPORT_GAP
     cy0 = ys - 0.8
-    return {"xw": xw, "xe": xe, "y0": yb0, "y1": yb1, "xp": xw - GABLE_PORCH,
+    xp = xw - GABLE_PORCH
+    cyb = (yb0 + yb1) / 2
+    fire = (xp - PATIO_EXT - FIREPIT_R + 0.4, cyb + 0.6)
+    return {"xw": xw, "xe": xe, "y0": yb0, "y1": yb1, "xp": xp,
             "ys": ys, "yn": yb1 + NORTH_PORCH,
-            "carport": (cx0, cy0, cx0 + CARPORT[0], cy0 + CARPORT[1])}
+            "carport": (cx0, cy0, cx0 + CARPORT[0], cy0 + CARPORT[1]),
+            # Walk-out patio: concrete from the lake wall to PATIO_EXT past the gable
+            # porch, wrapping under the south porch's lake end where the stair lands.
+            "patio": (xp - PATIO_EXT, ys - 0.4, xw, yb1),
+            "firepit": fire,
+            # Flat (terrace-level) area for the patio and the fire-pit circle.
+            "terrace_flat": (fire[0] - FIREPIT_R - 0.6, ys - 0.6, xp, yb1 + 0.4)}
 
 
 def nearest_flat(x, y, pad_bounds):
-    """Nearest point on the graded flat area - the pad or the carport slab (entry-yard
-    level) - and the distance to it."""
-    x0, y0, x1, y1 = pad_bounds
-    c = layout(pad_bounds)["carport"]
-    px, py = np.clip(x, x0, x1), np.clip(y, y0, y1)
-    qx, qy = np.clip(x, c[0] - 0.5, c[2] + 0.5), np.clip(y, c[1] - 0.5, c[3] + 0.5)
-    dp, dq = np.hypot(x - px, y - py), np.hypot(x - qx, y - qy)
-    use_q = dq < dp
-    return np.where(use_q, qx, px), np.where(use_q, qy, py), np.minimum(dp, dq)
+    """Nearest point on the graded flat area - the pad, the carport slab (entry-yard
+    level) or the walk-out patio and fire-pit terrace - and the distance to it."""
+    L = layout(pad_bounds)
+    boxes = [pad_bounds, (L["carport"][0] - 0.5, L["carport"][1] - 0.5, L["carport"][2] + 0.5,
+                          L["carport"][3] + 0.5), L["terrace_flat"]]
+    best = None
+    for b0, b1, b2, b3 in boxes:
+        qx, qy = np.clip(x, b0, b2), np.clip(y, b1, b3)
+        dq = np.hypot(x - qx, y - qy)
+        if best is None:
+            best = [qx, qy, dq]
+        else:
+            use = dq < best[2]
+            best = [np.where(use, qx, best[0]), np.where(use, qy, best[1]), np.minimum(dq, best[2])]
+    return best[0], best[1], best[2]
 
 
 def design(x, y, ground, pad_bounds, T, E):

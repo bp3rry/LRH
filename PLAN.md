@@ -915,6 +915,24 @@ is shown.
 - **Render cost:** about 34 s a frame at 1080p and 64 samples (R1: 11–18 s). At that rate
   the 94 s flyover is about 27 h at 1080p.
 
+**Cabin site finishes (owner, 20 Oct 2026):**
+- **Driveway and shore walk:** gravel (crushed limestone).
+- **Covered parking:** concrete slab.
+- **Concrete:** broom-finished with tooled control joints every 10 ft, on the slab, the
+  walks, the stair landing pads and the walk-out patio.
+- **Walk-out patio:** concrete under the gable porch, 8 ft beyond it, and under the south
+  porch's lake end, so the switchback stair lands on it.
+- **Fire-pit area:** a decomposed-granite circle about 20 ft across with steel edging,
+  joined to the patio. The patio and circle are graded level with the walk-out
+  (`grading.layout` "patio", "firepit", "terrace_flat").
+- **Landscaping:**
+  - mulched foundation beds along the front porch and at the patio's lake corners;
+  - dwarf yaupon-style rounded shrubs and pink muhly grass;
+  - three pink crape myrtles: two at the patio corners and one in the south yard by the
+    front walk;
+  - two fruiting pears flanking the drive, with red fall colour.
+- **Check shots:** `check_cabin5_walkout` and `check_cabin5_parking`.
+
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
 One illustrative cabin (Lot 5) is enough for now. A later phase renders a cabin on every
