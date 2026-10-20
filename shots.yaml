@@ -19,6 +19,8 @@ render:
   cleared_ground: soil     # the parcels' cleared ground: soil (as photographed) | grassed
   cabins: []               # Phase 2d cabins on these lots ([Lot 5] | all); removes their pad trees
   ground_detail: false     # Phase 3a grass tufts along the low flight path
+  site_works: false        # drainage plan in 3D: pond, creek channel, swales
+  planting: false          # planting plan in 3D: bamboo screens, frontage trees, lowland trees
   draft: {resolution: [1920, 1080], samples: 96}
   final: {resolution: [7680, 4320], samples: 1024, tile_size: 2048}
   4k: {resolution: [3840, 2160], samples: 256}
@@ -299,4 +301,28 @@ shots:
     cleared_ground: grassed
     ground_detail: true
     cabins: [Lot 5]
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  B_buildout_aerial:
+    kind: marketing
+    description: Build-out concept - a Hemlock-style cabin on every lot that fits one (Lots 1-9), with the drainage works (pond, creek, swales) and the planting plan (bamboo screens, frontage trees, lowland trees). Oblique drone view from the south-west at golden hour.
+    camera: {position: [-230.0, -330.0, 300.0], target: [20.0, 0.0, 178.0], lens_mm: 32.0}
+    sun: {datetime: "2026-10-14T17:15", utc_offset_h: -5}
+    exposure: -3.0
+    haze_visibility_km: 25
+    cleared_ground: grassed
+    cabins: all
+    site_works: true
+    planting: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_pond:
+    kind: check
+    description: Drainage plan - the pond on the creek in Lot 10's lower ground, its dam and spillway, the creek channel and the water-loving trees round it.
+    camera: {position: [-20.0, -250.0, 215.0], target: [-70.0, -182.0, 170.0], lens_mm: 30.0}
+    sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
+    haze_visibility_km: 0
+    cleared_ground: grassed
+    site_works: true
+    planting: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]

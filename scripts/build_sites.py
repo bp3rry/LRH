@@ -345,6 +345,14 @@ def lake_option(dtm, label, poly, pad, walk, corridor, edge):
                .difference(pad.buffer(9.0))
                .difference(shapely.union_all([box(*t[:4]) for t in walk.get("terraces", [])] or
                                              [Polygon()]).buffer(3.0)))
+    # Keep drip fields out of the creek corridor and away from the pond (drainage.py).
+    dpath = DERIVED / "drainage.json"
+    if dpath.exists():
+        dr = json.loads(dpath.read_text())
+        if dr.get("creek"):
+            allowed = allowed.difference(LineString(dr["creek"]).buffer(15.0))
+        if dr.get("pond"):
+            allowed = allowed.difference(Polygon(dr["pond"]["polygon"]).buffer(20.0))
     # Keep the lot number and acreage label (lotplan.build_redline: 18 m in from the west
     # line near the centroid latitude) readable on the plan.
     cy_l = poly.centroid.y

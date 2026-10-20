@@ -976,6 +976,44 @@ lot, for build-out stills and a build-out flyover variant:
 - Optional variety, such as mirrored plans and roof or stain colours, so the row does not
   read as cloned.
 
+**Build-out, drainage and planting (owner, 20 Oct 2026; first pass):**
+- **Build-out:** a Hemlock-style cabin on every lot that fits one (Lots 1–9). Shot:
+  `B_buildout_aerial` (`cabins: all`, `site_works`, `planting`).
+- **Drainage analysis** (`scripts/drainage.py`): from the 2 m lidar terrain, with
+  depressions filled and steepest-descent flow.
+  - **CR 3635:** the roadside ditch carries about 21 ac north past the property; little of
+    it enters the lots.
+  - **Lots 6–8:** small swales of 3–6 ac drain west across the lake-side halves.
+  - **Lot 10 creek:** the largest drain on the property starts at the CR 3640 / CR 3635
+    corner, carries about 9 ac including the new road ditch, and runs west through Lot 10's
+    low ground (580 → 551 ft) to the lake.
+- **Conceptual drainage plan** (`drainage_plan.png`; `site_works.py` in the model):
+  - **Creek:** kept as a shallow defined channel with rock check dams.
+  - **Pond:** about 0.27 ac on the creek, pool about 561 ft, about 6 ft deep, with a
+    downstream berm and a rock spillway back into the creek. Lidar trees on the pond and
+    berm are cleared.
+  - **Swales:** a diversion swale round the uphill side of each cabin site, splitting east
+    of the carport and passing both sides toward the lake.
+  - **Culverts:** where the creek crosses the access road and the swales cross the drives.
+  - **Drip fields:** Option B fields keep 15 m from the creek and 20 m from the pond. Lot
+    10's lake-side field no longer fits, so Lot 10 uses its front field.
+- **Planting plan** (`scripts/planting_plan.py`, `planting_plan.png`; `planting3d.py` in
+  the model), sized at about 5–7 years. Bamboo does most of the screening, on budget:
+  - **Bamboo:** 225 clumps of clumping bamboo along the interior lot lines, from the access
+    road to 40 ft short of CR 3635. Clumps step aside where a utility easement runs on the
+    line.
+  - **Frontage:** a mixed loblolly pine / oak / pecan screen along CR 3635 and CR 3640.
+  - **Colour:** crape myrtles flanking each drive entrance.
+  - **Low ground:** bald cypress, water oak and sycamore round the pond, along the creek and
+    at the lake-side lot corners. The centre of each lake-side acre stays open for views.
+  - Everything keeps clear of drives, septic areas, easements, the access road and
+    existing trees.
+  - Counts: bamboo 225, loblolly pine 13, oak 6, pecan 4, crape myrtle 9, bald cypress 6,
+    water oak 4, sycamore 4.
+- **Running bamboo:** it spreads aggressively and is hard to remove near a lake, so the
+  plan assumes **clumping** bamboo (e.g. Bambusa multiplex varieties hardy to zone 8).
+  This is a species choice, not a caution caption.
+
 ### Phase 3c — Site infrastructure (planned)
 
 Show everything the site plan carries, as switchable layers for stills and video:

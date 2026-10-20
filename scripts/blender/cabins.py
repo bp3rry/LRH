@@ -1173,6 +1173,8 @@ def site_surface(name, pad, T, E, sampler, mat, coll, terraces=()):
     nat = np.array([sampler(x, y) if sampler(x, y) is not None else np.nan
                     for x, y in zip(gx.ravel(), gy.ravel())])
     fin = grading.design(gx.ravel(), gy.ravel(), np.nan_to_num(nat), pad.bounds, T, E, terraces)
+    import site_works                                   # diversion swales (drainage plan)
+    fin = fin - site_works.swale_cut(gx.ravel(), gy.ravel())
     # A clean mown apron: everything within LAWN of the pad (covers the 4:1 / 3:1 slopes)
     # and of the terraces.
     keep = ~np.isnan(nat) & shapely.contains_xy(area.buffer(LAWN), gx.ravel(), gy.ravel())

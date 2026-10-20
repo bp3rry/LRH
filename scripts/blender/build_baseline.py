@@ -25,6 +25,8 @@ from mathutils.geometry import delaunay_2d_cdt
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cabins  # noqa: E402
 import ground_detail  # noqa: E402
+import planting3d  # noqa: E402
+import site_works  # noqa: E402
 import infrastructure  # noqa: E402
 import lotplan  # noqa: E402
 import scene_life  # noqa: E402
@@ -927,11 +929,15 @@ def main():
     # Phase 2d: trees on each lot's pad, patio and drive are set aside per lot, so a shot
     # that shows that lot's cabin (cabins.py) can remove them.
     sites = cabins.build_sites()
+    set_aside = {label: cabins.clearing(site, label) for label, site in sites.items()}
+    works_clear = site_works.clearing()            # the pond and its dam (drainage plan)
+    if works_clear is not None:
+        set_aside["Site Works"] = works_clear
     vegetation.scatter(colls["Vegetation"], grid, sampler, road_lines, zone, timber_zone, record,
                        clear=unary_union([drive_area, shore_area]),
                        open_sky=(shapely.GeometryCollection([shore_open, drive_lines]),
                                  lotplan.MOWN_CORRIDOR_M / 2), scrub_zone=parcels,
-                       build_sites={label: cabins.clearing(site, label) for label, site in sites.items()})
+                       build_sites=set_aside)
     colls["Cabins"] = collection("Cabins")
     cabins.build(colls["Cabins"], sampler, ribbon, HeightSampler, terrain, record)
     # Phase 3a R2: grass tufts along the low flight path (switchable: Ground_Detail).
@@ -959,6 +965,11 @@ def main():
     ground_detail.build(colls["Ground_Detail"], terrain, path, unary_union(no_grass),
                         lambda x, y: cover.lookup(x, y)[0] == vegetation.WOODS, record,
                         aprons=aprons)
+    # Drainage works (pond, creek, swales) and the planting plan, both switchable.
+    colls["Site_Works"] = collection("Site_Works")
+    site_works.build(colls["Site_Works"], terrain, record)
+    colls["Planting"] = collection("Planting")
+    planting3d.build(colls["Planting"], sampler, record)
     (out / "lot_sites.json").write_text(json.dumps(
         {label: {**site, "shore_circle": shore_access[label]["circle"]}
          for label, site in lotplan.house_sites(context).items()}, indent=1) + "\n")

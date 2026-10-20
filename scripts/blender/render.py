@@ -236,6 +236,20 @@ def apply_cabins(lots):
                 block.value = 1.0 if block.name.removeprefix("Grade_") in keys else 0.0
 
 
+def apply_site_works(on):
+    """Drainage works: the terrain key, and the trees standing where the pond goes."""
+    layer = bpy.context.view_layer.layer_collection
+    if "Vegetation" in layer.children:
+        sub = layer.children["Vegetation"].children.get("Vegetation_BuildSite_Site_Works")
+        if sub is not None:
+            sub.exclude = on
+    terrain = bpy.data.objects.get("Site_Terrain_1m")
+    if terrain is not None and terrain.data.shape_keys is not None:
+        block = terrain.data.shape_keys.key_blocks.get("Grade_SiteWorks")
+        if block is not None:
+            block.value = 1.0 if on else 0.0
+
+
 def caption(src, dst, text):
     from PIL import Image, ImageDraw, ImageFont  # from .blender-site
     image = Image.open(src).convert("RGB")
@@ -266,6 +280,11 @@ def render_shot(name, shot, config, args, out):
             wanted.add(layer.capitalize())
     if shot.get("ground_detail", config.get("ground_detail", False)):
         wanted.add("Ground_Detail")
+    works = bool(shot.get("site_works", config.get("site_works", False)))
+    if works:
+        wanted.add("Site_Works")
+    if shot.get("planting", config.get("planting", False)):
+        wanted.add("Planting")
     # Phase 2d cabins (cabins.py): `cabins: [Lot 5]` or `cabins: all`.
     cabin_lots = shot.get("cabins", config.get("cabins", []))
     if cabin_lots == "all":
@@ -306,6 +325,7 @@ def render_shot(name, shot, config, args, out):
                               shot.get("haze_colour") == "all_azimuths")
     apply_collections(scene, wanted)
     apply_cabins(cabin_lots)
+    apply_site_works(works)
 
     stem = f"{name}_{args.res}"
     if args.flooded_timber or args.cleared_ground or args.spanish_moss:
