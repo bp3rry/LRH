@@ -1173,7 +1173,12 @@ lot, for build-out stills and a build-out flyover variant:
   barndo's entry porch at pad level, where the drive now ends. It is included in Lot 10's
   flat grading.
 - **CR 3635:** shares the speckled crushed-limestone gravel with CR 3640.
-- Check shots: `check_entry_lot5`, `check_lot10_parking`.
+- **Follow-up, same day:**
+  - Lot 10's drive now runs straight to its carport. It had been pulled south to clear a
+    septic field that is actually west of the house.
+  - The barbed-wire fence also runs along the CR 3640 side of Lot 10, with a 20 ft gate
+    where the shared access road meets CR 3640: 672 m of fence and 10 gates in all.
+- Check shots: `check_entry_lot5`, `check_lot10_parking`, `check_cr3640`.
 
 ### Phase 3c — Site infrastructure (planned)
 

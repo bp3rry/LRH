@@ -143,12 +143,23 @@ def entry(m, drive, road, sampler, line, gravel, conc, steel):
     return s_line, (tx, ty), (ix, iy), cross
 
 
-def build(roads_coll, cabin_colls, parcel, road, drives, sampler, record):
-    """roads_coll: `Roads`. cabin_colls: {lot: collection}. drives: {lot: LineString}."""
-    line = frontage_line(parcel, road)
-    if line is None or line.geom_type != "LineString":
-        record("frontage_fence", False, note="no frontage line found")
-        return
+def build(roads_coll, cabin_colls, parcel, roads, drives, sampler, record, gate_lines=()):
+    """roads_coll: `Roads`. cabin_colls: {lot: collection}. roads: {name: centreline}; the
+    fence runs along the property line beside each. drives: {lot: LineString} get gates,
+    culverts and aprons; gate_lines (e.g. the shared access road) get gates only."""
+    total = {"length_m": 0, "posts": 0, "gates": 0}
+    for name, road in roads.items():
+        line = frontage_line(parcel, road)
+        if line is None or line.geom_type != "LineString":
+            record(f"fence_{name}", False, note="no frontage line found")
+            continue
+        n = _build_one(roads_coll, cabin_colls, line, road, drives, sampler, gate_lines, name)
+        for k in total:
+            total[k] += n[k]
+    record("frontage_fence", total["posts"] > 20, **total, gate_clear_opening_ft=20, entry_apron_ft=24)
+
+
+def _build_one(roads_coll, cabin_colls, line, road, drives, sampler, gate_lines, name):
     wood = cabins.plain("Fence_Cedar_Post", (0.20, 0.15, 0.11), 0.9)
     wire = cabins.plain("Fence_Wire", (0.28, 0.27, 0.25), 0.4, 0.9)
     steel = cabins.plain("Fence_Galvanised", (0.55, 0.56, 0.57), 0.35, 0.9)
@@ -164,6 +175,23 @@ def build(roads_coll, cabin_colls, parcel, road, drives, sampler, record):
             em.object(f"Entry_{lot.replace(' ', '_')}", cabin_colls[lot])
         gaps.append((s_line - GATE_OPEN / 2, s_line + GATE_OPEN / 2))
         gates.append((s_line, t, inward))
+    for gl in gate_lines:                                   # shared access road: gate only
+        x = gl.intersection(line)
+        if x.is_empty:
+            continue
+        pt = x if x.geom_type == "Point" else x.centroid
+        s_line = line.project(pt)
+        a, b = line.interpolate(max(0, s_line - 1)), line.interpolate(min(line.length, s_line + 1))
+        tx, ty = b.x - a.x, b.y - a.y
+        tn = math.hypot(tx, ty) or 1.0
+        d0 = gl.project(pt)
+        q = gl.interpolate(max(0.0, d0 - 3.0)) if d0 > 3.0 else gl.interpolate(d0 + 3.0)
+        ix, iy = q.x - pt.x, q.y - pt.y
+        inn = math.hypot(ix, iy) or 1.0
+        if Point(pt.x + ix / inn, pt.y + iy / inn).distance(road) < pt.distance(road):
+            ix, iy = -ix, -iy
+        gaps.append((s_line - GATE_OPEN / 2, s_line + GATE_OPEN / 2))
+        gates.append((s_line, (tx / tn, ty / tn), (ix / inn, iy / inn)))
     m = cabins.Mesh()
     posts = fence(m, line, gaps, sampler, wood, wire, steel)
     for s_line, (tx, ty), (ix, iy) in gates:
@@ -176,6 +204,5 @@ def build(roads_coll, cabin_colls, parcel, road, drives, sampler, record):
             vy = iy * math.cos(ang) + ty * sgn * math.sin(ang)
             vn = math.hypot(vx, vy) or 1.0
             gate(m, (h.x, h.y), (vx / vn, vy / vn), GATE_OPEN / 2 - 0.15, z, steel)
-    m.object("Frontage_Fence", roads_coll)
-    record("frontage_fence", posts > 20, length_m=round(line.length), posts=posts, gates=len(gates),
-           gate_clear_opening_ft=20, entry_apron_ft=24)
+    m.object(f"Fence_{name}", roads_coll)
+    return {"length_m": round(line.length), "posts": posts, "gates": len(gates)}

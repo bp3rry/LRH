@@ -627,7 +627,7 @@ def analyse():
             barndo_carport(pad)
         y_lo = poly.buffer(-1.5 - DRIVE_W / 2).bounds[1]
         y_d = max(y_lo, (cp[1] + cp[3]) / 2)
-        if septic is not None:
+        if septic is not None and septic.bounds[0] > pad.bounds[2]:     # front field only
             y_d = min(y_d, septic.bounds[1] - 2.0 - DRIVE_W / 2)
         row_line = LineString([(cp[2], y_d), (poly.bounds[2] + 50, y_d)])
         hit = row_line.intersection(poly.exterior)

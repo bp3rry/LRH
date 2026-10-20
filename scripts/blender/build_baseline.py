@@ -976,10 +976,17 @@ def main():
     cr3635 = LineString(np.array(json.loads((lrh.INPUTS / "geometry/txdot-fannin-cr-3635-epsg6344.geojson")
                                             .read_text())["features"][0]["geometry"]["coordinates"])[:, :2]
                         - [lrh.ORIGIN_E, lrh.ORIGIN_N])
+    cr3640_line = LineString(np.array(json.loads((lrh.INPUTS / "geometry/cr3640-composite-context-route-epsg6344.geojson")
+                                                 .read_text())["features"][0]["geometry"]["coordinates"])[:, :2]
+                             - [lrh.ORIGIN_E, lrh.ORIGIN_N])
+    access_line = [shapely.geometry.shape(f["geometry"]) for f in json.loads(
+        (lrh.ROOT / "out/derived/build_sites.geojson").read_text())["features"]
+        if f["properties"]["kind"] == "access_road"]
     frontage.build(colls["Roads"], {c.name.removeprefix("Cabin_").replace("_", " "): c
                                     for c in colls["Cabins"].children},
-                   parcels, cr3635, {k: v["drive_front"][1] for k, v in sites.items() if "drive_front" in v},
-                   sampler, record)
+                   parcels, {"CR3635": cr3635, "CR3640": cr3640_line},
+                   {k: v["drive_front"][1] for k, v in sites.items() if "drive_front" in v},
+                   sampler, record, gate_lines=access_line)
     # Phase 3a R2: grass tufts along the low flight path (switchable: Ground_Detail).
     colls["Ground_Detail"] = collection("Ground_Detail")
     flight = lrh.ROOT / "out/derived/flight_low.json"
