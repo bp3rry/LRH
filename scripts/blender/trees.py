@@ -296,7 +296,7 @@ def make_moss(snag, collection):
 # Flooded-timber colours from the owner's reference, Bois d'Arc Lake two seasons after
 # impoundment (NAIP 2024, inputs/reference/bois_darc_creek_naip2024*.jpg): the dead
 # interior is a twiggy mauve-grey canopy; a narrow fringe along the waterline is rust.
-TIMBER_COLOURS = {"dying": ((0.16, 0.05, 0.025), (0.32, 0.11, 0.05), 0.6),  # rust fringe
+TIMBER_COLOURS = {"dying": ((0.13, 0.055, 0.03), (0.25, 0.10, 0.05), 0.6),  # rust fringe
                   "bare": ((0.19, 0.165, 0.175), (0.34, 0.30, 0.31), 0.62)}  # grey twigs
 
 

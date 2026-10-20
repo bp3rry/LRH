@@ -86,7 +86,7 @@ VARIANTS = {"test": (12, 32, TEST_KEYS), "full": (36, 64, FULL_KEYS),
 LOW = {"sun": {"datetime": "2026-10-14T18:10", "utc_offset_h": -5}, "exposure": -2.5,
        "haze_km": 25, "cabins": ["Lot 5"],
        "collections": ["Terrain", "Water", "Roads", "Landmarks", "Vegetation", "Shoreline",
-                       "Flooded_Timber_Dying", "Spanish_Moss", "Lake_Life"]}
+                       "Flooded_Timber_Dying", "Spanish_Moss", "Lake_Life", "Ground_Detail"]}
 POSES = None
 KEYS, SECONDS, SAMPLES = TEST_KEYS, 12, 32
 

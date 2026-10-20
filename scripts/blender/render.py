@@ -225,6 +225,10 @@ def apply_cabins(lots):
         for child in layer.children["Vegetation"].children:
             if child.name.startswith("Vegetation_BuildSite_"):
                 child.exclude = child.name.removeprefix("Vegetation_BuildSite_") in keys
+    if "Ground_Detail" in layer.children:
+        for child in layer.children["Ground_Detail"].children:
+            if child.name.startswith("Ground_Detail_BuildSite_"):
+                child.exclude = child.name.removeprefix("Ground_Detail_BuildSite_") in keys
     terrain = bpy.data.objects.get("Site_Terrain_1m")
     if terrain is not None and terrain.data.shape_keys is not None:
         for block in terrain.data.shape_keys.key_blocks:
@@ -260,6 +264,8 @@ def render_shot(name, shot, config, args, out):
     for layer in ("redline", "driveways", "shoreline", "docks"):
         if shot.get(layer, config.get(layer, False)):
             wanted.add(layer.capitalize())
+    if shot.get("ground_detail", config.get("ground_detail", False)):
+        wanted.add("Ground_Detail")
     # Phase 2d cabins (cabins.py): `cabins: [Lot 5]` or `cabins: all`.
     cabin_lots = shot.get("cabins", config.get("cabins", []))
     if cabin_lots == "all":

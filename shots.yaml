@@ -18,6 +18,7 @@ render:
   shoreline: false         # mown 551 ft shoreline path, per-lot access paths and circles
   cleared_ground: soil     # the parcels' cleared ground: soil (as photographed) | grassed
   cabins: []               # Phase 2d cabins on these lots ([Lot 5] | all); removes their pad trees
+  ground_detail: false     # Phase 3a grass tufts along the low flight path
   draft: {resolution: [1920, 1080], samples: 96}
   final: {resolution: [7680, 4320], samples: 1024, tile_size: 2048}
   4k: {resolution: [3840, 2160], samples: 256}

@@ -897,6 +897,24 @@ is shown.
 - **Spanish moss cut by more than half:** from about a third of the dead trees to about
   an eighth (256 trees), because moss takes years to establish.
 
+**R2 — Ground near the camera (20 Oct 2026; comparison `out/2026-10-20/video/benchmarks_R1_vs_R2.jpg`):**
+- **Ground material:** lightness variation at about 0.6 m and 10 cm, occasional dry straw
+  patches, a fine bump, and a shaded sward base wherever grass tufts stand.
+- **Grass tufts** (`scripts/blender/ground_detail.py`, collection `Ground_Detail`):
+  - mown-pasture clumps, 26 blades, 4–5 in tall, plus about 5% seed-head clumps;
+  - up to 22 per m² within 40 m of the flight path, fading by 200 m; about 2 million
+    instances;
+  - none below pool, on roads, drives, walks or shoreline paths, or on a shown cabin's
+    lawn apron. Each lot's apron grass is its own scatter, so it switches off with that
+    lot's cabin;
+  - the scatter follows the evaluated, graded terrain, with a fixed seed so nothing
+    flickers.
+- **Cabin lawn:** mown with 1.5 m stripes, toned to sit in the pasture.
+- **Timber after review:** the rust fringe was toned toward brown and thinned to 171 trees,
+  because it read too red at golden hour.
+- **Render cost:** about 34 s a frame at 1080p and 64 samples (R1: 11–18 s). At that rate
+  the 94 s flyover is about 27 h at 1080p.
+
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
 One illustrative cabin (Lot 5) is enough for now. A later phase renders a cabin on every

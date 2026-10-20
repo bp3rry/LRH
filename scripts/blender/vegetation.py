@@ -156,7 +156,7 @@ def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record):
         # shallow water along the waterline keeps rust-brown dying foliage. Spanish moss on
         # about an eighth of the dead trees (cut by more than half: it takes years to grow).
         depth_m = lrh.POOL_M - z
-        fringe = (depth_m < 1.2) & (rng.random(n) < 0.7)   # patchy, as in the reference
+        fringe = (depth_m < 1.2) & (rng.random(n) < 0.5)   # patchy, as in the reference
         dead_in_dying = ~fringe
         mossy = dead_in_dying & (rng.random(n) < 0.15)
         dying_protos = {sp: [trees.make_dying(p, proto_coll) for p in protos]

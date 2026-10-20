@@ -868,8 +868,21 @@ def lawn():
     fine.inputs["Scale"].default_value = 60.0
     fine.inputs["Detail"].default_value = 4.0
     tree.links.new(tc.outputs["Object"], fine.inputs["Vector"])
-    colour = _ramp(tree, big.outputs["Fac"], (0.045, 0.085, 0.02), (0.085, 0.13, 0.035), 0.3, 0.7)
-    _finish(tree, colour, 0.9, fine.outputs["Fac"], 0.02, 0.5)
+    colour = _ramp(tree, big.outputs["Fac"], (0.038, 0.072, 0.018), (0.068, 0.108, 0.03), 0.3, 0.7)
+    # Mowing stripes, 1.5 m wide, running east-west (Phase 3a R2).
+    _, sep = _coord(tree)
+    band = _math(tree, "LESS_THAN", _math(tree, "FRACT", _math(tree, "DIVIDE", sep.outputs["Y"], 3.0)), 0.5)
+    shade = _math(tree, "ADD", _math(tree, "MULTIPLY", band, 0.16), 0.92)
+    stripe = tree.nodes.new("ShaderNodeMix")
+    stripe.data_type = "RGBA"
+    stripe.blend_type = "MULTIPLY"
+    stripe.inputs["Factor"].default_value = 1.0
+    tree.links.new(colour, stripe.inputs["A"])
+    comb = tree.nodes.new("ShaderNodeCombineColor")
+    for k in ("Red", "Green", "Blue"):
+        tree.links.new(shade, comb.inputs[k])
+    tree.links.new(comb.outputs["Color"], stripe.inputs["B"])
+    _finish(tree, stripe.outputs["Result"], 0.9, fine.outputs["Fac"], 0.02, 0.5)
     return mat
 
 

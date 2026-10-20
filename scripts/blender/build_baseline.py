@@ -24,6 +24,7 @@ from mathutils.geometry import delaunay_2d_cdt
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cabins  # noqa: E402
+import ground_detail  # noqa: E402
 import infrastructure  # noqa: E402
 import lotplan  # noqa: E402
 import scene_life  # noqa: E402
@@ -196,6 +197,66 @@ def imagery_ground_material(name, product, image_path, cleared_mask=None):
         links.new(colour, cleared.inputs["A"])
         links.new(surface.outputs["Result"], cleared.inputs["B"])
         colour = cleared.outputs["Result"]
+    # Phase 3a R2: close-range detail so the 0.6 m imagery does not read as flat blotches
+    # from a low drone - lightness variation at ~0.6 m and ~10 cm, occasional dry straw
+    # patches at ~10 m, and a fine bump.
+    def noise(scale, detail=6.0):
+        n = nodes.new("ShaderNodeTexNoise")
+        n.inputs["Scale"].default_value = scale
+        n.inputs["Detail"].default_value = detail
+        links.new(coord.outputs["Object"], n.inputs["Vector"])
+        return n.outputs["Fac"]
+
+    def factor(fac, lo, hi):
+        r = nodes.new("ShaderNodeMapRange")
+        r.inputs["From Min"].default_value = 0.3
+        r.inputs["From Max"].default_value = 0.7
+        r.inputs["To Min"].default_value = lo
+        r.inputs["To Max"].default_value = hi
+        links.new(fac, r.inputs["Value"])
+        return r.outputs["Result"]
+
+    def multiply(col, fac):
+        mul = nodes.new("ShaderNodeMix")
+        mul.data_type = "RGBA"
+        mul.blend_type = "MULTIPLY"
+        mul.inputs["Factor"].default_value = 1.0
+        links.new(col, mul.inputs["A"])
+        comb = nodes.new("ShaderNodeCombineColor")
+        for k in ("Red", "Green", "Blue"):
+            links.new(fac, comb.inputs[k])
+        links.new(comb.outputs["Color"], mul.inputs["B"])
+        return mul.outputs["Result"]
+
+    if cleared_mask is not None:  # the site ground only
+        colour = multiply(colour, factor(noise(1.6), 0.86, 1.12))
+        fine = noise(9.0, 4.0)
+        colour = multiply(colour, factor(fine, 0.9, 1.08))
+        dry = nodes.new("ShaderNodeMix")
+        dry.data_type = "RGBA"
+        dry.inputs["B"].default_value = (0.20, 0.16, 0.07, 1)         # dry straw
+        links.new(factor(noise(0.09, 3.0), -0.35, 0.3), dry.inputs["Factor"])
+        links.new(colour, dry.inputs["A"])
+        colour = dry.outputs["Result"]
+        # Where grass tufts stand (ground_detail.py), the ground between blades is the
+        # shaded base of the sward, not the bright imagery colour.
+        sward = nodes.new("ShaderNodeAttribute")
+        sward.attribute_name = "grass_density"
+        base = nodes.new("ShaderNodeMix")
+        base.data_type = "RGBA"
+        base.inputs["B"].default_value = (0.045, 0.08, 0.022, 1)
+        cap = nodes.new("ShaderNodeMath")
+        cap.operation = "MULTIPLY"
+        cap.inputs[1].default_value = 0.55
+        links.new(sward.outputs["Fac"], cap.inputs[0])
+        links.new(cap.outputs[0], base.inputs["Factor"])
+        links.new(colour, base.inputs["A"])
+        colour = base.outputs["Result"]
+        bump = nodes.new("ShaderNodeBump")
+        bump.inputs["Strength"].default_value = 0.25
+        bump.inputs["Distance"].default_value = 0.02
+        links.new(fine, bump.inputs["Height"])
+        links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
     # Ground below pool is lake bed: dark silt, blended over 0.5 m.
     position = nodes.new("ShaderNodeSeparateXYZ")
     links.new(coord.outputs["Object"], position.inputs["Vector"])
@@ -873,6 +934,31 @@ def main():
                        build_sites={label: cabins.clearing(site, label) for label, site in sites.items()})
     colls["Cabins"] = collection("Cabins")
     cabins.build(colls["Cabins"], sampler, ribbon, HeightSampler, terrain, record)
+    # Phase 3a R2: grass tufts along the low flight path (switchable: Ground_Detail).
+    colls["Ground_Detail"] = collection("Ground_Detail")
+    flight = lrh.ROOT / "out/derived/flight_low.json"
+    path = LineString([p[0][:2] for p in json.loads(flight.read_text())["poses"][::15]]) \
+        if flight.is_file() else None
+    no_grass = [LineString(l).buffer(4.0) for l in road_lines]
+    no_grass += [shore_path.buffer(lotplan.PATH_WIDTH_M / 2 + 1.0)]
+    no_grass += [LineString(a["path"]).buffer(lotplan.PATH_WIDTH_M / 2 + 1.0) for a in shore_access.values()]
+    # Each cabin lot's lawn apron, carport, drive and walk get their own scatter, hidden
+    # only when that lot's cabin is shown.
+    aprons = {}
+    for label, site in sites.items():
+        _, pad = site["pad"]
+        parts = [pad.buffer(cabins.LAWN),
+                 box(*cabins.grading.layout(pad.bounds)["carport"]).buffer(1.0)]
+        if "drive_front" in site:
+            parts.append(site["drive_front"][1].buffer(3.0))
+        walk = cabins.walk_line(label, pad)
+        if walk is not None:
+            parts.append(walk.buffer(1.5))
+        aprons[label] = unary_union(parts)
+    cover = vegetation.Raster(derived / "cover_site_drone.tif")
+    ground_detail.build(colls["Ground_Detail"], terrain, path, unary_union(no_grass),
+                        lambda x, y: cover.lookup(x, y)[0] == vegetation.WOODS, record,
+                        aprons=aprons)
     (out / "lot_sites.json").write_text(json.dumps(
         {label: {**site, "shore_circle": shore_access[label]["circle"]}
          for label, site in lotplan.house_sites(context).items()}, indent=1) + "\n")
