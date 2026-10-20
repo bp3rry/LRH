@@ -39,13 +39,15 @@ SOURCES_EXTRA = {"Dock and shoreline-path work (placeholder until docks are desi
 
 def pond_volumes(dtm, pond):
     P = pond["polygon"] if isinstance(pond["polygon"], Polygon) else Polygon(pond["polygon"])
-    x0, y0, x1, y1 = P.bounds
+    x0, y0, x1, y1 = P.buffer(15.0).bounds
     gx, gy = np.meshgrid(np.arange(x0, x1, 0.5), np.arange(y0, y1, 0.5))
     X, Y = gx.ravel(), gy.ravel()
     ins = shapely.contains_xy(P, X, Y)
     din = shapely.distance(P.exterior, shapely.points(X, Y))
-    basin = np.maximum(pond["bottom_m"], pond["pool_m"] + 0.05 - din / 3.0)
-    cut = float(np.clip(dtm(X, Y) - basin, 0, None)[ins].sum() * 0.25)
+    # Inside: 3:1 down to the bottom. Outside: the bank cut back at 3:1 up to grade.
+    basin = np.where(ins, np.maximum(pond["bottom_m"], pond["pool_m"] + 0.05 - din / 3.0),
+                     pond["pool_m"] + 0.05 + din / 3.0)
+    cut = float(np.clip(dtm(X, Y) - basin, 0, None).sum() * 0.25)
     dam = pond["dam"] if isinstance(pond["dam"], LineString) else LineString(pond["dam"])
     bx0, by0, bx1, by1 = dam.buffer(8.0).bounds
     gx, gy = np.meshgrid(np.arange(bx0, bx1, 0.5), np.arange(by0, by1, 0.5))
@@ -85,6 +87,22 @@ def main():
         length = sum(l.length for l in ls)
         c = shapely.union_all(ls).centroid
         sources[f"{lot} swale"] = (length * (2 / 3) * 0.25 * 3.2 / CU_YD, (c.x, c.y))
+    local = {f"{lot} swale": lot for lot in dr["swales"]}
+    nat_by_lot = {}
+    for sw in dr.get("natural_swales", []):
+        line = LineString(sw["line"])
+        x0, y0, x1, y1 = line.buffer(5.0).bounds
+        gx, gy = np.meshgrid(np.arange(x0, x1, 0.5), np.arange(y0, y1, 0.5))
+        X, Y = gx.ravel(), gy.ravel()
+        nat = dtm(X, Y)
+        cut = float(np.clip(nat - drainage.natural_swale_design([sw], X, Y, nat), 0, None).sum() * 0.25) / CU_YD
+        key = sw["lot"] or "outside the lots"
+        v, pts = nat_by_lot.get(key, (0.0, []))
+        nat_by_lot[key] = (v + cut, pts + [line.centroid])
+    for lot, (v, pts) in nat_by_lot.items():
+        c = shapely.MultiPoint(pts).centroid
+        sources[f"{lot} natural swales"] = (v, (c.x, c.y))
+        local[f"{lot} natural swales"] = lot
     for name, (vol, xy) in SOURCES_EXTRA.items():
         sources[name] = (vol, xy)
     lots = json.loads((DERIVED / "build_sites.json").read_text())["lots"]
@@ -99,7 +117,7 @@ def main():
     moves = []
     # Each lot's own swale dirt stays on that lot.
     for s in list(sources):
-        lot = s[:-len(" swale")] if s.endswith(" swale") else None
+        lot = local.get(s)
         if lot in sinks and avail[s] >= 1:
             q = min(avail[s], sinks[lot][0])
             avail[s] -= q

@@ -1099,6 +1099,24 @@ lot, for build-out stills and a build-out flyover variant:
   - **Below the pond:** it stays a shallow channel.
   - **New totals:** usable supply about 2,243 cu yd against demand of
     4,963; shortfall about 2,720 cu yd.
+- **Larger pond and natural swales (owner, 20 Oct 2026; current model):**
+  - **Pond:** about 0.87 ac, pool 562.0 ft (`drainage.py`
+    `pond_fitted`). It spans the low ground of Lots 9 and 10 on the creek, kept 6 m inside
+    the property and clear of pads and septic areas. Lot 9's recreation site moves east to
+    clear it. The banks are cut back at 3:1 to grade.
+  - **Pond dirt:** about 14,011 cu yd in place (less 414
+    for the berm), because the pond cuts into the slope on its north side.
+  - **Natural swales:** every natural drainage path draining more than about 0.6 ac,
+    inside the property and clear of building sites, drives and septic areas, is graded to
+    a 4 ft-bottom, 4:1, 1.5 ft-deep grassed swale. That is 15
+    reaches, 319 m and about 743 cu yd.
+    Each lot's natural-swale dirt stays on that lot.
+  - **Balance:** usable supply about 13,620 cu yd against demand of
+    4,963. Every lot is covered, with a surplus of about
+    8,657 cu yd.
+  - **Balanced size:** a pond of about 0.33 ac would balance exactly. The surplus could
+    instead go to berms, a larger walk-out yard, or phase-2 lots.
+  - Shots: `check_pond`, `P_pond_golden`.
 - **Levers to close the shortfall without buying dirt:**
   - A larger pond on the same site, at the same depth:
   - 0.52 ac pond: about 1,164 cu yd more usable fill (berm 542).

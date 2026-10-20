@@ -392,6 +392,11 @@ def lake_option(dtm, label, poly, pad, walk, corridor, edge):
     easement = easement_line.buffer(EASEMENT_W / 2, cap_style="flat").intersection(poly)
     ty = ped[1]
     rec = Point(ped[0] + REC_R, ty + REC_R * 0.6)
+    dpath = DERIVED / "drainage.json"                     # keep the rec site out of the pond
+    if dpath.exists() and json.loads(dpath.read_text()).get("pond"):
+        pond_poly = Polygon(json.loads(dpath.read_text())["pond"]["polygon"]).buffer(4.0)
+        while rec.buffer(REC_R).intersects(pond_poly) and rec.x < poly.bounds[2]:
+            rec = Point(rec.x + 2.0, rec.y)
     rec_area = rec.buffer(REC_R).intersection(poly)
     lake_edge = edge.intersection(poly.buffer(1.0))
     allowed = poly.buffer(-OSSF_LINE_SETBACK, join_style="mitre")

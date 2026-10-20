@@ -74,6 +74,9 @@ def build(coll, terrain, record):
     if d.get("creek_swale"):          # the swale replaces the shallow channel above the pond
         in_pond = in_pond | (shapely.distance(LineString(d["creek_swale"]["line"]), pts) < 3.0)
     new[:, 2] -= np.where(in_pond, 0.0, CREEK_DEPTH * np.clip(1.0 - (dc / CREEK_HALF) ** 2, 0.0, 1.0))
+    import sys
+    if str(lrh.ROOT / "scripts") not in sys.path:
+        sys.path.insert(0, str(lrh.ROOT / "scripts"))
     # Creek swale above the pond (trapezoid, cut only).
     if d.get("creek_swale"):
         import sys
@@ -86,6 +89,12 @@ def build(coll, terrain, record):
     din = shapely.distance(pond.exterior, pts)
     basin = np.maximum(bottom, pool + 0.05 - din / 3.0)     # bank starts at the waterline
     new[:, 2] = np.where(inside, np.minimum(new[:, 2], basin), new[:, 2])
+    bank = pool + 0.05 + din / 3.0                          # banks cut back at 3:1 to grade
+    new[:, 2] = np.where(~inside & (din < 15.0), np.minimum(new[:, 2], bank), new[:, 2])
+    # Natural drainage paths graded into shallow swales.
+    if d.get("natural_swales"):
+        import drainage
+        new[:, 2] = drainage.natural_swale_design(d["natural_swales"], x, y, new[:, 2])
     # Dam / berm: crest 2 m wide, 3:1 faces.
     dd = shapely.distance(dam, pts)
     berm = crest - np.clip(dd - 1.0, 0.0, None) / 3.0
@@ -98,10 +107,22 @@ def build(coll, terrain, record):
     sk.data.foreach_set("co", new.ravel())
     sk.value = 0.0
     # Water surface at the normal pool.
-    ring = list(pond.buffer(1.2).simplify(0.2).exterior.coords)[:-1]   # runs under the bank
-    cx, cy = pond.centroid.x, pond.centroid.y
-    verts = [(cx, cy, pool)] + [(px, py, pool) for px, py in ring]
-    faces = [(0, k + 1, (k + 1) % len(ring) + 1) for k in range(len(ring))]
+    # Water: a 1 m grid of quads covering the pond (runs under the bank), any shape.
+    wet = pond.buffer(1.2)
+    wx0, wy0, wx1, wy1 = wet.bounds
+    xs, ys = np.arange(wx0, wx1 + 1.0, 1.0), np.arange(wy0, wy1 + 1.0, 1.0)
+    idx, verts, faces = {}, [], []
+    for j in range(len(ys) - 1):
+        for i in range(len(xs) - 1):
+            if not wet.intersects(shapely.box(xs[i], ys[j], xs[i + 1], ys[j + 1])):
+                continue
+            q = []
+            for a, b in ((i, j), (i + 1, j), (i + 1, j + 1), (i, j + 1)):
+                if (a, b) not in idx:
+                    idx[(a, b)] = len(verts)
+                    verts.append((float(xs[a]), float(ys[b]), pool))
+                q.append(idx[(a, b)])
+            faces.append(tuple(q))
     wm = bpy.data.meshes.new("Pond_Water")
     wm.from_pydata(verts, [], faces)
     wm.materials.append(bpy.data.materials.get("Lake_Water"))

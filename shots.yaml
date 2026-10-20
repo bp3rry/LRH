@@ -319,7 +319,7 @@ shots:
   check_pond:
     kind: check
     description: Drainage plan - the pond on the creek in Lot 10's lower ground, its dam and spillway, the creek channel and the water-loving trees round it.
-    camera: {position: [-20.0, -250.0, 215.0], target: [-70.0, -182.0, 170.0], lens_mm: 30.0}
+    camera: {position: [10.0, -265.0, 225.0], target: [-72.0, -180.0, 168.0], lens_mm: 26.0}
     sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
     haze_visibility_km: 0
     cleared_ground: grassed
@@ -351,4 +351,18 @@ shots:
     site_works: true
     planting: true
     cabins: [Lot 10]
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  P_pond_golden:
+    kind: marketing
+    description: The ~0.9 ac pond on the Lot 10 creek at golden hour, looking north-west across it toward the flooded timber and the lake, with the bald cypress, water oak and sycamore planting round it.
+    camera: {position: [-20.0, -232.0, 186.0], target: [-95.0, -165.0, 168.0], lens_mm: 24.0}
+    sun: {datetime: "2026-10-14T18:10", utc_offset_h: -5}
+    exposure: -2.5
+    haze_visibility_km: 25
+    cleared_ground: grassed
+    ground_detail: true
+    site_works: true
+    planting: true
+    cabins: all
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]

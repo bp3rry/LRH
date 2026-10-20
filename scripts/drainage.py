@@ -154,6 +154,45 @@ def pond_design(dtm, creek, centre_x=-70.0, length=46.0, width=30.0):
             "area_ac": Polygon(list(zip(px, py))).area / 4046.86}
 
 
+POND_TARGET_AC = 0.87          # owner, 20 Oct 2026: the larger pond, for fill
+POND_CENTRE_X = -72.0
+
+
+def pond_fitted(dtm, creek, keep_in, avoid, target_ac=POND_TARGET_AC, centre_x=POND_CENTRE_X):
+    """The pond grown along the creek (length : width 2 : 1) until, clipped to keep_in and
+    clear of avoid, it covers target_ac. Pool from the upstream rim, dam on the
+    downstream rim, as pond_design."""
+    best = None
+    for scale in np.arange(1.0, 4.01, 0.05):
+        p = pond_design(dtm, creek, centre_x=centre_x, length=46.0 * scale * 1.1, width=30.0 * scale * 0.85)
+        poly = p["polygon"].intersection(keep_in).difference(avoid)
+        if poly.geom_type != "Polygon":
+            poly = max(getattr(poly, "geoms", [poly]), key=lambda g: g.area)
+        poly = poly.buffer(-8.0).buffer(8.0).simplify(0.3)          # round off clipped corners
+        best = (p, poly)
+        if poly.area / 4046.86 >= target_ac:
+            break
+    p, poly = best
+    c = Point(p["centre"])
+    s = creek.project(c)
+    a, b = creek.interpolate(max(0, s - 10)), creek.interpolate(min(creek.length, s + 10))
+    ux, uy = b.x - a.x, b.y - a.y
+    n = np.hypot(ux, uy)
+    ux, uy = ux / n, uy / n
+    ring = np.array(poly.exterior.coords)[:-1]
+    along = (ring[:, 0] - c.x) * ux + (ring[:, 1] - c.y) * uy
+    half = along.max()
+    up = along < 0.33 * half
+    pool = float(np.percentile(dtm(ring[up, 0], ring[up, 1]), 15)) - 0.1
+    down = ring[~up]
+    order = np.argsort(np.arctan2(down[:, 1] - c.y, down[:, 0] - c.x))
+    dam = LineString(down[order]) if len(down) > 1 else LineString(ring[:2])
+    exit_s = max(creek.project(Point(q)) for q in ring)
+    return {"polygon": poly, "pool_m": pool, "bottom_m": pool - 1.8, "dam": dam,
+            "dam_crest_m": pool + 0.6, "centre": (c.x, c.y),
+            "spill": creek.interpolate(min(creek.length, exit_s + 4)), "area_ac": poly.area / 4046.86}
+
+
 SWALE_BOTTOM, SWALE_SIDE, SWALE_MAX_DEPTH = 6 * 0.3048, 4.0, 3 * 0.3048
 
 
@@ -185,6 +224,54 @@ def creek_swale_design(cs, x, y, ground):
     inv = np.maximum(inv, np.asarray(ground) - cs["max_depth_m"])     # no deeper than 3 ft
     face = inv + np.clip(d - cs["bottom_m"] / 2, 0.0, None) / cs["side_slope"]
     return np.minimum(np.asarray(ground), face)
+
+
+NAT_MIN_M2, NAT_BOTTOM, NAT_SIDE, NAT_DEPTH = 2500.0, 4 * 0.3048, 4.0, 1.5 * 0.3048
+
+
+def natural_swales(dtm, flow_lines, parcel, keep_out, lots):
+    """Owner, 20 Oct 2026: grade the property's natural drainage paths into shallow
+    grassed swales for a little more fill - trapezoid, 4 ft bottom, 4:1 sides, 1.5 ft
+    deep, the invert never rising downstream. Only paths draining more than about 1 ac,
+    inside the property, clear of building sites, drives and septic areas."""
+    out = []
+    inner = parcel.buffer(-3.0)
+    for l in flow_lines:
+        pts = [(x, y) for x, y, a in l if a >= NAT_MIN_M2]
+        if len(pts) < 4:
+            continue
+        line = LineString(pts).intersection(inner).difference(keep_out)
+        for seg in getattr(line, "geoms", [line]):
+            if seg.is_empty or seg.geom_type != "LineString" or seg.length < 12.0:
+                continue
+            seg = seg.simplify(0.8)
+            xy = np.array(seg.coords)
+            inv = dtm(xy[:, 0], xy[:, 1]) - NAT_DEPTH
+            inv = np.minimum.accumulate(inv)                       # never rises downstream
+            lot = next((k for k, poly in lots.items() if poly.contains(seg.centroid)), None)
+            out.append({"line": [[round(x, 1), round(y, 1)] for x, y in xy],
+                        "invert_m": [round(float(v), 3) for v in inv], "lot": lot,
+                        "length_m": round(seg.length, 1)})
+    return out
+
+
+def natural_swale_design(sw, x, y, ground):
+    """Finished grade with the natural swales cut in (cut only)."""
+    x, y, ground = (np.asarray(a, float) for a in (x, y, ground))
+    out = ground.copy()
+    pts = shapely.points(x, y)
+    for s in sw:
+        line = LineString(s["line"])
+        near = shapely.distance(line, pts)
+        sel = near < NAT_BOTTOM / 2 + NAT_DEPTH * NAT_SIDE + 0.5
+        if not sel.any():
+            continue
+        cum = np.concatenate([[0], np.cumsum(np.hypot(*np.diff(np.array(s["line"]), axis=0).T))])
+        st = shapely.line_locate_point(line, pts[sel])
+        inv = np.interp(st, cum, s["invert_m"])
+        face = inv + np.clip(near[sel] - NAT_BOTTOM / 2, 0.0, None) / NAT_SIDE
+        out[sel] = np.minimum(out[sel], face)
+    return out
 
 
 def swales(sites):
@@ -222,9 +309,12 @@ def main():
     (DERIVED / "drainage.json").write_text(json.dumps(out) + "\n")
     # Conceptual plan.
     creek = trace(target, z, xs, ys, (79.0, -241.0))           # from the CR 3640 corner ditch
-    pond = pond_design(dtm, creek)
     sites = {}
     bs = json.loads((DERIVED / "build_sites.geojson").read_text())["features"]
+    avoid = shapely.union_all([shapely.geometry.shape(f["geometry"]).buffer(3.0) for f in bs
+                               if f["properties"]["kind"] in ("pad", "septic")
+                               and f["properties"].get("lot") != "Lot 10"] or [Polygon()])
+    pond = pond_fitted(dtm, creek, parcel.buffer(-6.0), avoid)
     access = [shapely.geometry.shape(f["geometry"]) for f in bs if f["properties"]["kind"] == "access_road"][0]
     drives = [shapely.geometry.shape(f["geometry"]) for f in bs if f["properties"]["kind"] == "drive_front"]
     for f in bs:
@@ -235,6 +325,18 @@ def main():
                 BARNDO.add(p["lot"])
     sw = swales(sites)
     cs = creek_swale(dtm, creek, pond, parcel)
+    import build_sites as _bs
+    lot_polys, _ = _bs.lots_and_road()
+    keep = [pond["polygon"].buffer(4.0), LineString(cs["line"]).buffer(6.0), access.buffer(6.0)]
+    keep += [d.buffer(4.0) for d in drives]
+    for f in bs:
+        p = f["properties"]
+        if p["kind"] in ("pad", "septic", "drip_lake", "rec_site"):
+            g = shapely.geometry.shape(f["geometry"])
+            if p["kind"] == "pad":
+                g = shapely.union_all([g] + [box(*t[:4]) for t in p.get("terraces", [])])
+            keep.append(g.buffer(4.0 if p["kind"] != "pad" else 6.0))
+    nat = natural_swales(dtm, out["flow_lines"], parcel, shapely.union_all(keep), lot_polys)
     culverts = []
     for name, line in [("creek", creek)] + [(f"{k} swale", l) for k, ls in sw.items() for l in ls]:
         for other_name, other in [("access road", access)] + [("drive", d) for d in drives]:
@@ -250,10 +352,11 @@ def main():
                    "dam_crest_m": round(pond["dam_crest_m"], 2), "area_ac": round(pond["area_ac"], 2),
                    "spillway": [round(pond["spill"].x, 1), round(pond["spill"].y, 1)]}
     out["creek_swale"] = cs
+    out["natural_swales"] = nat
     out["swales"] = {k: [[[round(x, 1), round(y, 1)] for x, y in l.coords] for l in ls] for k, ls in sw.items()}
     out["culverts"] = culverts
     (DERIVED / "drainage.json").write_text(json.dumps(out) + "\n")
-    print(f"creek swale {cs['length_m']:.0f} m; creek {creek.length:.0f} m; pond {pond['area_ac']:.2f} ac, pool {pond['pool_m'] / 0.3048:.1f} ft; "
+    print(f"natural swales {len(nat)} ({sum(n['length_m'] for n in nat):.0f} m); creek swale {cs['length_m']:.0f} m; creek {creek.length:.0f} m; pond {pond['area_ac']:.2f} ac, pool {pond['pool_m'] / 0.3048:.1f} ft; "
           f"{len(sw)} cabin swales; {len(culverts)} culverts")
     big = sorted(on_parcel, key=lambda l: -max(p[2] for p in l))[:12]
     for l in big:
