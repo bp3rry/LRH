@@ -1014,6 +1014,23 @@ lot, for build-out stills and a build-out flyover variant:
   plan assumes **clumping** bamboo (e.g. Bambusa multiplex varieties hardy to zone 8).
   This is a species choice, not a caution caption.
 
+**Property addresses and Lot 10 barndominium (owner, 20 Oct 2026):**
+- **Addresses:**
+  - **1021 CR 3635, Ladonia TX** is the parcel's original address. It belongs to the old RV
+    site on the high corner of Lot 10, where there were also water and power facilities.
+  - **1145 CR 3635, Ladonia TX 75449** is a second address the owners applied for; it is
+    currently assigned to a point near Lot 7 or 8.
+- **Lot 10 plan:** one of the first structures will be a barndominium on Lot 10's high
+  corner, the flat triangle by the CR 3635 / CR 3640 corner ringed by oaks. The ground there
+  is about 604 ft, the highest on the property.
+  - **Reference plan:** barndominiumplans.com PL-60107 "Iris": 30 × 40 ft, one storey,
+    1,200 sq ft heated, 3 BR / 2 BA, 6:12 roof, 240 sq ft front porch.
+  - **Owner change:** the covered patio faces the lake.
+  - **Use:** this replaces the 60 × 40 ft cabin pad for Lot 10, which has no Hemlock cabin.
+    The existing water and power at the old RV site may serve it.
+  - **Next:** site it in `build_sites.py` (the high corner sits inside the 100 ft
+    initial-review setbacks from both roads, so it is an owner exception) and model it.
+
 ### Phase 3c — Site infrastructure (planned)
 
 Show everything the site plan carries, as switchable layers for stills and video:
@@ -1133,6 +1150,7 @@ interior, rust fringe), and moss is on about an eighth of the dead trees.
 | Lot 1 driveway access (connects at the mapped CR 3635 end) | Owner | Phase 2b finals |
 | Phase 2d: whether the access road and utility corridor appear in marketing (Lot 10 takes the small house unless the County allows a smaller CR 3640 setback) | Owner | Before Phase 2d renders |
 | Phase 3a flyover: approve the R0 flight path and pacing (preview `out/2026-10-19/video/low_preview/`); time of day. One cabin (Lot 5) and a simple walking path for now (owner, 19 Oct 2026); all cabins in Phase 3b, roads and easements in Phase 3c | Owner | R0 review |
+| Lot 10 barndominium on the high corner (inside the 100 ft review setbacks from CR 3635 and CR 3640): confirm setbacks; locate the old RV site's water and power | Owner | Before siting |
 | Phase 4 "Perry Lakeside Resort": name check, caption wording for a concept resort, any rental-income claims, short-term-rental rules (County, UTRWD, deed) | Owner, co-owner/agent, counsel | Before Phase 4 publication |
 | **LSMP Water Quality Protection Criteria vs Lake Zoning OSSF exception:** would ten ~2 ac lots on septic still qualify for individual Shoreline Use Permits (docks, paths, shoreline clearing)? | Owner, UTRWD, attorney | **Before platting** |
 | Drone capture: Part 107 or a contracted pilot for marketing imagery; UTRWD permission to fly over its land and water (docs/DRONE-CAPTURE-PLAN.md §3) | Owner | Before Phase 2c flights |
