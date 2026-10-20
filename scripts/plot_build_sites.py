@@ -101,6 +101,13 @@ def main():
         x0, y0, x1, y1 = g.bounds
         if p.get("house") == "small":
             continue                                                  # Hemlock does not fit
+        if p.get("house") == "barndo":                                # Lot 10 barndominium
+            xe = x1 - 0.6 - 6 * FT
+            porch = shapely.box(xe - 52 * FT, cy - 15 * FT, xe + 6 * FT, cy + 15 * FT)
+            d.polygon(ring(porch), fill=(215, 175, 110, 255), outline=(90, 60, 30, 255))
+            d.polygon(ring(shapely.box(xe - 40 * FT, cy - 15 * FT, xe, cy + 15 * FT)),
+                      fill=(240, 240, 235, 255), outline=(60, 60, 60, 255))
+            continue
         L = grading.layout(g.bounds)
         porches = shapely.box(L["xp"], L["ys"], L["xe"], L["yn"])
         d.polygon(ring(porches), fill=(215, 175, 110, 255), outline=(90, 60, 30, 255))
@@ -109,7 +116,7 @@ def main():
     im = Image.alpha_composite(im.convert("RGBA"), layer).convert("RGB")
     d = ImageDraw.Draw(im)
     font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 16)
-    legend = [("Graded pad 60x80 ft (walk-out); Lot 10: 40x60 ft", (205, 190, 150)), ("Fill / cut slopes", (120, 160, 60)),
+    legend = [("Graded pad 60x80 ft (walk-out); Lot 10 barndo pad 62x36 ft", (205, 190, 150)), ("Fill / cut slopes", (120, 160, 60)),
               ("Hemlock cabin 30x42 ft; porches (tan); opt. apartment below", (240, 240, 235)),
               (("Septic tank + 4,000 sq ft drip area in front + sewer stub" if option == "A" else
                 "Option B: drip area on lake-side acre, dose tank, gravity line"), (150, 95, 40)),

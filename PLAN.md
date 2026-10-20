@@ -1028,8 +1028,21 @@ lot, for build-out stills and a build-out flyover variant:
   - **Owner change:** the covered patio faces the lake.
   - **Use:** this replaces the 60 × 40 ft cabin pad for Lot 10, which has no Hemlock cabin.
     The existing water and power at the old RV site may serve it.
-  - **Next:** site it in `build_sites.py` (the high corner sits inside the 100 ft
-    initial-review setbacks from both roads, so it is an owner exception) and model it.
+  - **Setbacks (owner exception, 20 Oct 2026):** the 100 ft road setbacks are waived for
+    Lot 10. The model uses 15 ft from CR 3635 and CR 3640 and 10 ft from the Lot 9 line,
+    because the corner is only about 75 ft deep.
+  - **Sited and modelled** (`build_sites.py` `BARNDO_*`, `cabins.py` `barndo()`):
+    - **Pad:** a 62 × 36 ft flat pad centred near (100, −186), natural ground about
+      596 ft, top about 598 ft. The pad search weights trees heavily, so the corner's oaks
+      stay (1 lidar tree on the pad).
+    - **Building:** 40 ft east–west by 30 ft. A 6:12 charcoal standing-seam metal gable
+      roof, board-and-batten in the cabins' red-brown stain over a stone wainscot.
+    - **Porches:** the roof carries 12 ft over a covered concrete patio on the lake (west)
+      end, with a table, chairs and rockers. A 6 ft entry porch faces the drive, on posts
+      with Y-brackets.
+    - **Drive and septic:** a 117 ft gravel drive from CR 3635. The septic drip area sits
+      downhill (west) of the house, by gravity from the slab.
+    - Shot: `L10_barndo`.
 
 ### Phase 3c — Site infrastructure (planned)
 
@@ -1150,7 +1163,7 @@ interior, rust fringe), and moss is on about an eighth of the dead trees.
 | Lot 1 driveway access (connects at the mapped CR 3635 end) | Owner | Phase 2b finals |
 | Phase 2d: whether the access road and utility corridor appear in marketing (Lot 10 takes the small house unless the County allows a smaller CR 3640 setback) | Owner | Before Phase 2d renders |
 | Phase 3a flyover: approve the R0 flight path and pacing (preview `out/2026-10-19/video/low_preview/`); time of day. One cabin (Lot 5) and a simple walking path for now (owner, 19 Oct 2026); all cabins in Phase 3b, roads and easements in Phase 3c | Owner | R0 review |
-| Lot 10 barndominium on the high corner (inside the 100 ft review setbacks from CR 3635 and CR 3640): confirm setbacks; locate the old RV site's water and power | Owner | Before siting |
+| Lot 10 barndominium: locate the old RV site's water and power (setback exception approved by owner, 20 Oct 2026) | Owner | Before construction planning |
 | Phase 4 "Perry Lakeside Resort": name check, caption wording for a concept resort, any rental-income claims, short-term-rental rules (County, UTRWD, deed) | Owner, co-owner/agent, counsel | Before Phase 4 publication |
 | **LSMP Water Quality Protection Criteria vs Lake Zoning OSSF exception:** would ten ~2 ac lots on septic still qualify for individual Shoreline Use Permits (docks, paths, shoreline clearing)? | Owner, UTRWD, attorney | **Before platting** |
 | Drone capture: Part 107 or a contracted pilot for marketing imagery; UTRWD permission to fly over its land and water (docs/DRONE-CAPTURE-PLAN.md §3) | Owner | Before Phase 2c flights |

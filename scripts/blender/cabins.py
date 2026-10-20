@@ -71,13 +71,16 @@ def build_sites():
         if "lot" in p:
             lots.setdefault(p["lot"], {})[p["kind"]] = (p, shapely.geometry.shape(f["geometry"]))
     return {k: v for k, v in lots.items()
-            if "pad" in v and v["pad"][0].get("house") in FITS and "terrace_floor_m" in v["pad"][0]}
+            if "pad" in v and ((v["pad"][0].get("house") in FITS and "terrace_floor_m" in v["pad"][0])
+                               or v["pad"][0].get("house") == "barndo")}
 
 
-def walk_line(label, pad, terraces=None):
+def walk_line(label, pad, terraces=None, house=None):
     """Owner, 19 Oct 2026: a simple 5 ft gravel walking path from the lake stair down
     across the lake-side acre to the lot's shoreline access path (which starts at the
     lot's west line; lotplan.shoreline_layout). Later phases add the full site network."""
+    if house == "barndo":
+        return None
     sites = sorted(lrh.ROOT.glob("out/*/lot_sites.json"))
     if not sites:
         return None
@@ -97,11 +100,16 @@ def clearing(site, label=None):
     """Footprint where no tree may stand once the lot is built: the graded area, the
     patio and the front drive."""
     props, pad = site["pad"]
+    if props.get("house") == "barndo":       # keep the oaks round the corner: pad + slopes only
+        parts = [pad.buffer(3.0, join_style="mitre")]
+        if "drive_front" in site:
+            parts.append(site["drive_front"][1].buffer(3.0))
+        return shapely.union_all(parts)
     parts = [graded_area(pad, props.get("terraces")).buffer(8.0, join_style="mitre"),
              patio_centre(pad).buffer(PATIO_R + 2)]
     if "drive_front" in site:
         parts.append(site["drive_front"][1].buffer(3.5))
-    walk = walk_line(label, pad, props.get("terraces")) if label else None
+    walk = walk_line(label, pad, props.get("terraces"), props.get("house")) if label else None
     if walk is not None:
         parts.append(walk.buffer(2.5))
     return shapely.union_all(parts)
@@ -1123,6 +1131,132 @@ def garden_terraces(m, terraces, T, key):
         prev = level
 
 
+# --------------------------------------------------------------------------- barndominium
+
+def metal_roof():
+    """Charcoal standing-seam metal roof: raised seams every 16 in, slight sheen."""
+    mat, tree = _mat("Barndo_Metal_Roof")
+    if tree is None:
+        return mat
+    tc, sep = _coord(tree)
+    f = _math(tree, "FRACT", _math(tree, "DIVIDE", sep.outputs["X"], 0.406))
+    seam = _math(tree, "LESS_THAN", _math(tree, "ABSOLUTE", _math(tree, "SUBTRACT", f, 0.5)), 0.03)
+    bsdf = tree.nodes["Principled BSDF"]
+    bsdf.inputs["Metallic"].default_value = 0.6
+    _finish(tree, _ramp(tree, seam, (0.035, 0.037, 0.04), (0.07, 0.072, 0.075)), 0.38, seam, 0.01, 0.8)
+    return mat
+
+
+def flat_design(bounds, top):
+    """A flat pad at `top` with 4:1 fill and 3:1 cut slopes back to natural ground."""
+    x0, y0, x1, y1 = bounds
+
+    def design(x, y, ground):
+        x, y, ground = (np.asarray(a, float) for a in (x, y, ground))
+        d = np.hypot(x - np.clip(x, x0, x1), y - np.clip(y, y0, y1))
+        out = np.where(ground > top, np.minimum(ground, top + d / grading.CUT_SLOPE),
+                       np.maximum(ground, top - d / grading.FILL_SLOPE))
+        return np.where(d == 0, top, out)
+    return design
+
+
+def barndo(m, coll, pad, z, key):
+    """Lot 10 barndominium after the Iris plan (PL-60107): 40 x 30 ft, one storey, 10 ft
+    walls, 6:12 gable roof with its ridge east-west in charcoal standing-seam metal;
+    board-and-batten siding in the cabins' red-brown stain over a stone wainscot; the roof
+    carried 12 ft over a covered concrete patio on the west (lake) end, and a 6 ft entry
+    porch on the east (drive) end, both on timber posts with Y-brackets."""
+    bb, wood, rock, conc, dark = board_batten(), timber(), stone(), concrete(), trim()
+    roof, glow = metal_roof(), window_glow()
+    x0, y0, x1, y1 = pad.bounds
+    cy = (y0 + y1) / 2
+    W, D = 40 * FT, 30 * FT
+    xe = x1 - 0.6 - 6 * FT
+    xw = xe - W
+    yb0, yb1 = cy - D / 2, cy + D / 2
+    xp, xq = xw - 12 * FT, xe + 6 * FT
+    wall = z + 3.05
+    m.box(xp, yb0, z - 0.2, xq, yb1, z + 0.08, conc)                      # slab, patio, porch
+    m.box(xw, yb0, z + 0.08, xe, yb1, z + 0.95, rock)                    # stone wainscot
+    m.box(xw, yb0, z + 0.95, xe, yb1, wall, bb)
+    for x in (xw, xe):                                                    # corner trim
+        for y in (yb0, yb1):
+            m.box(x - 0.08, y - 0.08, z + 0.95, x + 0.08, y + 0.08, wall, dark)
+    # Windows and doors: lake end glass (living room), sides, entry.
+    window(m, xw, cy, z + 0.1, 2.4, 2.2, "W", glow)                        # sliding doors
+    for dy in (-3.0, 3.0):
+        window(m, xw, cy + dy, z + 0.95, 1.2, 1.5, "W", glow)
+    for xx in (xw + 2.2, xw + 6.0, xe - 2.4):
+        window(m, xx, yb0, z + 1.0, 1.2, 1.3, "S", glow)
+        window(m, xx, yb1, z + 1.0, 1.2, 1.3, "N", glow)
+    window(m, xe, cy - 1.2, z + 0.1, 1.0, 2.15, "E", glow)                 # front door
+    window(m, xe, cy + 2.2, z + 0.95, 1.2, 1.4, "E", glow)
+    # Roof: ridge E-W, 6:12, carried over patio and porch, 0.5 m eave overhang.
+    rise = (D / 2) * 0.5
+    ridge = wall + rise
+    for x, d in ((xw, 0.15), (xe - 0.15, 0.15)):
+        m.gable_x(yb0, yb1, x, wall, ridge, d, bb)
+    ov = 0.5
+    for ya in (yb0 - ov, yb1 + ov):
+        za = wall - ov * 0.5
+        lo = [(xp - 0.3, ya, za), (xq + 0.3, ya, za), (xq + 0.3, cy, ridge), (xp - 0.3, cy, ridge)]
+        m.hexa(lo + [(x, y, zz + 0.08) for x, y, zz in lo], roof)
+    m.beam((xp - 0.3, cy, ridge + 0.08), (xq + 0.3, cy, ridge + 0.08), 0.25, 0.06, roof)   # ridge cap
+    for x in (xp - 0.3, xq + 0.3):                                        # rake trim
+        for ya in (yb0 - ov, yb1 + ov):
+            m.beam((x, ya, wall - ov * 0.5), (x, cy, ridge), 0.06, 0.2, dark)
+    # Posts, beams and Y-brackets at the patio and porch ends; gable trusses.
+    for xx in (xp + 0.15, xq - 0.15):
+        for y in np.linspace(yb0 + 0.15, yb1 - 0.15, 4 if xx < xw else 3):
+            m.box(xx - 0.1, y - 0.1, z + 0.08, xx + 0.1, y + 0.1, wall - 0.05, wood)
+            y_braces(m, xx, y, wall - 0.05, "y", wood)
+        m.box(xx - 0.12, yb0 - 0.2, wall - 0.3, xx + 0.12, yb1 + 0.2, wall, wood)
+        m.beam((xx, cy, wall), (xx, cy, ridge - 0.15), 0.18, 0.18, wood)
+        for ya in (yb0, yb1):
+            m.beam((xx, ya, wall), (xx, cy, ridge - 0.1), 0.16, 0.18, wood)
+    for y in (cy - 2.0, cy + 2.0):
+        point_light(f"{key}_Patio_{y:.0f}", (xp + 1.6, y, wall - 0.3), 40.0, (1.0, 0.7, 0.42), 0.08, coll)
+    point_light(f"{key}_Porch", (xq - 0.9, cy, wall - 0.3), 30.0, (1.0, 0.7, 0.42), 0.08, coll)
+    # Patio furniture: a table with chairs and two rockers facing the lake.
+    tx, ty = xp + 1.9, cy + 1.4
+    m.cylinder(tx, ty, z + 0.08, z + 0.82, 0.55, wood, n=16)
+    for a in (0, 90, 180, 270):
+        cxy = (tx + 0.95 * math.sin(math.radians(a)), ty + 0.95 * math.cos(math.radians(a)))
+        chair(m, cxy[0], cxy[1], z + 0.08, (a + 180) % 360, wood)
+    for y in (cy - 1.6, cy - 2.8):
+        chair(m, xp + 1.0, y, z + 0.08, 270, wood)
+    return {"house": (xw, yb0, xe, yb1), "patio": (xp, xw), "porch_x": xq}
+
+
+def build_barndo(root, label, site, sampler, ribbon, sampler_class, terrain, drive_gravel):
+    props, pad = site["pad"]
+    top = props["top_m"]
+    key = label.replace(" ", "_")
+    coll = bpy.data.collections.new(f"Cabin_{key}")
+    root.children.link(coll)
+    design = flat_design(pad.bounds, top)
+    surface = site_surface(f"Pad_{key}", pad, top, top, sampler, lawn(), coll, design=design)
+    lowered = grade_terrain(terrain, key, pad, top, top, design=design)
+    on_site = sampler_class([surface])
+    m = Mesh()
+    info = barndo(m, coll, pad, top + LIFT, key)
+    rng = random.Random(f"barndo-{key}")
+    (xw, yb0, xe, yb1) = info["house"]
+    grade = lambda x, y: (on_site(x, y) or sampler(x, y) or top) - LIFT
+    for x in np.arange(xw + 1.0, xe - 1.0, 1.4):                          # foundation shrubs
+        for y in (yb0 - 0.8, yb1 + 0.8):
+            if rng.random() < 0.8:
+                shrub(m, x, y, grade(x, y) + 0.03, rng.uniform(0.35, 0.45), rng)
+    crape_myrtle(m, xe + 2.6, yb1 + 1.8, grade(xe + 2.6, yb1 + 1.8), rng)
+    m.object(f"Cabin_{key}", coll)
+    if "drive_front" in site:
+        line = list(site["drive_front"][1].coords)
+        ribbon(f"Drive_{key}", line, 3.6,
+               lambda x, y, on_site=on_site: on_site(x, y) if on_site(x, y) is not None else sampler(x, y),
+               0.06, drive_gravel, coll)
+    return {"house": "barndo", "pad_top_m": top, "terrain_vertices_cut": lowered}
+
+
 def lawn():
     """Mown lawn on the graded site: fine colour variation and a little bump."""
     mat, tree = _mat("Cabin_Lawn")
@@ -1164,7 +1298,7 @@ def graded_area(pad, terraces=()):
     return shapely.union_all([pad] + [shapely.box(*t[:4]) for t in terraces or ()])
 
 
-def site_surface(name, pad, T, E, sampler, mat, coll, terraces=()):
+def site_surface(name, pad, T, E, sampler, mat, coll, terraces=(), design=None):
     """Finished grade over the pad, terraces and slopes, 0.5 m grid, above the terrain."""
     area = graded_area(pad, terraces)
     x0, y0, x1, y1 = area.buffer(REGION).bounds
@@ -1172,7 +1306,8 @@ def site_surface(name, pad, T, E, sampler, mat, coll, terraces=()):
     gx, gy = np.meshgrid(xs, ys)
     nat = np.array([sampler(x, y) if sampler(x, y) is not None else np.nan
                     for x, y in zip(gx.ravel(), gy.ravel())])
-    fin = grading.design(gx.ravel(), gy.ravel(), np.nan_to_num(nat), pad.bounds, T, E, terraces)
+    design = design or (lambda x, y, g: grading.design(x, y, g, pad.bounds, T, E, terraces))
+    fin = design(gx.ravel(), gy.ravel(), np.nan_to_num(nat))
     import site_works                                   # diversion swales (drainage plan)
     fin = fin - site_works.swale_cut(gx.ravel(), gy.ravel())
     # A clean mown apron: everything within LAWN of the pad (covers the 4:1 / 3:1 slopes)
@@ -1201,7 +1336,7 @@ def site_surface(name, pad, T, E, sampler, mat, coll, terraces=()):
     return obj
 
 
-def grade_terrain(terrain, key, pad, T, E, terraces=()):
+def grade_terrain(terrain, key, pad, T, E, terraces=(), design=None):
     """Shape key on the site terrain lowering it where the grading cuts (so the finished
     surface shows); render.py turns it on with the lot's cabin."""
     mesh = terrain.data
@@ -1210,7 +1345,8 @@ def grade_terrain(terrain, key, pad, T, E, terraces=()):
     co = co.reshape(-1, 3)
     x0, y0, x1, y1 = graded_area(pad, terraces).buffer(REGION).bounds
     sel = (co[:, 0] > x0) & (co[:, 0] < x1) & (co[:, 1] > y0) & (co[:, 1] < y1)
-    fin = grading.design(co[sel, 0], co[sel, 1], co[sel, 2], pad.bounds, T, E, terraces)
+    design = design or (lambda x, y, g: grading.design(x, y, g, pad.bounds, T, E, terraces))
+    fin = design(co[sel, 0], co[sel, 1], co[sel, 2])
     lower = fin < co[sel, 2] - 0.01                      # cut only
     if not lower.any():
         return 0
@@ -1233,6 +1369,9 @@ def build(root, sampler, ribbon, sampler_class, terrain, record):
     built = {}
     for label, site in sorted(sites.items(), key=lambda kv: int(kv[0].split()[-1])):
         props, pad = site["pad"]
+        if props.get("house") == "barndo":
+            built[label] = build_barndo(root, label, site, sampler, ribbon, sampler_class, terrain, drive_gravel)
+            continue
         T, E = props["terrace_floor_m"], props["back_grade_m"]
         key = label.replace(" ", "_")
         coll = bpy.data.collections.new(f"Cabin_{key}")
@@ -1294,6 +1433,6 @@ def build(root, sampler, ribbon, sampler_class, terrain, record):
                         "patio": [round(pc.x, 1), round(pc.y, 1)]}
     skipped = sorted(set(f"Lot {i}" for i in range(1, 11)) - set(built))
     record("cabins_built", len(built) >= 9, lots=sorted(built), skipped=skipped,
-           note="the Hemlock footprint does not fit Lot 10's 60 x 40 ft pad",
+           barndo=[k for k, v in built.items() if v.get("house") == "barndo"],
            basis="out/derived/build_sites.geojson")
     return built

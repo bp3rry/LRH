@@ -86,6 +86,18 @@ SECLUDED = {"Lot 1"}  # owner, 15 Oct 2026: the wooded build site, reached by it
 # both roads leaves ~57 ft of depth, under the standard pad's 60 ft, so it falls back to
 # the small house (or the planned re-survey).
 CORNER_LOTS = {"Lot 10"}
+# Owner, 20 Oct 2026: Lot 10 gets a barndominium on its high corner (the old RV site of
+# 1021 CR 3635), after barndominiumplans.com PL-60107 "Iris": 30 x 40 ft, one storey,
+# 3 BR / 2 BA, 6:12 roof. The corner is only ~75 ft deep, so the 40 ft side runs east-west:
+# covered patio on the west (lake) end, entry porch on the north side. The 100 ft road
+# setbacks are waived for this lot (owner exception): 15 ft from the roads and 10 ft from
+# the Lot 9 line are used here.
+BARNDO_LOTS = {"Lot 10"}
+BARNDO_SETBACK = 15 * FT
+BARNDO_SIDE = 10 * FT
+BARNDO_TYPE = {"name": "barndo", "plan": "Barndominium (Iris PL-60107) 30 x 40 ft, 3 BR / 2 BA, "
+               "covered patio to the lake", "pad": (62 * FT, 36 * FT), "septic": (100 * FT, 40 * FT),
+               "septic_sq_ft": 4000, "flow_gpd": 240}
 UTRWD_SETBACK = 50 * FT
 DERIVED = ROOT / "out/derived"
 CU_YD = 0.764555
@@ -170,7 +182,7 @@ def access_road(lots):
     return LineString(pts + [end.coords[0]])
 
 
-def place_septic(poly, pad, cy, corridor=None, SEPTIC=SEPTIC):
+def place_septic(poly, pad, cy, corridor=None, SEPTIC=SEPTIC, allow_west=False):
     """Septic (100 x 50 ft) beside the house on its road side, north half; else south or
     north of the pad. Returns (box, description) or (None, None)."""
     inner = poly.buffer(-SIDE_SETBACK / 2, join_style="mitre")
@@ -192,6 +204,12 @@ def place_septic(poly, pad, cy, corridor=None, SEPTIC=SEPTIC):
         cand = box(cx - SEPTIC[0] / 2, sy - SEPTIC[1] / 2, cx + SEPTIC[0] / 2, sy + SEPTIC[1] / 2)
         if inner.contains(cand) and (corridor is None or not cand.intersects(corridor)):
             return cand, "beside house (front does not fit)"
+    if allow_west:   # barndo on the high corner: downhill (west) of the house, gravity flow
+        for sx in np.arange(pad.bounds[0] - 6.0 - SEPTIC[0] / 2, poly.bounds[0], -2.0):
+            for dy in (0.0, -6.0, 6.0, -12.0, 12.0):
+                cand = box(sx - SEPTIC[0] / 2, cy + dy - SEPTIC[1] / 2, sx + SEPTIC[0] / 2, cy + dy + SEPTIC[1] / 2)
+                if inner.contains(cand) and (corridor is None or not cand.intersects(corridor)):
+                    return cand, "downhill (west) of house"
     return None, None
 
 
@@ -415,7 +433,12 @@ def analyse():
         envelope = poly.buffer(-SIDE_SETBACK, join_style="mitre")
         front = east_edge(poly)
         envelope = envelope.difference(front.buffer(ROAD_SETBACK, cap_style="flat"))
-        if label in CORNER_LOTS:
+        if label in BARNDO_LOTS:
+            envelope = poly.buffer(-BARNDO_SIDE, join_style="mitre").difference(
+                front.buffer(BARNDO_SETBACK, cap_style="flat"))
+            south = LineString([(x, y) for x, y in poly.exterior.coords if y < poly.bounds[1] + 12])
+            envelope = envelope.difference(south.buffer(BARNDO_SETBACK, cap_style="flat"))
+        elif label in CORNER_LOTS:
             south = LineString([(x, y) for x, y in poly.exterior.coords if y < poly.bounds[1] + 12])
             envelope = envelope.difference(south.buffer(ROAD_SETBACK, cap_style="flat"))
         y0, y1 = poly.bounds[1], poly.bounds[3]
@@ -431,7 +454,7 @@ def analyse():
         for tier_name, clear in tiers:
          if candidates:
             break
-         for ht in HOUSE_TYPES:
+         for ht in ([BARNDO_TYPE] if label in BARNDO_LOTS else HOUSE_TYPES):
           PAD, SEPTIC = ht["pad"], ht["septic"]
           htype = ht
           for cx in np.arange(poly.bounds[0], poly.bounds[2], 2.0):
@@ -446,7 +469,7 @@ def analyse():
                     continue
                 if pad.intersects(corridor):
                     continue
-                if place_septic(poly, pad, cy, corridor, SEPTIC)[0] is None:  # pad and septic together
+                if place_septic(poly, pad, cy, corridor, SEPTIC, label in BARNDO_LOTS)[0] is None:  # pad and septic together
                     continue
                 gx, gy = np.meshgrid(np.linspace(pad.bounds[0], pad.bounds[2], 9),
                                      np.linspace(pad.bounds[1], pad.bounds[3], 7))
@@ -485,7 +508,10 @@ def analyse():
         relief = np.array([c[4] for c in candidates])
         ntree = np.array([c[5] for c in candidates])
         off = np.array([abs(c[1] - yc) for c in candidates])
-        score = (zmean - zmean.max()) * 1.0 - relief * 0.6 - ntree * 0.4 - off * 0.03
+        # The barndo keeps the oaks round its corner: trees weigh more there.
+        tree_w = 2.0 if label in BARNDO_LOTS else 0.4
+        off_w = 0.0 if label in BARNDO_LOTS else 0.03
+        score = (zmean - zmean.max()) * 1.0 - relief * 0.6 - ntree * tree_w - off * off_w
         cx, cy, pad, z_mean, z_relief, n_tree = candidates[int(np.argmax(score))]
         top = z_mean + RAISE_M
         fill, cut_pad, fill_area = grade(dtm, pad, top)
@@ -494,10 +520,12 @@ def analyse():
         # drive passes it along the south half and reaches the house's side (owner: front
         # or side approach). Drive lies >=1.5 m inside the lot line; septic stays inside
         # the lot by half the side setback and clear of the drive by 2 m.
-        septic, side = place_septic(poly, pad, cy, corridor if label != "Lot 1" else None, SEPTIC)
+        septic, side = place_septic(poly, pad, cy, corridor if label != "Lot 1" else None, SEPTIC,
+                                    label in BARNDO_LOTS)
         # Main drive: along y_d (south half, clear of septic), from CR 3635 to the pad.
         # Main drive ends at the covered parking slab's road-side face (owner, 19 Oct 2026).
-        cp = grading.layout(pad.bounds)["carport"]
+        cp = grading.layout(pad.bounds)["carport"] if htype["name"] != "barndo" else \
+            (pad.bounds[2] - 1.0, pad.bounds[1], pad.bounds[2], pad.bounds[3])
         y_lo = poly.buffer(-1.5 - DRIVE_W / 2).bounds[1]
         y_d = max(y_lo, (cp[1] + cp[3]) / 2)
         if septic is not None:
@@ -519,7 +547,8 @@ def analyse():
             drive_back = LineString([(pad.bounds[0], cy), hp.coords[0]])
         septic_conflict = septic is not None and drive_front.buffer(DRIVE_W / 2).intersects(septic)
 
-        walk = walkout(dtm, pad, septic, corridor) if septic is not None else None
+        walk = walkout(dtm, pad, septic, corridor) if septic is not None and htype["name"] != "barndo" \
+            else None
         gravity = walk["gravity"] if walk else None
         option_b, lake = lake_option(dtm, label, poly, pad, walk, corridor, edge) if walk else ([], None)
 

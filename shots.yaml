@@ -326,3 +326,16 @@ shots:
     site_works: true
     planting: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  L10_barndo:
+    kind: marketing
+    description: Lot 10 barndominium (Iris-style, 30 x 40 ft) on the high corner by CR 3635 / CR 3640, the old 1021 CR 3635 RV site - covered patio facing the lake, oaks kept round the corner. Drone view from the south-west at golden hour.
+    camera: {position: [62.0, -222.0, 196.0], target: [98.0, -186.0, 183.5], lens_mm: 28.0}
+    sun: {datetime: "2026-10-14T18:10", utc_offset_h: -5}
+    exposure: -2.5
+    haze_visibility_km: 25
+    cleared_ground: grassed
+    cabins: [Lot 10]
+    ground_detail: true
+    planting: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
