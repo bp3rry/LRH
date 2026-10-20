@@ -101,7 +101,7 @@ def clearing(site, label=None):
     patio and the front drive."""
     props, pad = site["pad"]
     if props.get("house") == "barndo":       # keep the oaks round the corner: pad + slopes only
-        parts = [pad.buffer(3.0, join_style="mitre")]
+        parts = [graded_area(pad, props.get("terraces")).buffer(2.5, join_style="mitre")]
         if "drive_front" in site:
             parts.append(site["drive_front"][1].buffer(3.0))
         return shapely.union_all(parts)
@@ -1094,7 +1094,7 @@ def fruit_tree(m, x, y, z, rng):
                    plain("Cabin_Apple", (0.45, 0.04, 0.03), 0.4), seg=6, rings=4)
 
 
-def garden_terraces(m, terraces, T, key):
+def garden_terraces(m, terraces, T, key, uses=("garden", "orchard", "orchard")):
     """Owner, 20 Oct 2026: terraces stepping down toward the lake below the fire-pit
     terrace - low dry-stacked stone walls with steps on the centre line, a vegetable
     garden of cedar raised beds on the upper terrace, a small fruit orchard below, and a
@@ -1114,7 +1114,10 @@ def garden_terraces(m, terraces, T, key):
             m.box(x1 - 0.4 - (k + 1) * 0.35, cy - gap, zt - 0.1, x1 - 0.4 - k * 0.35 + 0.02, cy + gap, zt + 0.02,
                   rock)
         m.box(x0, cy - gap, level - 0.03, x1 - 0.4 - n * 0.35, cy + gap, level + 0.03, dg)  # DG path
-        if i == 0:                                                            # vegetable garden
+        use = uses[min(i, len(uses) - 1)]
+        if use == "lawn":                                                     # open lawn, a bench
+            log_bench(m, x0 + 1.2, cy + gap + 1.6, level, 90, timber())
+        elif use == "garden":                                                 # vegetable garden
             for bx in (x0 + 1.0, x1 - 0.4 - n * 0.35 - 2.2):
                 for by in (y0 + 1.2, cy + gap + 0.8):
                     raised_bed(m, bx, by, bx + 1.2, by + min(3.0, cy - gap - y0 - 2.0), level, rng)
@@ -1147,16 +1150,24 @@ def metal_roof():
     return mat
 
 
-def flat_design(bounds, top):
-    """A flat pad at `top` with 4:1 fill and 3:1 cut slopes back to natural ground."""
-    x0, y0, x1, y1 = bounds
+def flat_design(bounds, top, terraces=()):
+    """A flat pad at `top` plus flat terraces [(x0, y0, x1, y1, level)], with 4:1 fill
+    and 3:1 cut slopes back to natural ground."""
+    flats = [tuple(bounds) + (top,)] + [tuple(t) for t in terraces or ()]
 
     def design(x, y, ground):
         x, y, ground = (np.asarray(a, float) for a in (x, y, ground))
-        d = np.hypot(x - np.clip(x, x0, x1), y - np.clip(y, y0, y1))
-        out = np.where(ground > top, np.minimum(ground, top + d / grading.CUT_SLOPE),
-                       np.maximum(ground, top - d / grading.FILL_SLOPE))
-        return np.where(d == 0, top, out)
+        best, edge = None, None
+        for b0, b1, b2, b3, level in flats:
+            d = np.hypot(x - np.clip(x, b0, b2), y - np.clip(y, b1, b3))
+            if best is None:
+                best, edge = d, np.full(x.shape, level)
+            else:
+                edge = np.where(d < best, level, edge)
+                best = np.minimum(d, best)
+        out = np.where(ground > edge, np.minimum(ground, edge + best / grading.CUT_SLOPE),
+                       np.maximum(ground, edge - best / grading.FILL_SLOPE))
+        return np.where(best == 0, edge, out)
     return design
 
 
@@ -1234,9 +1245,10 @@ def build_barndo(root, label, site, sampler, ribbon, sampler_class, terrain, dri
     key = label.replace(" ", "_")
     coll = bpy.data.collections.new(f"Cabin_{key}")
     root.children.link(coll)
-    design = flat_design(pad.bounds, top)
-    surface = site_surface(f"Pad_{key}", pad, top, top, sampler, lawn(), coll, design=design)
-    lowered = grade_terrain(terrain, key, pad, top, top, design=design)
+    terraces = props.get("terraces", [])
+    design = flat_design(pad.bounds, top, terraces)
+    surface = site_surface(f"Pad_{key}", pad, top, top, sampler, lawn(), coll, terraces, design=design)
+    lowered = grade_terrain(terrain, key, pad, top, top, terraces, design=design)
     on_site = sampler_class([surface])
     m = Mesh()
     info = barndo(m, coll, pad, top + LIFT, key)
@@ -1248,6 +1260,7 @@ def build_barndo(root, label, site, sampler, ribbon, sampler_class, terrain, dri
             if rng.random() < 0.8:
                 shrub(m, x, y, grade(x, y) + 0.03, rng.uniform(0.35, 0.45), rng)
     crape_myrtle(m, xe + 2.6, yb1 + 1.8, grade(xe + 2.6, yb1 + 1.8), rng)
+    garden_terraces(m, terraces, top, key, uses=("lawn", "garden"))
     m.object(f"Cabin_{key}", coll)
     if "drive_front" in site:
         line = list(site["drive_front"][1].coords)

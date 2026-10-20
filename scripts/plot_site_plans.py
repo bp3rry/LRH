@@ -41,6 +41,13 @@ def main():
         d = ImageDraw.Draw(layer)
         for f in bs:                                                 # cabins for reference
             p = f["properties"]
+            if p["kind"] == "pad" and p.get("house") == "barndo":
+                b = shapely.geometry.shape(f["geometry"]).bounds
+                cy, xe = (b[1] + b[3]) / 2, b[2] - 0.6 - 6 * 0.3048
+                d.rectangle([px(xe - 52 * 0.3048, cy + 4.57), px(xe + 6 * 0.3048, cy - 4.57)], fill=(215, 175, 110, 255))
+                d.rectangle([px(xe - 40 * 0.3048, cy + 4.57), px(xe, cy - 4.57)], fill=(240, 240, 235, 255))
+                for t in p.get("terraces", []):
+                    d.rectangle([px(t[0], t[3]), px(t[2], t[1])], outline=(255, 255, 255, 160), width=1)
             if p["kind"] == "pad" and p.get("house") == "standard":
                 L = grading.layout(shapely.geometry.shape(f["geometry"]).bounds)
                 for b, col in ((L["carport"], (200, 200, 200, 230)),

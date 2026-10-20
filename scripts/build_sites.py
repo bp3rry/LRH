@@ -205,7 +205,8 @@ def place_septic(poly, pad, cy, corridor=None, SEPTIC=SEPTIC, allow_west=False):
         if inner.contains(cand) and (corridor is None or not cand.intersects(corridor)):
             return cand, "beside house (front does not fit)"
     if allow_west:   # barndo on the high corner: downhill (west) of the house, gravity flow
-        for sx in np.arange(pad.bounds[0] - 6.0 - SEPTIC[0] / 2, poly.bounds[0], -2.0):
+        # Beyond the two lawn / garden terraces (2 x 9 m) and a 4 m buffer.
+        for sx in np.arange(pad.bounds[0] - 22.0 - SEPTIC[0] / 2, poly.bounds[0], -2.0):
             for dy in (0.0, -6.0, 6.0, -12.0, 12.0):
                 cand = box(sx - SEPTIC[0] / 2, cy + dy - SEPTIC[1] / 2, sx + SEPTIC[0] / 2, cy + dy + SEPTIC[1] / 2)
                 if inner.contains(cand) and (corridor is None or not cand.intersects(corridor)):
@@ -233,6 +234,47 @@ def garden_terraces(dtm, pad, T, corridor):
         out.append([round(v, 3) for v in b] + [round(level, 3)])
         prev = level
     return out
+
+
+def barndo_terraces(dtm, pad, top, corridor, n=2, width=9.0):
+    """Owner, 20 Oct 2026: flat lawn terraces below the barndo's lake-side patio, like the
+    cabins' - each ~30 ft east-west across the pad's north-south extent, stepping down
+    toward natural grade (steps of 1-3 ft, as the corner falls steeply). The upper one is
+    open lawn for recreation; the lower one a garden."""
+    x0, y0, x1, y1 = pad.bounds
+    ys = np.linspace(y0, y1, 9)
+    east = -1e9
+    for y in ys:
+        hit = corridor.intersection(LineString([(-1e4, y), (1e4, y)]))
+        if not hit.is_empty and hit.bounds[2] < x0:
+            east = max(east, hit.bounds[2])
+    out, prev = [], top
+    for i in range(n):
+        b = (x0 - (i + 1) * width, y0, x0 - i * width, y1)
+        if b[0] < east + 2.0:
+            break
+        gx, gy = np.meshgrid(np.linspace(b[0], b[2], 6), np.linspace(b[1], b[3], 6))
+        nat = float(np.mean(dtm(gx.ravel(), gy.ravel())))
+        level = float(np.clip(nat + 0.1, prev - 0.9, prev - 0.3))
+        out.append([round(v, 3) for v in b] + [round(level, 3)])
+        prev = level
+    return out
+
+
+def flat_grade(x, y, ground, flats):
+    """Finished grade for flat areas [(x0, y0, x1, y1, level)], 4:1 fill / 3:1 cut slopes."""
+    best_d, edge = None, None
+    for b0, b1, b2, b3, level in flats:
+        d = np.hypot(x - np.clip(x, b0, b2), y - np.clip(y, b1, b3))
+        if best_d is None:
+            best_d, edge = d, np.full(np.shape(x), level)
+        else:
+            use = d < best_d
+            edge = np.where(use, level, edge)
+            best_d = np.minimum(d, best_d)
+    out = np.where(ground > edge, np.minimum(ground, edge + best_d / grading.CUT_SLOPE),
+                   np.maximum(ground, edge - best_d / grading.FILL_SLOPE))
+    return np.where(best_d == 0, edge, out)
 
 
 def walkout(dtm, pad, septic, corridor=None):
@@ -549,6 +591,21 @@ def analyse():
 
         walk = walkout(dtm, pad, septic, corridor) if septic is not None and htype["name"] != "barndo" \
             else None
+        barndo_terr, barndo_grading = [], None
+        if htype["name"] == "barndo":
+            barndo_terr = barndo_terraces(dtm, pad, top, corridor)
+            flats = [list(pad.bounds) + [top]] + barndo_terr
+            area = shapely.union_all([pad] + [box(*t[:4]) for t in barndo_terr]).buffer(25.0)
+            gx, gy = np.meshgrid(np.arange(area.bounds[0], area.bounds[2], 0.5),
+                                 np.arange(area.bounds[1], area.bounds[3], 0.5))
+            nat = dtm(gx.ravel(), gy.ravel())
+            fin = flat_grade(gx.ravel(), gy.ravel(), nat, flats)
+            barndo_grading = {
+                "pad_top_ft": round(top / FT, 1),
+                "terraces": barndo_terr, "terrace_levels_ft": [round(t[4] / FT, 1) for t in barndo_terr],
+                "terrace_uses": ["lawn (recreation)", "garden"][:len(barndo_terr)],
+                "fill_cu_yd": round(float(np.clip(fin - nat, 0, None).sum() * 0.25) / CU_YD),
+                "cut_cu_yd": round(float(np.clip(nat - fin, 0, None).sum() * 0.25) / CU_YD)}
         gravity = walk["gravity"] if walk else None
         option_b, lake = lake_option(dtm, label, poly, pad, walk, corridor, edge) if walk else ([], None)
 
@@ -567,6 +624,7 @@ def analyse():
             "septic_placement": side,
             "gravity_ground_floor_bath": gravity,
             "walkout": {k: v for k, v in walk.items() if k != "gravity"} if walk else None,
+            "barndo_grading": barndo_grading,
             "septic_fits": septic is not None, "septic_clear_of_drive": not septic_conflict,
             "front_drive_ft": round(drive_front.length / FT),
             "rear_drive_to_access_road_ft": round(drive_back.length / FT) if drive_back else None,
@@ -578,7 +636,8 @@ def analyse():
                                                          **({"terrace_floor_m": walk["terrace_floor_m"],
                                                              "back_grade_m": walk["back_grade_m"],
                                                              "terraces": walk["terraces"]}
-                                                            if walk else {})},
+                                                            if walk else {}),
+                                                         **({"terraces": barndo_terr} if barndo_terr else {})},
                          "geometry": mapping(pad)})
         features.append({"type": "Feature", "properties": {**props, "kind": "envelope"},
                          "geometry": mapping(envelope)})

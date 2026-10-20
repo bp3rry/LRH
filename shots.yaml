@@ -339,3 +339,16 @@ shots:
     ground_detail: true
     planting: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_lot10_terraces:
+    kind: check
+    description: Lot 10 barndominium grading - pad, lake-side patio and the two terraces below it (upper lawn for recreation, lower garden), retaining walls, steps and swale.
+    camera: {position: [52.0, -214.0, 196.0], target: [88.0, -186.0, 181.0], lens_mm: 26.0}
+    sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
+    haze_visibility_km: 0
+    cleared_ground: grassed
+    ground_detail: true
+    site_works: true
+    planting: true
+    cabins: [Lot 10]
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]

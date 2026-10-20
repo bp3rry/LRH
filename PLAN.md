@@ -1043,6 +1043,18 @@ lot, for build-out stills and a build-out flyover variant:
     - **Drive and septic:** a 117 ft gravel drive from CR 3635. The septic drip area sits
       downhill (west) of the house, by gravity from the slab.
     - Shot: `L10_barndo`.
+  - **Grading and terraces (owner, 20 Oct 2026):**
+    - **Pad:** flat at about 597.8 ft.
+    - **Terraces:** two 30 × 36 ft terraces below the lake-side patio, like the cabin lots.
+      The upper one at 594.9 ft is open lawn for recreation (a bench); the lower one at
+      591.9 ft is a garden of cedar raised beds. Each step is about 3 ft, because the
+      corner falls steeply.
+    - **Walls and path:** stone retaining walls with centre steps and a decomposed-granite
+      path.
+    - **Earthwork:** about 659 cu yd of fill and 43 cu yd of cut.
+    - **Septic and drainage:** the septic field moves west of the terraces, 4 m clear. The
+      drainage plan adds a diversion swale round the barndo site.
+    - Check shot: `check_lot10_terraces`.
 
 ### Phase 3c — Site infrastructure (planned)
 

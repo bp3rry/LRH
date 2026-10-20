@@ -37,6 +37,7 @@ POOL_M = 167.9448
 CELL = 2.0
 X0, X1, Y0, Y1 = -320.0, 300.0, -420.0, 360.0      # covers the parcel and the land draining to it
 STREAM_M2 = 2500.0                                   # ~0.6 ac contributing area
+BARNDO = set()
 D8 = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
 
 
@@ -157,8 +158,8 @@ def swales(sites):
     high point east of it, along both sides to its lake-side end, 3 m outside the grading."""
     out = {}
     for label, (pad, terraces) in sites.items():
-        area = shapely.union_all([pad, box(*grading.layout(pad.bounds)["carport"])] +
-                                 [box(*t[:4]) for t in terraces])
+        extra = [] if label in BARNDO else [box(*grading.layout(pad.bounds)["carport"])]
+        area = shapely.union_all([pad] + extra + [box(*t[:4]) for t in terraces])
         x0, y0, x1, y1 = area.bounds
         xe, xw, yn, ys = x1 + 3.0, x0, y1 + 3.0, y0 - 3.0
         ym = (y0 + y1) / 2
@@ -194,8 +195,10 @@ def main():
     drives = [shapely.geometry.shape(f["geometry"]) for f in bs if f["properties"]["kind"] == "drive_front"]
     for f in bs:
         p = f["properties"]
-        if p["kind"] == "pad" and p.get("house") == "standard" and "terraces" in p:
+        if p["kind"] == "pad" and p.get("house") in ("standard", "barndo") and "terraces" in p:
             sites[p["lot"]] = (shapely.geometry.shape(f["geometry"]), p["terraces"])
+            if p.get("house") == "barndo":
+                BARNDO.add(p["lot"])
     sw = swales(sites)
     culverts = []
     for name, line in [("creek", creek)] + [(f"{k} swale", l) for k, ls in sw.items() for l in ls]:
