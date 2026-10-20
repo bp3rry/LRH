@@ -1086,6 +1086,19 @@ lot, for build-out stills and a build-out flyover variant:
 | 9 | 803 | 80 | 723 | 0 | 0 |
 | 10 | 616 | 59 | 379 | 177 | 0 |
 
+- **Creek swale (owner, 20 Oct 2026):** the creek is graded into an intentional grassed
+  swale from where it enters the property down to the pond.
+  - **Size:** 71 m (about 233 ft) long, a trapezoid
+    with a 6 ft bottom, 4:1 sides and up to 3 ft deep (about 30 ft across the top).
+  - **Grade:** an even invert from 570.2 ft down to the pond's
+    561.1 ft pool.
+  - **Dirt:** about 252 cu yd
+    in place, allocated to Lot 10. Pond dirt that frees up then goes on to Lots 9, 8 and 7.
+  - **Off the property:** upstream of that point the creek runs along the CR 3640 side of
+    the line, outside the property, so it is not graded.
+  - **Below the pond:** it stays a shallow channel.
+  - **New totals:** usable supply about 2,243 cu yd against demand of
+    4,963; shortfall about 2,720 cu yd.
 - **Levers to close the shortfall without buying dirt:**
   - A larger pond on the same site, at the same depth:
   - 0.52 ac pond: about 1,164 cu yd more usable fill (berm 542).

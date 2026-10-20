@@ -71,7 +71,16 @@ def build(coll, terrain, record):
     new[:, 2] -= swale_cut(x, y, d)
     dc = shapely.distance(creek, pts)
     in_pond = shapely.contains_xy(pond.buffer(2.0), x, y)
+    if d.get("creek_swale"):          # the swale replaces the shallow channel above the pond
+        in_pond = in_pond | (shapely.distance(LineString(d["creek_swale"]["line"]), pts) < 3.0)
     new[:, 2] -= np.where(in_pond, 0.0, CREEK_DEPTH * np.clip(1.0 - (dc / CREEK_HALF) ** 2, 0.0, 1.0))
+    # Creek swale above the pond (trapezoid, cut only).
+    if d.get("creek_swale"):
+        import sys
+        if str(lrh.ROOT / "scripts") not in sys.path:
+            sys.path.insert(0, str(lrh.ROOT / "scripts"))
+        import drainage
+        new[:, 2] = np.minimum(new[:, 2], drainage.creek_swale_design(d["creek_swale"], x, y, new[:, 2]))
     # Pond basin: 3:1 side slopes from just below the pool down to the bottom.
     inside = shapely.contains_xy(pond, x, y)
     din = shapely.distance(pond.exterior, pts)

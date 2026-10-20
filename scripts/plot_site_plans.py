@@ -74,6 +74,9 @@ def main():
             a = max(p[2] for p in l)
             d.line([px(p[0], p[1]) for p in l], fill=(60, 170, 255, 170), width=2 if a < 10000 else 4)
         d.line([px(*p) for p in dr["creek"]], fill=(0, 90, 255, 255), width=7)
+        if dr.get("creek_swale"):                                   # graded creek swale
+            d.line([px(*p) for p in dr["creek_swale"]["line"]], fill=(0, 230, 230, 200), width=int(9.1 / mpp))
+            d.line([px(*p) for p in dr["creek_swale"]["line"]], fill=(0, 90, 255, 255), width=4)
         d.polygon([px(*p) for p in dr["pond"]["polygon"]], fill=(30, 110, 200, 230), outline=(255, 255, 255, 255))
         d.line([px(*p) for p in dr["pond"]["dam"]], fill=(120, 90, 50, 255), width=6)
         for ls in dr["swales"].values():
@@ -107,6 +110,7 @@ def main():
     sheet("Drainage plan (concept)", drainage, [
         ("Natural flow paths (lidar), wider = more area", (60, 170, 255)),
         ("Creek to keep and emphasise (CR 3640 ditch to lake)", (0, 90, 255)),
+        ("Creek graded to a 30 ft grassed swale above the pond", (0, 230, 230)),
         (f"Pond ~{pond['area_ac']} ac, pool {pond['pool_ft']} ft, spillway (triangle)", (30, 110, 200)),
         ("Pond dam / berm", (120, 90, 50)),
         ("Diversion swale round each cabin site, outlet dot", (0, 230, 230)),

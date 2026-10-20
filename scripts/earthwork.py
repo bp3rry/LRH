@@ -64,9 +64,22 @@ def main():
     pond_cut, berm = pond_volumes(dtm, pond)
     P = Polygon(pond["polygon"])
     sources = {"Pond excavation, less its berm": (pond_cut - berm, (P.centroid.x, P.centroid.y))}
+    # The creek above the pond is graded into an intentional swale (owner, 20 Oct 2026);
+    # below the pond it stays a shallow channel.
+    cs = dr.get("creek_swale")
     creek = LineString(dr["creek"]).difference(P.buffer(2.0))
-    sources["Creek channel"] = (creek.length * (2 / 3) * 0.35 * 2.8 / CU_YD,
-                                (creek.centroid.x, creek.centroid.y))
+    if cs:
+        line = LineString(cs["line"])
+        x0, y0, x1, y1 = line.buffer(12.0).bounds
+        gx, gy = np.meshgrid(np.arange(x0, x1, 0.5), np.arange(y0, y1, 0.5))
+        X, Y = gx.ravel(), gy.ravel()
+        nat = dtm(X, Y)
+        fin = drainage.creek_swale_design(cs, X, Y, nat)
+        cut = float(np.clip(nat - fin, 0, None).sum() * 0.25) / CU_YD
+        sources["Creek swale (property edge to pond)"] = (cut, (line.centroid.x, line.centroid.y))
+        creek = creek.difference(line.buffer(3.0))
+    sources["Creek channel below the pond"] = (creek.length * (2 / 3) * 0.35 * 2.8 / CU_YD,
+                                               (creek.centroid.x, creek.centroid.y))
     for lot, lines in dr["swales"].items():
         ls = [LineString(l) for l in lines]
         length = sum(l.length for l in ls)

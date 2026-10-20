@@ -27,6 +27,7 @@ sys.path.insert(0, str(ROOT / "scripts/blender"))
 
 import numpy as np  # noqa: E402
 import shapely  # noqa: E402
+import shapely.ops  # noqa: E402
 from shapely.geometry import LineString, Point, Polygon, box, mapping  # noqa: E402
 
 from kwik_ortho import Surface  # noqa: E402
@@ -153,6 +154,39 @@ def pond_design(dtm, creek, centre_x=-70.0, length=46.0, width=30.0):
             "area_ac": Polygon(list(zip(px, py))).area / 4046.86}
 
 
+SWALE_BOTTOM, SWALE_SIDE, SWALE_MAX_DEPTH = 6 * 0.3048, 4.0, 3 * 0.3048
+
+
+def creek_swale(dtm, creek, pond, parcel):
+    """Owner, 20 Oct 2026: grade the creek from where it enters the property down to the
+    pond into an intentional grassed swale - trapezoid, 6 ft bottom, 4:1 sides, up to 3 ft
+    deep - with an even invert falling to the pond's normal pool. Its cut is fill for the
+    lots nearby (earthwork.py)."""
+    inside = creek.intersection(parcel.buffer(-1.0))
+    s_in = min(creek.project(Point(c)) for g in getattr(inside, "geoms", [inside]) for c in g.coords)
+    s_pond = min(creek.project(Point(c)) for c in pond["polygon"].exterior.coords)
+    reach = shapely.ops.substring(creek, s_in, s_pond)
+    g0 = float(dtm(*reach.coords[0]))
+    top_inv = g0 - SWALE_MAX_DEPTH
+    end_inv = pond["pool_m"]
+    pts = [(round(x, 1), round(y, 1)) for x, y in reach.coords]
+    return {"line": pts, "invert_start_m": round(top_inv, 3), "invert_end_m": round(end_inv, 3),
+            "bottom_m": SWALE_BOTTOM, "side_slope": SWALE_SIDE, "max_depth_m": SWALE_MAX_DEPTH,
+            "length_m": round(reach.length, 1)}
+
+
+def creek_swale_design(cs, x, y, ground):
+    """Finished grade for the creek swale at points (x, y): the trapezoid cut, never fill."""
+    line = LineString(cs["line"])
+    pts = shapely.points(np.asarray(x), np.asarray(y))
+    d = shapely.distance(line, pts)
+    s = shapely.line_locate_point(line, pts) / max(line.length, 1e-6)
+    inv = cs["invert_start_m"] + (cs["invert_end_m"] - cs["invert_start_m"]) * s
+    inv = np.maximum(inv, np.asarray(ground) - cs["max_depth_m"])     # no deeper than 3 ft
+    face = inv + np.clip(d - cs["bottom_m"] / 2, 0.0, None) / cs["side_slope"]
+    return np.minimum(np.asarray(ground), face)
+
+
 def swales(sites):
     """Diversion swale round the uphill (road) side of each cabin's graded area: from a
     high point east of it, along both sides to its lake-side end, 3 m outside the grading."""
@@ -200,6 +234,7 @@ def main():
             if p.get("house") == "barndo":
                 BARNDO.add(p["lot"])
     sw = swales(sites)
+    cs = creek_swale(dtm, creek, pond, parcel)
     culverts = []
     for name, line in [("creek", creek)] + [(f"{k} swale", l) for k, ls in sw.items() for l in ls]:
         for other_name, other in [("access road", access)] + [("drive", d) for d in drives]:
@@ -214,10 +249,11 @@ def main():
                    "bottom_m": round(pond["bottom_m"], 2), "dam": [[round(x, 1), round(y, 1)] for x, y in pond["dam"].coords],
                    "dam_crest_m": round(pond["dam_crest_m"], 2), "area_ac": round(pond["area_ac"], 2),
                    "spillway": [round(pond["spill"].x, 1), round(pond["spill"].y, 1)]}
+    out["creek_swale"] = cs
     out["swales"] = {k: [[[round(x, 1), round(y, 1)] for x, y in l.coords] for l in ls] for k, ls in sw.items()}
     out["culverts"] = culverts
     (DERIVED / "drainage.json").write_text(json.dumps(out) + "\n")
-    print(f"creek {creek.length:.0f} m; pond {pond['area_ac']:.2f} ac, pool {pond['pool_m'] / 0.3048:.1f} ft; "
+    print(f"creek swale {cs['length_m']:.0f} m; creek {creek.length:.0f} m; pond {pond['area_ac']:.2f} ac, pool {pond['pool_m'] / 0.3048:.1f} ft; "
           f"{len(sw)} cabin swales; {len(culverts)} culverts")
     big = sorted(on_parcel, key=lambda l: -max(p[2] for p in l))[:12]
     for l in big:
