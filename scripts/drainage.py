@@ -154,16 +154,20 @@ def pond_design(dtm, creek, centre_x=-70.0, length=46.0, width=30.0):
             "area_ac": Polygon(list(zip(px, py))).area / 4046.86}
 
 
-POND_TARGET_AC = 0.87          # owner, 20 Oct 2026: the larger pond, for fill
+POND_TARGET_AC = 0.87          # default; balance_pond.py sizes it to the fill needed
+_target = Path(__file__).resolve().parent.parent / "out/derived/pond_target.json"
+if _target.is_file():          # owner, 20 Oct 2026: just the dirt that is needed
+    POND_TARGET_AC = json.loads(_target.read_text())["target_ac"]
 POND_CENTRE_X = -72.0
 
 
-def pond_fitted(dtm, creek, keep_in, avoid, target_ac=POND_TARGET_AC, centre_x=POND_CENTRE_X):
+def pond_fitted(dtm, creek, keep_in, avoid, target_ac=None, centre_x=POND_CENTRE_X):
     """The pond grown along the creek (length : width 2 : 1) until, clipped to keep_in and
     clear of avoid, it covers target_ac. Pool from the upstream rim, dam on the
     downstream rim, as pond_design."""
+    target_ac = POND_TARGET_AC if target_ac is None else target_ac
     best = None
-    for scale in np.arange(1.0, 4.01, 0.05):
+    for scale in np.arange(0.5, 4.01, 0.02):
         p = pond_design(dtm, creek, centre_x=centre_x, length=46.0 * scale * 1.1, width=30.0 * scale * 0.85)
         poly = p["polygon"].intersection(keep_in).difference(avoid)
         if poly.geom_type != "Polygon":
@@ -314,7 +318,7 @@ def main():
     avoid = shapely.union_all([shapely.geometry.shape(f["geometry"]).buffer(3.0) for f in bs
                                if f["properties"]["kind"] in ("pad", "septic")
                                and f["properties"].get("lot") != "Lot 10"] or [Polygon()])
-    pond = pond_fitted(dtm, creek, parcel.buffer(-6.0), avoid)
+    pond = pond_fitted(dtm, creek, parcel.buffer(-6.0), avoid, target_ac=POND_TARGET_AC)
     access = [shapely.geometry.shape(f["geometry"]) for f in bs if f["properties"]["kind"] == "access_road"][0]
     drives = [shapely.geometry.shape(f["geometry"]) for f in bs if f["properties"]["kind"] == "drive_front"]
     for f in bs:

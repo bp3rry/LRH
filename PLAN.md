@@ -1117,6 +1117,17 @@ lot, for build-out stills and a build-out flyover variant:
   - **Balanced size:** a pond of about 0.33 ac would balance exactly. The surplus could
     instead go to berms, a larger walk-out yard, or phase-2 lots.
   - Shots: `check_pond`, `P_pond_golden`.
+- **Pond sized to the need (owner, 20 Oct 2026: dig only what is needed):**
+  - **Sizing:** `scripts/balance_pond.py` bisects the pond's area until usable supply
+    covers demand with no more than 3% spare, then records the size in
+    `out/derived/pond_target.json`, which `drainage.py` reads.
+  - **Result:** about 0.34 ac, pool 562.6 ft, about
+    3,746 cu yd in place (berm 73).
+  - **Balance:** supply about 5,042 usable cu yd against
+    4,963 needed. Every lot is covered.
+  - **When the plan changes:** for example dock cut, or a different backfill depth, re-run
+    `balance_pond.py` and the pond resizes.
+  - The 0.9 ac case (about 13,600 cu yd usable) stays above for reference.
 - **Levers to close the shortfall without buying dirt:**
   - A larger pond on the same site, at the same depth:
   - 0.52 ac pond: about 1,164 cu yd more usable fill (berm 542).
