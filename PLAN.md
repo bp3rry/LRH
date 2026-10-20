@@ -1056,6 +1056,47 @@ lot, for build-out stills and a build-out flyover variant:
       drainage plan adds a diversion swale round the barndo site.
     - Check shot: `check_lot10_terraces`.
 
+**Earthwork balance (owner, 20 Oct 2026: no dirt is bought; `scripts/earthwork.py` →
+`out/derived/earthwork.json`):**
+- **Sources:** every cut on the property counts, as in-place cu yd.
+  - Pond excavation: 1,611, less 274 for its own berm.
+  - Creek channel: 201.
+  - Diversion swales: 820 in all.
+  - Dock and shoreline-path work: a placeholder at 0 until the docks are designed.
+- **Usable fill:** cut times 0.88 for shrink on compaction, about
+  2,075 cu yd.
+- **Demand:** each lot's net fill after its own on-lot cut, about
+  4,963 cu yd.
+- **Shortfall:** about 2,888 cu yd.
+- **Allocation:**
+  - Each lot's swale dirt stays on that lot.
+  - Shared dirt from the pond, creek and later the docks goes to Lot 10 first, because it is
+    built first, then nearest first. Haul from the pond is about 490–560 ft.
+
+| Lot | Net fill needed | From own swale | From pond | From creek channel | Still short |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 746 | 80 | 0 | 0 | 666 |
+| 2 | 702 | 55 | 0 | 0 | 647 |
+| 3 | 402 | 65 | 0 | 0 | 337 |
+| 4 | 420 | 72 | 0 | 0 | 348 |
+| 5 | 422 | 72 | 0 | 0 | 350 |
+| 6 | 242 | 80 | 0 | 0 | 162 |
+| 7 | 407 | 80 | 0 | 0 | 327 |
+| 8 | 203 | 80 | 74 | 0 | 50 |
+| 9 | 803 | 80 | 723 | 0 | 0 |
+| 10 | 616 | 59 | 379 | 177 | 0 |
+
+- **Levers to close the shortfall without buying dirt:**
+  - A larger pond on the same site, at the same depth:
+  - 0.52 ac pond: about 1,164 cu yd more usable fill (berm 542).
+  - 0.87 ac pond: about 2,609 cu yd more usable fill (berm 896).
+  - 1.29 ac pond: about 4,031 cu yd more usable fill (berm 1,400).
+  - Less backfill against the cabins' back walls. The walk-out's 5 ft of backfill is most of
+    each cabin lot's demand.
+  - Dock and shoreline-path cut, once designed.
+  - Building lots in sequence, so later lots' dirt (their own swales, a phase-2 pond
+    enlargement) arrives when needed.
+
 ### Phase 3c — Site infrastructure (planned)
 
 Show everything the site plan carries, as switchable layers for stills and video:
