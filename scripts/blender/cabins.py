@@ -96,9 +96,25 @@ def walk_line(label, pad, terraces=None, house=None):
     return shapely.geometry.LineString([start, mid, tuple(west)])
 
 
+def turn_area(site):
+    """The circle drive (with its island) or turning bulb, as a polygon, or None."""
+    if "turnaround" in site:
+        p, c = site["turnaround"]
+        return c.buffer(p["radius_m"] + p["lane_m"] / 2)
+    if "turn_bulb" in site:
+        return site["turn_bulb"][1]
+    return None
+
+
 def clearing(site, label=None):
     """Footprint where no tree may stand once the lot is built: the graded area, the
     patio and the front drive."""
+    extra = turn_area(site)
+    base = _clearing(site, label)
+    return base if extra is None else shapely.union_all([base, extra.buffer(1.5)])
+
+
+def _clearing(site, label=None):
     props, pad = site["pad"]
     if props.get("house") == "barndo":       # keep the oaks round the corner: pad + slopes only
         parts = [graded_area(pad, props.get("terraces")).buffer(2.5, join_style="mitre")]
@@ -1246,9 +1262,10 @@ def build_barndo(root, label, site, sampler, ribbon, sampler_class, terrain, dri
     coll = bpy.data.collections.new(f"Cabin_{key}")
     root.children.link(coll)
     terraces = props.get("terraces", [])
-    design = flat_design(pad.bounds, top, terraces)
-    surface = site_surface(f"Pad_{key}", pad, top, top, sampler, lawn(), coll, terraces, design=design)
-    lowered = grade_terrain(terrain, key, pad, top, top, terraces, design=design)
+    flats = list(terraces) + ([list(site["carport"][1].bounds) + [top]] if "carport" in site else [])
+    design = flat_design(pad.bounds, top, flats)
+    surface = site_surface(f"Pad_{key}", pad, top, top, sampler, lawn(), coll, flats, design=design)
+    lowered = grade_terrain(terrain, key, pad, top, top, flats, design=design)
     on_site = sampler_class([surface])
     m = Mesh()
     info = barndo(m, coll, pad, top + LIFT, key)
@@ -1261,6 +1278,9 @@ def build_barndo(root, label, site, sampler, ribbon, sampler_class, terrain, dri
                 shrub(m, x, y, grade(x, y) + 0.03, rng.uniform(0.35, 0.45), rng)
     crape_myrtle(m, xe + 2.6, yb1 + 1.8, grade(xe + 2.6, yb1 + 1.8), rng)
     garden_terraces(m, terraces, top, key, uses=("lawn", "garden"))
+    if "carport" in site:                                     # covered parking (owner, 20 Oct)
+        carport(m, coll, {"carport": site["carport"][1].bounds}, top, key)
+    turnaround_mesh(m, site, grade, drive_gravel)
     m.object(f"Cabin_{key}", coll)
     if "drive_front" in site:
         line = list(site["drive_front"][1].coords)
@@ -1268,6 +1288,32 @@ def build_barndo(root, label, site, sampler, ribbon, sampler_class, terrain, dri
                lambda x, y, on_site=on_site: on_site(x, y) if on_site(x, y) is not None else sampler(x, y),
                0.06, drive_gravel, coll)
     return {"house": "barndo", "pad_top_m": top, "terrain_vertices_cut": lowered}
+
+
+def turnaround_mesh(m, site, grade, gravel_mat):
+    """Gravel circle drive round a grass island, or a semicircular turning bulb."""
+    if "turnaround" in site:
+        p, c = site["turnaround"]
+        r, lane = p["radius_m"], p["lane_m"]
+        for k in range(48):
+            a0, a1 = 2 * math.pi * k / 48, 2 * math.pi * (k + 1) / 48
+            pts = [(c.x + (r + sgn * lane / 2) * math.cos(a), c.y + (r + sgn * lane / 2) * math.sin(a))
+                   for sgn, a in ((-1, a0), (1, a0), (1, a1), (-1, a1))]
+            zs = [grade(x, y) for x, y in pts]
+            z = sum(zs) / 4
+            m.hexa([(x, y, z - 0.04) for x, y in pts] + [(x, y, z + 0.08) for x, y in pts], gravel_mat)
+        island = r - lane / 2 - 0.3                              # mown island, a tree in it
+        rng = random.Random(f"island-{p['lot']}")
+        z = grade(c.x, c.y)
+        m.cylinder(c.x, c.y, z - 0.02, z + 0.12, 1.6, mulch(), n=20)
+        crape_myrtle(m, c.x, c.y, z + 0.1, rng) if rng.random() < 0.5 else pear(m, c.x, c.y, z + 0.1, rng)
+        for k in range(10):
+            a = 2 * math.pi * k / 10
+            shrub(m, c.x + math.cos(a) * min(island - 0.5, 2.6), c.y + math.sin(a) * min(island - 0.5, 2.6),
+                  z, 0.4, rng)
+    if "turn_bulb" in site:
+        import frontage
+        frontage.draped(m, site["turn_bulb"][1], grade, gravel_mat, 0.08)
 
 
 def lawn():
@@ -1429,6 +1475,7 @@ def build(root, sampler, ribbon, sampler_class, terrain, record):
         lamp_post(m, coll, sx - 1.6, sy - 1.0, sz, plain("Cabin_Iron", (0.03, 0.03, 0.03), 0.4, 0.8),
                   emitter("Cabin_Lantern", (1.0, 0.62, 0.3), 4.0), key)
         landscaping(m, Lc, info, grade, site.get("drive_front", (None, None))[1], key)
+        turnaround_mesh(m, site, grade, drive_gravel)
         garden_terraces(m, terraces, T, key)
         m.object(f"Cabin_{key}", coll)
         if "drive_front" in site:

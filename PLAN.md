@@ -1150,6 +1150,31 @@ lot, for build-out stills and a build-out flyover variant:
 - **Gravel:** all county roads share a darker, speckled crushed-limestone material.
 - Check shot: `check_cr3640`.
 
+**Entries, fence, turnarounds and Lot 10 parking (owner, 20 Oct 2026):**
+- **Frontage fence** (`scripts/blender/frontage.py`, in `Roads`): the existing barbed-wire
+  fence along the property line beside CR 3635, about 378 m.
+  - **Construction:** cedar posts every 12 ft, H-braces at every gate and run end, four
+    strands of wire.
+  - **Gates:** one per driveway (9), each with a 20 ft clear opening and two 10 ft
+    galvanised 5-bar pipe gates, shown swung open inward.
+- **Entries** (with each lot's drive):
+  - **Apron:** the drive widens to 24 ft at the road, with flared returns, for a truck
+    towing an RV or boat.
+  - **Culvert:** an 18 in corrugated pipe, 30 ft long, under the apron at the roadside
+    ditch, with concrete splash pads at both ends.
+- **Turnarounds** (`build_sites.py` `turnaround()`): the largest gravel circle drive that
+  fits near the parking, round a mulched island with a crape myrtle or pear and shrubs,
+  with a 60, 50 or 42 ft centreline diameter. Where a loop does not fit beside the front
+  septic field, a semicircular turning bulb. Results: Lot 1: circle drive 59 ft; Lot 2: circle drive 50 ft; Lot 3: circle drive 59 ft; Lot 4: circle drive 59 ft; Lot 5: semicircular bulb 59 ft; Lot 6: circle drive 59 ft; Lot 7: semicircular bulb 59 ft; Lot 8: semicircular bulb 59 ft; Lot 9: circle drive 42 ft; Lot 10: none.
+  - **Lot 10:** the drive is short and the corner tight, so it turns via its carport apron
+    or drives through to the access road.
+  - **Lots 2–9:** keep their rear drive-through to the access road for long rigs.
+- **Lot 10 covered parking:** a 22 × 24 ft carport in the cabins' style, east of the
+  barndo's entry porch at pad level, where the drive now ends. It is included in Lot 10's
+  flat grading.
+- **CR 3635:** shares the speckled crushed-limestone gravel with CR 3640.
+- Check shots: `check_entry_lot5`, `check_lot10_parking`.
+
 ### Phase 3c — Site infrastructure (planned)
 
 Show everything the site plan carries, as switchable layers for stills and video:

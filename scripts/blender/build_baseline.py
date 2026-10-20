@@ -24,6 +24,7 @@ from mathutils.geometry import delaunay_2d_cdt
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cabins  # noqa: E402
+import frontage  # noqa: E402
 import ground_detail  # noqa: E402
 import planting3d  # noqa: E402
 import site_works  # noqa: E402
@@ -971,6 +972,14 @@ def main():
                        build_sites=set_aside)
     colls["Cabins"] = collection("Cabins")
     cabins.build(colls["Cabins"], sampler, ribbon, HeightSampler, terrain, record)
+    # CR 3635 frontage: the existing barbed-wire fence, a gate per drive, culverts, aprons.
+    cr3635 = LineString(np.array(json.loads((lrh.INPUTS / "geometry/txdot-fannin-cr-3635-epsg6344.geojson")
+                                            .read_text())["features"][0]["geometry"]["coordinates"])[:, :2]
+                        - [lrh.ORIGIN_E, lrh.ORIGIN_N])
+    frontage.build(colls["Roads"], {c.name.removeprefix("Cabin_").replace("_", " "): c
+                                    for c in colls["Cabins"].children},
+                   parcels, cr3635, {k: v["drive_front"][1] for k, v in sites.items() if "drive_front" in v},
+                   sampler, record)
     # Phase 3a R2: grass tufts along the low flight path (switchable: Ground_Detail).
     colls["Ground_Detail"] = collection("Ground_Detail")
     flight = lrh.ROOT / "out/derived/flight_low.json"
@@ -991,6 +1000,8 @@ def main():
         walk = cabins.walk_line(label, pad, site["pad"][0].get("terraces"), site["pad"][0].get("house"))
         if walk is not None:
             parts.append(walk.buffer(1.5))
+        if cabins.turn_area(site) is not None:
+            parts.append(cabins.turn_area(site).buffer(1.0))
         aprons[label] = unary_union(parts)
     cover = vegetation.Raster(derived / "cover_site_drone.tif")
     ground_detail.build(colls["Ground_Detail"], terrain, path, unary_union(no_grass),

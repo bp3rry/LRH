@@ -468,6 +468,58 @@ def lake_option(dtm, label, poly, pad, walk, corridor, edge):
     return feats, row
 
 
+TURN_R, TURN_LANE = 9.0, 4.0     # circle-drive centreline radius and lane width (60 ft loop)
+
+
+def barndo_carport(pad):
+    """Lot 10 covered parking (owner, 20 Oct 2026): 22 x 24 ft, east of the barndo's entry
+    porch at pad level, where the drive arrives."""
+    x0, y0, x1, y1 = pad.bounds
+    cy = (y0 + y1) / 2
+    return (x1 + 0.5, cy - 12 * FT, x1 + 0.5 + 22 * FT, cy + 12 * FT)
+
+
+def turnaround(poly, drive, septic, pad, carport, corridor):
+    """A gravel circle drive near the house (owner, 20 Oct 2026): a loop round a grass
+    island on the drive, short of the carport, big enough to swing a pickup with a boat
+    trailer round. Returns the loop's centre point, or None if no spot fits."""
+    end = Point(drive.coords[-1])
+    rev = LineString(list(drive.coords)[::-1])
+    blocked = shapely.union_all([box(*carport).buffer(1.0), pad.buffer(1.0)] +
+                                ([septic.buffer(2.0)] if septic is not None else []) +
+                                [corridor])
+    room = poly.buffer(-1.5)
+    # Largest loop that fits: 60 ft, 50 ft, then 42 ft centreline diameter.
+    for r in (TURN_R, 7.6, 6.4):
+        for s in np.arange(r + 2.0, min(50.0, rev.length - r), 1.0):
+            p = rev.interpolate(s)
+            a, b = rev.interpolate(max(0, s - 1)), rev.interpolate(s + 1)
+            nx, ny = -(b.y - a.y), b.x - a.x
+            n = float(np.hypot(nx, ny)) or 1.0
+            for off in (0.0, r * 0.6, -r * 0.6, r, -r):
+                c = Point(p.x + nx / n * off, p.y + ny / n * off)
+                ring = c.buffer(r + TURN_LANE / 2)
+                if room.contains(ring) and not ring.intersects(blocked):
+                    return c, r
+    # Fallback: a semicircular gravel turning bulb off one side of the drive.
+    for r in (9.0, 7.6, 6.4):
+        for s in np.arange(r + 1.0, min(50.0, rev.length - r), 1.0):
+            p = rev.interpolate(s)
+            a, b = rev.interpolate(max(0, s - 1)), rev.interpolate(s + 1)
+            ux, uy = (b.x - a.x), (b.y - a.y)
+            n = float(np.hypot(ux, uy)) or 1.0
+            ux, uy = ux / n, uy / n
+            for side in (1, -1):
+                nx, ny = -uy * side, ux * side
+                half = Polygon([(p.x - ux * 30, p.y - uy * 30), (p.x + ux * 30, p.y + uy * 30),
+                                (p.x + ux * 30 + nx * 30, p.y + uy * 30 + ny * 30),
+                                (p.x - ux * 30 + nx * 30, p.y - uy * 30 + ny * 30)])
+                bulb = p.buffer(r).intersection(half)
+                if room.contains(bulb) and not bulb.intersects(blocked):
+                    return bulb, -r
+    return None, None
+
+
 def analyse():
     dtm = Surface(DERIVED / "lidar_dtm_1m.tif")
     trees = np.load(DERIVED / "lidar_trees.npz")["trees"]
@@ -572,7 +624,7 @@ def analyse():
         # Main drive: along y_d (south half, clear of septic), from CR 3635 to the pad.
         # Main drive ends at the covered parking slab's road-side face (owner, 19 Oct 2026).
         cp = grading.layout(pad.bounds)["carport"] if htype["name"] != "barndo" else \
-            (pad.bounds[2] - 1.0, pad.bounds[1], pad.bounds[2], pad.bounds[3])
+            barndo_carport(pad)
         y_lo = poly.buffer(-1.5 - DRIVE_W / 2).bounds[1]
         y_d = max(y_lo, (cp[1] + cp[3]) / 2)
         if septic is not None:
@@ -587,6 +639,7 @@ def analyse():
             # run a short apron straight out from the lot's own frontage instead.
             on_road = Point(exit_pt.x + 8.0, exit_pt.y)
         drive_front = LineString([on_road.coords[0], exit_pt.coords[0], (cp[2], y_d)])
+        turn, turn_r = turnaround(poly, drive_front, septic, pad, cp, corridor)
         hit_access = LineString([(pad.bounds[0], cy), (pad.bounds[0] - 200, cy)]).intersection(access)
         drive_back = None
         if not hit_access.is_empty and label not in SECLUDED:
@@ -633,6 +686,9 @@ def analyse():
             "septic_fits": septic is not None, "septic_clear_of_drive": not septic_conflict,
             "front_drive_ft": round(drive_front.length / FT),
             "rear_drive_to_access_road_ft": round(drive_back.length / FT) if drive_back else None,
+            "turnaround": None if turn is None else
+                (f"circle drive {round(2 * turn_r / FT)} ft" if turn_r > 0 else
+                 f"semicircular bulb {round(2 * -turn_r / FT)} ft"),
             "option_b_lake_field": lake,
         })
         props = {"lot": label}
@@ -657,6 +713,13 @@ def analyse():
                 features.append({"type": "Feature", "properties": {
                     **props, "kind": "septic_tank", "inlet_depth_ft": gravity["tank_inlet_depth_ft"]},
                     "geometry": mapping(Point(gravity["tank_local_m"]))})
+        if turn is not None:
+            features.append({"type": "Feature", "properties": {
+                **props, "kind": "turnaround" if turn_r > 0 else "turn_bulb",
+                "radius_m": abs(turn_r), "lane_m": TURN_LANE}, "geometry": mapping(turn)})
+        if htype["name"] == "barndo":
+            features.append({"type": "Feature", "properties": {**props, "kind": "carport"},
+                             "geometry": mapping(box(*cp))})
         features.append({"type": "Feature", "properties": {**props, "kind": "drive_front"},
                          "geometry": mapping(drive_front)})
         if drive_back is not None:

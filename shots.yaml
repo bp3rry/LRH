@@ -379,3 +379,28 @@ shots:
     cabins: all
     site_works: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_entry_lot5:
+    kind: check
+    description: Lot 5 entry from CR 3635 - barbed-wire frontage fence, 20 ft double pipe gate swung open, 24 ft gravel entry apron with flared returns, culvert ends at the ditch, the drive to the circle drive and covered parking.
+    camera: {position: [118.0, -8.0, 190.0], target: [80.0, 10.0, 180.0], lens_mm: 26.0}
+    sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
+    haze_visibility_km: 0
+    cleared_ground: grassed
+    ground_detail: true
+    planting: true
+    cabins: all
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_lot10_parking:
+    kind: check
+    description: Lot 10 barndominium from the CR 3635 side - covered parking at the end of the drive, entry gate and fence.
+    camera: {position: [150.0, -150.0, 205.0], target: [110.0, -188.0, 183.0], lens_mm: 26.0}
+    sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
+    exposure: -3.0   # oak shade over the corner
+    haze_visibility_km: 0
+    cleared_ground: grassed
+    ground_detail: true
+    planting: true
+    cabins: all
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
