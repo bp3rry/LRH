@@ -877,6 +877,26 @@ is shown.
 - **Septic:** on Lots 3 and 4 the slab leaves too little room for the Option A field in
   front, so Option A goes beside the house there. Option B (lake-side) is unaffected.
 
+**Owner changes, 20 Oct 2026:**
+- **Brush piles burned and levelled.** `scripts/brush_piles.py` finds the piles as lidar
+  ground mounds, which match the grey-lilac blotches in NAIP 2024. It finds 18 mounds,
+  0.7–1.6 m high, inside the parcels. The build flattens the site terrain to each pile's
+  surrounding grade (feathered over 3 m) and grasses the footprints in the ground mask
+  (`out/derived/ground_mask_leveled.png`). The 11 lidar "brush pile" objects were already
+  left out of the trees.
+- **Flooded timber after Bois d'Arc Lake.** The reference is NAIP 2024 at 33.6595 N,
+  96.0561 W, about two seasons after impoundment, saved in `inputs/reference/`.
+  - The dying stage now has a dead interior: a twiggy mauve-grey canopy on grey trunks
+    (1,678 trees).
+  - A patchy rust-brown fringe of dying trees runs along the waterline (237 trees, in
+    water shallower than 1.2 m).
+  - Side-by-side: `out/2026-10-20/timber_vs_bois_darc.jpg`; check shot
+    `check_timber_aerial`.
+  - Renders now allow 32 transparent bounces, because sparse crowns stack many cut-out
+    cards.
+- **Spanish moss cut by more than half:** from about a third of the dead trees to about
+  an eighth (256 trees), because moss takes years to establish.
+
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
 One illustrative cabin (Lot 5) is enough for now. A later phase renders a cabin on every
@@ -992,6 +1012,8 @@ foreground trees fall short of `cam_02`.
 
 Decided 14 Oct 2026: marketing timber is `dying` with Spanish moss (owner choice; the
 owner was told its natural range at Lake Ralph Hall is unconfirmed).
+Revised 20 Oct 2026: the dying stage follows the Bois d'Arc Lake reference (grey dead
+interior, rust fringe), and moss is on about an eighth of the dead trees.
 
 ## 9. Open Items
 

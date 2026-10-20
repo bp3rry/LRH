@@ -266,3 +266,12 @@ shots:
     cleared_ground: grassed
     cabins: [Lot 5]
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_timber_aerial:
+    kind: check
+    description: Owner reference check (20 Oct 2026). Steep aerial over the flooded creek arm west of the lots, for comparison with inputs/reference/bois_darc_creek_naip2024_timber_detail.jpg (Bois d'Arc Lake, two seasons flooded).
+    camera: {position: [-60.0, 120.0, 520.0], target: [-260.0, 260.0, 168.0], lens_mm: 30.0}
+    sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
+    haze_visibility_km: 0
+    cleared_ground: grassed
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]

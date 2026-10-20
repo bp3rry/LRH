@@ -66,6 +66,9 @@ def configure_device(scene):
     scene.cycles.use_denoising = True
     scene.cycles.denoiser = "OPENIMAGEDENOISE"
     scene.cycles.use_adaptive_sampling = True
+    # Sparse crowns (bare flooded timber) stack many cut-out leaf cards: rays that run
+    # out of transparent bounces render black.
+    scene.cycles.transparent_max_bounces = 32
     scene.view_settings.view_transform = "AgX"
     scene.view_settings.look = "AgX - Base Contrast"
     scene.render.image_settings.file_format = "PNG"

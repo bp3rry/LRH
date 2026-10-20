@@ -86,6 +86,34 @@ def mesh_vertices(obj):
     return coords.reshape(-1, 3)
 
 
+def level_brush_piles(terrain, feather_m=3.0):
+    """Flatten the site terrain over each brush pile to its surrounding level grade,
+    blending back to the original surface over `feather_m` (out/derived/brush_piles.geojson)."""
+    path = lrh.ROOT / "out/derived/brush_piles.geojson"
+    if not path.is_file():
+        record("brush_piles_levelled", True, piles=0, note="no brush_piles.geojson")
+        return False
+    feats = json.loads(path.read_text())["features"]
+    co = mesh_vertices(terrain)
+    moved = 0
+    for f in feats:
+        poly = shapely.geometry.shape(f["geometry"])
+        level = f["properties"]["level_m"]
+        x0, y0, x1, y1 = poly.buffer(feather_m).bounds
+        sel = np.nonzero((co[:, 0] > x0) & (co[:, 0] < x1) & (co[:, 1] > y0) & (co[:, 1] < y1))[0]
+        d = shapely.distance(poly, shapely.points(co[sel, 0], co[sel, 1]))
+        w = np.clip(1.0 - d / feather_m, 0.0, 1.0)
+        w = w * w * (3 - 2 * w)
+        z = co[sel, 2]
+        co[sel, 2] = np.where(z > level, z + (level - z) * w, z)
+        moved += int((w > 0).sum())
+    terrain.data.vertices.foreach_set("co", co.ravel())
+    terrain.data.update()
+    record("brush_piles_levelled", True, piles=len(feats), vertices=moved,
+           source="out/derived/brush_piles.geojson (lidar mounds, NAIP 2024 grey blotches)")
+    return True
+
+
 def mesh_triangles(obj):
     obj.data.calc_loop_triangles()
     tris = np.empty(len(obj.data.loop_triangles) * 3, dtype=np.int64)
@@ -770,6 +798,10 @@ def main():
     site_coords = mesh_vertices(terrain)
     grid = SiteGrid(site_coords)
     check_terrain_against_raster(grid)
+    # Owner, 20 Oct 2026: the brush piles are burned and levelled (scripts/brush_piles.py).
+    if level_brush_piles(terrain):
+        site_coords = mesh_vertices(terrain)
+        grid = SiteGrid(site_coords)
     regional = stitch_regional_terrain(grid, site_coords, colls["Terrain"])
     lock = json.loads((lrh.ROOT / "imagery.lock.json").read_text())
     imagery = {role: lock["products"][name] for role, name in lock["use"].items()}
@@ -780,9 +812,11 @@ def main():
         if not (derived / path).is_file():
             lrh.fail(f"missing out/derived/{path}; run the imagery and lidar steps in "
                      "README first")
+    ground_mask = derived / "ground_mask_leveled.png"   # cleared mask + levelled brush piles
+    if not ground_mask.is_file():
+        ground_mask = derived / "cleared_drone_mask.png"
     terrain.data.materials.append(imagery_ground_material(
-        "Ground_Site", imagery["site"], derived / "naip_site_rgb.png",
-        cleared_mask=derived / "cleared_drone_mask.png"))
+        "Ground_Site", imagery["site"], derived / "naip_site_rgb.png", cleared_mask=ground_mask))
     regional.data.materials.append(imagery_ground_material(
         "Ground_Regional", imagery["regional"], derived / "naip_regional_rgb.jpg"))
 

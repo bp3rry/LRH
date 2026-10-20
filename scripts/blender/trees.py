@@ -152,7 +152,7 @@ def snag_material():
     mat = bpy.data.materials.new("Snag_Bark")
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes["Principled BSDF"]
-    bsdf.inputs["Base Color"].default_value = (0.22, 0.21, 0.19, 1)  # weathered grey
+    bsdf.inputs["Base Color"].default_value = (0.24, 0.21, 0.21, 1)  # weathered mauve-grey
     bsdf.inputs["Roughness"].default_value = 0.95
     return mat
 
@@ -293,26 +293,45 @@ def make_moss(snag, collection):
     return obj
 
 
-def make_dying(prototype, collection):
-    """A prototype copy with thin, yellow-brown foliage: a flooded hardwood in its first
-    or second season of decline."""
-    mat = bpy.data.materials.get("Foliage_dying")
+# Flooded-timber colours from the owner's reference, Bois d'Arc Lake two seasons after
+# impoundment (NAIP 2024, inputs/reference/bois_darc_creek_naip2024*.jpg): the dead
+# interior is a twiggy mauve-grey canopy; a narrow fringe along the waterline is rust.
+TIMBER_COLOURS = {"dying": ((0.16, 0.05, 0.025), (0.32, 0.11, 0.05), 0.6),  # rust fringe
+                  "bare": ((0.19, 0.165, 0.175), (0.34, 0.30, 0.31), 0.62)}  # grey twigs
+
+
+def _variant(prototype, collection, kind):
+    lo, hi, cut_value = TIMBER_COLOURS[kind]
+    name = f"Foliage_{kind}"
+    mat = bpy.data.materials.get(name)
     if mat is None:
         mat = prototype.data.materials[1].copy()
-        mat.name = "Foliage_dying"
+        mat.name = name
         nodes = mat.node_tree.nodes
         ramp = next(n for n in nodes if n.bl_idname == "ShaderNodeValToRGB")
-        ramp.color_ramp.elements[0].color = (0.16, 0.12, 0.04, 1)
-        ramp.color_ramp.elements[1].color = (0.30, 0.24, 0.08, 1)
+        ramp.color_ramp.elements[0].color = (*lo, 1)
+        ramp.color_ramp.elements[1].color = (*hi, 1)
         cut = next(n for n in nodes if n.bl_idname == "ShaderNodeMath")
-        cut.inputs[1].default_value = 0.6  # sparser crowns
+        cut.inputs[1].default_value = cut_value  # sparser crowns
     mesh = prototype.data.copy()
-    mesh.name = f"{prototype.data.name}_dying"
+    mesh.name = f"{prototype.data.name}_{kind}"
     mesh.materials[1] = mat
-    obj = bpy.data.objects.new(f"{prototype.name}_dying", mesh)
+    obj = bpy.data.objects.new(f"{prototype.name}_{kind}", mesh)
     collection.objects.link(obj)
     obj["prototype_height_m"] = prototype["prototype_height_m"]
     return obj
+
+
+def make_dying(prototype, collection):
+    """A prototype copy with thin rust-brown foliage: a flooded hardwood dying in the
+    shallow fringe along the waterline."""
+    return _variant(prototype, collection, "dying")
+
+
+def make_bare(prototype, collection):
+    """A prototype copy whose sparse 'foliage' reads as a twiggy grey crown of bare
+    branches: a flooded hardwood dead a season or two."""
+    return _variant(prototype, collection, "bare")
 
 
 def make_prototypes(collection):

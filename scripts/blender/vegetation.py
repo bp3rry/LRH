@@ -151,10 +151,18 @@ def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record):
         pts = np.column_stack([x, y, z - 0.15])
         cedar = evergreen >= EVERGREEN_SCORE_MIN
         variant = rng.integers(0, trees.VARIANTS, n)
-        dead_in_dying = rng.random(n) < 0.5
-        mossy = dead_in_dying & (rng.random(n) < 0.65)  # ~1/3 of all flooded trees
+        # Owner, 20 Oct 2026, after the Bois d'Arc Lake reference (two seasons flooded): the
+        # interior is dead, a twiggy grey canopy on grey trunks; only a narrow fringe in
+        # shallow water along the waterline keeps rust-brown dying foliage. Spanish moss on
+        # about an eighth of the dead trees (cut by more than half: it takes years to grow).
+        depth_m = lrh.POOL_M - z
+        fringe = (depth_m < 1.2) & (rng.random(n) < 0.7)   # patchy, as in the reference
+        dead_in_dying = ~fringe
+        mossy = dead_in_dying & (rng.random(n) < 0.15)
         dying_protos = {sp: [trees.make_dying(p, proto_coll) for p in protos]
                         for sp, protos in prototypes.items() if sp in ("red_cedar", "post_oak")}
+        bare_protos = {sp: [trees.make_bare(p, proto_coll) for p in protos]
+                       for sp, protos in prototypes.items() if sp in ("red_cedar", "post_oak")}
         moss_protos = [trees.make_moss(s, proto_coll) for s in snags]
 
         def scales_for(sel, species):
@@ -174,6 +182,10 @@ def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record):
                 if m2.any():
                     point_cloud(f"Flooded_Dying_{species}_{v}", pts[m2], scales_for(m2, species),
                                 rot[m2], dying_protos[species][v], made["Flooded_Timber_Dying"])
+                m3 = m & dead_in_dying
+                if m3.any():
+                    point_cloud(f"Flooded_Bare_{species}_{v}", pts[m3], scales_for(m3, species),
+                                rot[m3], bare_protos[species][v], made["Flooded_Timber_Dying"])
             snag_s = height / snags[v]["prototype_height_m"]
             snag_scale = np.column_stack([snag_s, snag_s, snag_s])
             for name, m in (("Flooded_Snags", in_v), ("Flooded_Dying_snags", in_v & dead_in_dying),
@@ -188,6 +200,7 @@ def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record):
     depth = lrh.POOL_M - rows[:, 2] if len(rows) else np.zeros(0)
     record("flooded_timber", len(rows) > 50, trees=len(rows),
            dead_in_dying_stage=int(dead_in_dying.sum()) if len(rows) else 0,
+           rust_fringe=int((~dead_in_dying).sum()) if len(rows) else 0,
            with_spanish_moss=int(mossy.sum()) if len(rows) else 0,
            water_depth_m_p50=round(float(np.median(depth)), 2) if len(rows) else None,
            water_depth_m_max=round(float(depth.max()), 2) if len(rows) else None,
