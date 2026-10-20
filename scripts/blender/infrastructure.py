@@ -106,7 +106,7 @@ def graded_road(name, line_xy, sampler, coll, width=7.0, shoulder=1.0, min_grade
             gf = sampler(*foot)
             slopes.append([(*edge, z), (*foot, (gf if gf is not None else g) - 0.05)])
     road = mesh_from_grid(f"{name}_Surface", surface, len(pts), len(offsets), coll,
-                          material("Road_Gravel", (0.62, 0.58, 0.50), 0.95, 0.5))
+                          material("Road_Gravel", (0.40, 0.38, 0.34), 0.95, 0.5))
     left = [v for i, s in enumerate(slopes) if i % 2 == 0 for v in (s[1], s[0])]
     right = [v for i, s in enumerate(slopes) if i % 2 == 1 for v in s]
     grass = material("Embankment_Grass", (0.10, 0.14, 0.05), 1.0, 0.3)
@@ -227,6 +227,7 @@ def build_cr3640(coll, sampler, record):
     c = np.array(geo["features"][0]["geometry"]["coordinates"])[:, :2] - [lrh.ORIGIN_E, lrh.ORIGIN_N]
     pts, grade, along = graded_road("CR3640", c, sampler, coll, width=7.0, shoulder=1.0,
                                     min_grade=lrh.POOL_M + 1.2)
+    build_cr3640.profile = (pts, grade)          # build_baseline carves the terrain to it
     record("cr3640_new_alignment", along[-1] > 2000, length_m=round(float(along[-1]), 1),
            min_grade_m=round(float(grade.min()), 2),
            source="TxDOT CR 3640 western approach + UTRWD Road Plan New Alignment")
@@ -236,7 +237,7 @@ def build_cr3640(coll, sampler, record):
 def dam_materials(dam):
     """Grey rock riprap on the upstream (lake) face, gravel crest, grass downstream."""
     rock = material("Dam_Riprap", (0.42, 0.41, 0.39), 0.95, 1.4, "rock")
-    crest = material("Road_Gravel", (0.62, 0.58, 0.50), 0.95, 0.5)
+    crest = material("Road_Gravel", (0.40, 0.38, 0.34), 0.95, 0.5)
     grass = material("Embankment_Grass", (0.10, 0.14, 0.05), 1.0, 0.3)
     dam.data.materials.clear()
     for m in (rock, crest, grass):

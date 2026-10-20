@@ -98,6 +98,14 @@ def main():
     for p in piles:
         d.polygon([((x - xmin) / cell, (ymax - y) / cell) for x, y in p["poly"].buffer(1.0).exterior.coords],
                   fill=255)
+    # The new CR 3640 was under construction in the imagery: its bare strip (wider than the
+    # road) is grassed over in the model, out to 18 m from the centreline.
+    geo = json.loads((ROOT / "inputs/geometry/cr3640-composite-context-route-epsg6344.geojson").read_text())
+    origin = json.loads((ROOT / "inputs/terrain/origin.json").read_text())["origin"]
+    c = np.array(geo["features"][0]["geometry"]["coordinates"])[:, :2] - [origin["easting"], origin["northing"]]
+    strip = shapely.LineString(c).buffer(18.0)
+    for g in getattr(strip, "geoms", [strip]):
+        d.polygon([((x - xmin) / cell, (ymax - y) / cell) for x, y in g.exterior.coords], fill=255)
     m.save(DERIVED / "ground_mask_leveled.png")
     print(f"{len(piles)} brush piles; heights "
           f"{min(p['height_m'] for p in piles):.1f}-{max(p['height_m'] for p in piles):.1f} m")

@@ -1139,6 +1139,17 @@ lot, for build-out stills and a build-out flyover variant:
   - Building lots in sequence, so later lots' dirt (their own swales, a phase-2 pond
     enlargement) arrives when needed.
 
+**CR 3640 road fix (owner, 20 Oct 2026):**
+- **Grass through the gravel:** the road's grade is smoothed, so the terrain stood above
+  it in places and showed through. The build now carves the site and regional terrain to
+  6 in under the roadbed, 4.5 m either side of the centreline, then back up at 3:1
+  (`build_baseline.carve_roadbed`).
+- **Grass tufts:** kept 7 m from all road centrelines.
+- **Construction strip:** the bare strip either side of the new road in the 2024 imagery
+  (18 m from the centreline) is grassed over in the ground mask.
+- **Gravel:** all county roads share a darker, speckled crushed-limestone material.
+- Check shot: `check_cr3640`.
+
 ### Phase 3c — Site infrastructure (planned)
 
 Show everything the site plan carries, as switchable layers for stills and video:

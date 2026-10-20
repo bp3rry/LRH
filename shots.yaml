@@ -366,3 +366,16 @@ shots:
     planting: true
     cabins: all
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_cr3640:
+    kind: check
+    description: The new CR 3640 along the south side of Lot 10 - gravel surface, shoulders and fill slopes, the CR 3635 corner.
+    camera: {position: [30.0, -285.0, 200.0], target: [60.0, -215.0, 180.0], lens_mm: 26.0}
+    sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
+    haze_visibility_km: 0
+    cleared_ground: grassed
+    ground_detail: true
+    planting: true
+    cabins: all
+    site_works: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]

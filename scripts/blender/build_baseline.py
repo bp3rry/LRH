@@ -117,6 +117,28 @@ def level_brush_piles(terrain, feather_m=3.0):
     return True
 
 
+def carve_roadbed(obj, pts, grade, half, below=0.15, slope=3.0):
+    """Lower `obj`'s vertices under a graded road to `below` m under the road surface out
+    to `half` m from the centreline, then back up at `slope`:1 to the ground."""
+    co = mesh_vertices(obj)
+    line = LineString(pts)
+    near = shapely.distance(line, shapely.points(co[:, 0], co[:, 1]))
+    sel = np.nonzero(near < half + 6.0)[0]
+    if not len(sel):
+        return 0
+    along = np.concatenate([[0], np.cumsum(np.hypot(*np.diff(np.asarray(pts), axis=0).T))])
+    s = shapely.line_locate_point(line, shapely.points(co[sel, 0], co[sel, 1]))
+    zr = np.interp(s, along, grade) - below
+    limit = zr + np.clip(near[sel] - half, 0.0, None) / slope
+    z = co[sel, 2]
+    cut = z > limit
+    co[sel[cut], 2] = limit[cut]
+    obj.data.vertices.foreach_set("co", co.ravel())
+    obj.data.update()
+    record(f"roadbed_carved_{obj.name}", True, vertices=int(cut.sum()))
+    return int(cut.sum())
+
+
 def mesh_triangles(obj):
     obj.data.calc_loop_triangles()
     tris = np.empty(len(obj.data.loop_triangles) * 3, dtype=np.int64)
@@ -622,7 +644,9 @@ def runs_on_terrain(line_xy, half_width, sampler, step=2.0, min_length=20.0):
 
 
 def build_roads(context, coll, sampler):
-    gravel = principled("Road_Gravel", (0.62, 0.58, 0.50), roughness=0.95)
+    # Crushed-limestone county-road gravel: speckled stones with patchy colour, shared by
+    # CR 3635, CR 3640 and the SH 34 approaches (infrastructure.material reuses it).
+    gravel = cabins._speckled("Road_Gravel", (0.17, 0.155, 0.13), (0.36, 0.34, 0.30), 30.0, 0.01)
     shoulder = principled("Road_Shoulder", (0.38, 0.35, 0.25), roughness=1.0)
     roads = {r["name"]: r for r in context["conceptual_county_roads"]["roads"]}
 
@@ -886,10 +910,17 @@ def main():
     context = lrh.load_context()
     build_far_ground(colls["Terrain"], regional)
     dam = build_dam(context, colls["Landmarks"])
+    cabins._speckled("Road_Gravel", (0.17, 0.155, 0.13), (0.36, 0.34, 0.30), 30.0, 0.01)  # first, so all roads share it
     infrastructure.dam_materials(dam)
     sampler = HeightSampler([terrain, regional, dam])
     _, water_mask, pooled = build_water(grid, context, colls["Water"], sampler)
     road_lines = build_roads(context, colls["Roads"], sampler)
+    # The road grade is smoothed; where the terrain stands above it, cut the terrain to the
+    # roadbed (and back at 3:1) so ground and grass do not show through the gravel.
+    pts, grade = infrastructure.build_cr3640.profile
+    for obj in (terrain, regional):
+        carve_roadbed(obj, pts, grade, half=3.5 + 1.0)
+    sampler = HeightSampler([terrain, regional, dam])
     # The water mask is buffered 60 m past the shore; pull it back to find the crossing.
     infrastructure.build_sh34(colls["Landmarks"], sampler, water_mask.buffer(-55.0), record)
     lots = build_overlays(context, colls["Overlays_Review"], sampler)
@@ -945,7 +976,7 @@ def main():
     flight = lrh.ROOT / "out/derived/flight_low.json"
     path = LineString([p[0][:2] for p in json.loads(flight.read_text())["poses"][::15]]) \
         if flight.is_file() else None
-    no_grass = [LineString(l).buffer(4.0) for l in road_lines]
+    no_grass = [LineString(l).buffer(7.0) for l in road_lines]
     no_grass += [shore_path.buffer(lotplan.PATH_WIDTH_M / 2 + 1.0)]
     no_grass += [LineString(a["path"]).buffer(lotplan.PATH_WIDTH_M / 2 + 1.0) for a in shore_access.values()]
     # Each cabin lot's lawn apron, carport, drive and walk get their own scatter, hidden
