@@ -732,7 +732,7 @@ an owner review, about 1–2 hours of work and render per checkpoint (owner, 15 
    below. Glide toward the timbered arm.
 2. Down to about 20 m over the flooded timber (the Fish and Wildlife Habitat zone stays
    wooded) and along the arm.
-3. Across the mown shoreline path at a lot's dock circle (no docks shown), then up the
+3. Across the mown shoreline path at a lot's dock circle, then up the
    open lake-side acre.
 4. A slow reveal of the Lot 5 cabin's glazed gable, porch and fire-pit patio, with a
    partial orbit.
@@ -812,7 +812,7 @@ about 17 s a frame on this M4):
 - Whether the access road and utility easements appear (default: no, planning only).
 - The time of day.
 
-The usual rules apply: no overlays or docks, the creek zone stays wooded, and the caption
+The usual rules apply: no overlays, the creek zone stays wooded, and the caption
 is shown.
 
 **R0 status (19 Oct 2026):**
@@ -993,6 +993,20 @@ is shown.
 - **Flyover:** the low variant now includes beaches and docks, and `check_beach_dock` is
   the review still. CLAUDE.md now allows docks in marketing frames (owner); `caption_docks`
   is blank.
+
+**Boat channel (owner, 21 Oct 2026: UTRWD will allow a one-time clearing event for the
+docks):** `lotplan.boat_channels`.
+- **Channel:** one 40 ft channel through the flooded timber linking all four dock heads
+  along the arm and running on to the main lake's open water, about 780 m.
+- **Basins:** a cleared basin 10 m round each dock and its slips.
+- **Clearing:** every tree whose trunk stands in the channel or a basin, or whose crown
+  overhangs them, is removed. That is 76 lidar trees, plus the trees already inside the
+  dock footprints.
+- **Dock paths:** the docks' access paths now clear their corridors too.
+- **Shots:** `check_boat_lanes_plan` (north-up), `check_boat_lanes` (oblique),
+  `D_dock_channel`.
+- The "no docks" rule is removed from CLAUDE.md, PLAN §7, `shots.yaml` and Phase 3a;
+  docks are shown (owner).
 
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
@@ -1216,7 +1230,7 @@ Show everything the site plan carries, as switchable layers for stills and video
 - the septic drip areas (as mown lawn, optionally outlined in check views);
 - the recreation sites with their utility pedestals;
 - shoreline paths and dock circles, mailboxes and gates, and fencing (split rail);
-- dock options, once UTRWD permitting allows them to be shown.
+- the docks, beaches and boat channels (shown since 20 Oct 2026).
 
 Marketing frames keep the §7 rules. Infrastructure appears only where the owner approves
 it for publication.
@@ -1282,9 +1296,9 @@ surveyor model did not have. Default behaviour is shown in **bold**; the owner d
 3. **Docks.** The draft LSMP requires 300 ft between docks and allows one per owner
    with an occupied residence. The PTM study found ten docks infeasible (126 ft minimum
    spacing). **Owner decision, 14 Oct 2026: show one dock per pair of lots, plus the
-   north-point dock (Phase 2b), each checked against the LSMP rules.** Dock images need
-   a caption line such as "Docks subject to UTRWD Shoreline Use Permit". Pedestrian
-   shoreline paths (5 ft max) are allowed.
+   north-point dock (Phase 2b), each checked against the LSMP rules.** Docks are shown
+   in the model and in marketing frames (owner, 20–21 Oct 2026). Pedestrian shoreline
+   paths (5 ft max) are allowed.
 4. **Homes.** **Empty, wooded, buildable lots.** Optional variant: the prior Perry
    lakehouse as one clearly labelled example home on one lot.
 5. **Acreage figures.** The CAD polygon for 116505 is 0.39 ac smaller than the

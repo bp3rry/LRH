@@ -2,7 +2,7 @@
 # offsets; Z = NAVD88 elevation). Blender scene is Z-up.
 #
 # kind: check      review/diagnostic views (overlays allowed, no caption)
-# kind: marketing  published frames (no overlays, no docks, caption required; PLAN.md §7)
+# kind: marketing  published frames (no overlays, caption required; PLAN.md §7)
 #
 # sun: local clock time at the site; the solar position is computed from it.
 # collections: the collections rendered; every other collection is excluded.
@@ -112,7 +112,7 @@ shots:
     redline: true
     collections: [Terrain, Water, Roads, Vegetation]
 
-  # --- Phase 2 hero stills (marketing: no overlays or docks; caption added) ---
+  # --- Phase 2 hero stills (marketing: no overlays; caption added) ---
   H1_arrival:
     kind: marketing
     description: High oblique from the southeast over CR 3635, west-northwest across the lots to the lake and SH 34 bridge.
@@ -412,6 +412,49 @@ shots:
     camera: {position: [-120.0, -30.0, 186.0], target: [-150.0, 8.0, 168.5], lens_mm: 26.0}
     sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
     haze_visibility_km: 0
+    cleared_ground: grassed
+    ground_detail: true
+    shoreline: true
+    docks: true
+    beach: true
+    planting: true
+    cabins: all
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_boat_lanes:
+    kind: check
+    description: Boat lanes (UTRWD one-time clearing event) - 40 ft channels cleared through the flooded timber from each paired dock to open water, and a cleared basin round each dock. High oblique over the creek arm from the south-west.
+    camera: {position: [-420.0, -230.0, 330.0], target: [-190.0, 60.0, 168.0], lens_mm: 28.0}
+    sun: {datetime: "2026-10-14T16:00", utc_offset_h: -5}
+    haze_visibility_km: 0
+    cleared_ground: grassed
+    shoreline: true
+    docks: true
+    beach: true
+    planting: true
+    cabins: all
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_boat_lanes_plan:
+    kind: check
+    description: North-up view of the creek arm in front of the lots - the four paired docks, their cleared basins and the 40 ft boat lanes to open water.
+    camera: {type: ortho, center: [-190.0, 60.0], ortho_scale_m: 420.0}
+    haze_visibility_km: 0
+    resolution: [1200, 1500]
+    sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
+    cleared_ground: grassed
+    shoreline: true
+    docks: true
+    beach: true
+    collections: [Terrain, Water, Roads, Vegetation]
+
+  D_dock_channel:
+    kind: marketing
+    description: Low drone view north along the cleared boat channel past the Lot 5-6 dock, beaches and cabins on the right, flooded timber on the left, golden hour.
+    camera: {position: [-175.0, -95.0, 185.0], target: [-160.0, 40.0, 168.5], lens_mm: 24.0}
+    sun: {datetime: "2026-10-14T18:10", utc_offset_h: -5}
+    exposure: -2.5
+    haze_visibility_km: 25
     cleared_ground: grassed
     ground_detail: true
     shoreline: true

@@ -629,6 +629,30 @@ def dock_mesh(name, length, coll, wood, roof):
     return obj
 
 
+def boat_channels(docks, water, timber_zone, width=40 * FT, basin=10.0):
+    """Owner, 21 Oct 2026 (UTRWD one-time clearing event): one cleared boat channel,
+    40 ft wide, linking every dock head along the arm and running on to the main lake's
+    open water (the largest body of water outside the timbered habitat zone), plus a
+    cleared basin round each dock and its slips. Returns (union polygon, [lines])."""
+    if not docks:
+        return Polygon(), []
+    open_water = water.difference(timber_zone.buffer(5.0))
+    parts = list(getattr(open_water, "geoms", [open_water]))
+    lake = max(parts, key=lambda g: g.area) if parts else None
+    heads = sorted((Point(d["end"]) for d in docks), key=lambda p: p.distance(lake) if lake else 0,
+                   reverse=True)
+    pts = [h.coords[0] for h in heads]
+    if lake is not None and not lake.contains(heads[-1]):
+        t = shapely.ops.nearest_points(heads[-1], lake)[1]
+        # Carry the channel 25 m into the open lake.
+        v = np.array(t.coords[0]) - np.array(heads[-1].coords[0])
+        n = float(np.linalg.norm(v)) or 1.0
+        pts += [t.coords[0], tuple(np.array(t.coords[0]) + v / n * 25.0)]
+    line = LineString(pts)
+    polys = [line.buffer(width / 2)] + [LineString([d["base"], d["end"]]).buffer(basin) for d in docks]
+    return unary_union(polys), [line]
+
+
 MOWN_CORRIDOR_M = 4.0
 LOT1_DOCK_AZIMUTH_DEG = 315.0  # owner: north-west from Lot 1's north-west-facing edge
 

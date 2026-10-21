@@ -956,7 +956,11 @@ def main():
     shore_area, shore_open = lotplan.build_shoreline(shore_path, shore_access, sampler,
                                                      colls["Shoreline"])
     docks = lotplan.dock_layout(context, pooled, grid, sampler, record)
-    lotplan.build_docks(docks, sampler, colls["Docks"])
+    boat_clear, boat_lanes = lotplan.boat_channels(docks, pooled, timber_zone)
+    record("boat_channels", len(boat_lanes) > 0, docks=len(docks), lanes=len(boat_lanes),
+           lane_lengths_m=[round(l.length) for l in boat_lanes], lane_width_ft=40,
+           basis="UTRWD one-time clearing event (owner, 21 Oct 2026)")
+    dock_area, dock_paths = lotplan.build_docks(docks, sampler, colls["Docks"])
     # Owner, 20 Oct 2026: sand beaches at the shoreline circles; dock riprap and boats.
     colls["Beach"] = collection("Beach")
     beach.build(colls["Beach"], colls["Docks"], shore_access, docks, pooled, sampler, record)
@@ -970,10 +974,10 @@ def main():
     if works_clear is not None:
         set_aside["Site Works"] = works_clear
     vegetation.scatter(colls["Vegetation"], grid, sampler, road_lines, zone, timber_zone, record,
-                       clear=unary_union([drive_area, shore_area]),
+                       clear=unary_union([drive_area, shore_area, dock_area, boat_clear]),
                        open_sky=(shapely.GeometryCollection([shore_open, drive_lines]),
                                  lotplan.MOWN_CORRIDOR_M / 2), scrub_zone=parcels,
-                       build_sites=set_aside)
+                       build_sites=set_aside, boat_clear=boat_clear)
     colls["Cabins"] = collection("Cabins")
     cabins.build(colls["Cabins"], sampler, ribbon, HeightSampler, terrain, record)
     # CR 3635 frontage: the existing barbed-wire fence, a gate per drive, culverts, aprons.

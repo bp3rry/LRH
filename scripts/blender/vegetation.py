@@ -128,7 +128,7 @@ def candidates(rng, extent):
     return out
 
 
-def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record):
+def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record, cleared=None):
     """Lidar trees below pool inside the Fish and Wildlife Habitat zone stay standing in
     the water. Three stages are built as separate top-level collections so shots can
     choose: leafy (first season after flooding), dying (a season or two: about half
@@ -144,6 +144,14 @@ def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record):
         scene.collection.children.link(coll)
         made[name] = coll
     rows = np.array(lidar_rows) if lidar_rows else np.zeros((0, 6))
+    import shapely
+    removed = 0
+    if cleared is not None and not cleared.is_empty and len(rows):
+        # Owner, 21 Oct 2026: UTRWD one-time clearing event - boat lanes and dock basins.
+        # No trunk in the lane or basin, and no crown hanging over them.
+        hit = shapely.distance(cleared, shapely.points(rows[:, 0], rows[:, 1])) < 0.8 * rows[:, 4] + 0.5
+        removed = int(hit.sum())
+        rows = rows[~hit]
     if len(rows):
         x, y, z, height, crown, evergreen = rows.T
         n = len(x)
@@ -198,7 +206,7 @@ def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record):
                         "Flooded_Moss": "Spanish_Moss"}[name]
                 point_cloud(f"{name}_{v}", pts[m], snag_scale[m], rot[m], proto, made[coll])
     depth = lrh.POOL_M - rows[:, 2] if len(rows) else np.zeros(0)
-    record("flooded_timber", len(rows) > 50, trees=len(rows),
+    record("flooded_timber", len(rows) > 50, trees=len(rows), cleared_for_boats=removed,
            dead_in_dying_stage=int(dead_in_dying.sum()) if len(rows) else 0,
            rust_fringe=int((~dead_in_dying).sum()) if len(rows) else 0,
            with_spanish_moss=int(mossy.sum()) if len(rows) else 0,
@@ -209,7 +217,7 @@ def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record):
 
 
 def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, clear=None,
-            open_sky=None, scrub_zone=None, scrub_max_height=4.0, build_sites=None):
+            open_sky=None, scrub_zone=None, scrub_max_height=4.0, build_sites=None, boat_clear=None):
     """`clear`: footprints (driveways, dock paths and docks) where no tree may stand.
     `open_sky`: (lines, half width): no crown may overhang these corridors, so cleared
     dock paths read from the air (owner, 14 Oct 2026).
@@ -266,7 +274,12 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
         keep &= ~overhang
     else:
         lstats_overhang = 0
-    lstats = {"lidar_detected": len(lidar), "lidar_brush_piles_omitted": int(brush_piles.sum()),
+    boat_overhang = 0
+    if boat_clear is not None and not boat_clear.is_empty:
+        over = shapely.distance(boat_clear, shapely.points(x, y)) < 0.8 * crown + 0.5
+        boat_overhang = int((keep & over).sum())
+        keep &= ~over
+    lstats = {"lidar_detected": len(lidar), "lidar_cleared_for_boats": boat_overhang, "lidar_brush_piles_omitted": int(brush_piles.sum()),
               "lidar_scrub_cleared": int(scrub.sum()),
               "lidar_cleared_for_paths": lstats_overhang}
     x, y, height, crown, evergreen = (a[keep] for a in (x, y, height, crown, evergreen))
@@ -413,7 +426,7 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
                         prototypes[species][v], coll)
         counts[species] = len(arr)
 
-    flooded_timber(rng, timber_rows, prototypes, snags, proto_coll, record)
+    flooded_timber(rng, timber_rows, prototypes, snags, proto_coll, record, cleared=boat_clear)
     total = sum(counts.values())
     record("trees_placed", total > 1000 and lstats["lidar_placed"] > 10000, total=total,
            by_species=counts, **lstats, mask_scatter=stats, on_build_sites=build_counts,
