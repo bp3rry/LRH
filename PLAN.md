@@ -1020,6 +1020,11 @@ which may raise the value of the pair.
 - **Lot-line screens:** where a lot line touches a house lot, the bamboo is replaced by
   flowering pears (Bradford / Oriental pear stand-ins from the scanned young tree, about
   25 ft) at every other position. Elsewhere the bamboo stays.
+- **Open-lot example use (owner, 21 Oct 2026):** each open lot has a 24 × 20 ft covered
+  picnic pavilion on a concrete slab at the pad's lake-side end, in the cabins' style (log
+  posts with Y-brackets, shingle gable, open trusses). It holds two picnic tables and a
+  pedestal grill. Colour trees stand round it: a red maple, a Japanese maple and a peach.
+  Shot: `C_pavilion_6`.
 - The full build-out (`cabins: all`) is unchanged and still available.
 - Shots: `B_buildout_pairs`, `C_pair_5_6`; review sheet `out/2026-10-21/pairs_review.jpg`.
 

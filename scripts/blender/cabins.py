@@ -1318,6 +1318,85 @@ def turnaround_mesh(m, site, grade, gravel_mat):
         frontage.draped(m, site["turn_bulb"][1], grade, gravel_mat, 0.08)
 
 
+def red_maple(m, x, y, z, rng, h=7.5):
+    """Red maple (e.g. 'October Glory' / 'Red Sunset') in fall: oval crown of scarlet."""
+    m.cylinder(x, y, z, z + h * 0.4, 0.15, plain("Plant_Maple_Bark", (0.16, 0.15, 0.14), 0.8), n=10, r_top=0.09)
+    reds = [_foliage("maple_scarlet", (0.48, 0.035, 0.02)), _foliage("maple_orange", (0.55, 0.14, 0.02))]
+    for k in range(14):
+        a, r = rng.uniform(0, 2 * math.pi), rng.uniform(0, 1.6)
+        m.blob(x + math.cos(a) * r, y + math.sin(a) * r, z + h * rng.uniform(0.5, 0.92),
+               1.1, 1.1, 1.0, reds[0] if rng.random() < 0.75 else reds[1], rng=rng)
+
+
+def japanese_maple(m, x, y, z, rng, h=3.2):
+    """Japanese maple: low multi-stem, layered, deep crimson."""
+    bark = plain("Plant_JMaple_Bark", (0.12, 0.08, 0.07), 0.6)
+    crim = _foliage("jmaple_crimson", (0.30, 0.015, 0.02))
+    for k in range(4):
+        a = 2 * math.pi * k / 4 + rng.uniform(-0.3, 0.3)
+        m.beam((x, y, z), (x + math.cos(a) * 0.9, y + math.sin(a) * 0.9, z + h * 0.55), 0.06, 0.06, bark)
+    for k in range(12):                                   # layered, spreading tiers
+        a, r = rng.uniform(0, 2 * math.pi), rng.uniform(0.3, 1.8)
+        m.blob(x + math.cos(a) * r, y + math.sin(a) * r, z + h * rng.uniform(0.45, 0.95),
+               0.75, 0.75, 0.35, crim, rng=rng)
+
+
+def peach(m, x, y, z, rng):
+    """Peach tree: short trunk, open vase, fall foliage turning yellow-orange."""
+    m.cylinder(x, y, z, z + 0.8, 0.09, plain("Cabin_Fruit_Bark", (0.07, 0.05, 0.04), 0.8), n=8)
+    m.cylinder(x, y, z, z + 0.05, 0.9, mulch(), n=16)
+    cols = [_foliage("peach_leaf", (0.12, 0.13, 0.03)), _foliage("peach_fall", (0.42, 0.22, 0.03))]
+    for k in range(8):
+        a, r = 2 * math.pi * k / 8 + rng.uniform(-0.3, 0.3), rng.uniform(0.6, 1.1)
+        m.blob(x + math.cos(a) * r, y + math.sin(a) * r, z + rng.uniform(1.7, 2.6), 0.8, 0.8, 0.55,
+               cols[1] if rng.random() < 0.5 else cols[0], rng=rng)
+
+
+def pavilion(m, coll, pad, z, key):
+    """Open lot of a pair (owner, 21 Oct 2026): a 24 x 20 ft covered picnic pavilion on a
+    concrete slab at the pad's lake-side end - log posts with Y-brackets, a shingle gable
+    roof in the cabins' style - with two picnic tables and a pedestal grill, and colour
+    trees round it: a red maple, a Japanese maple and a peach."""
+    import beach
+    wood, bb, roof, conc, dark = timber(), board_batten(), shingles(), concrete(), trim()
+    x0, y0, x1, y1 = pad.bounds
+    cy = (y0 + y1) / 2
+    W, D = 24 * FT, 20 * FT                       # E-W, N-S
+    px0 = x0 + 4.0
+    px1, py0, py1 = px0 + W, cy - D / 2, cy + D / 2
+    z = z + LIFT
+    m.box(px0 - 0.6, py0 - 0.6, z - 0.15, px1 + 0.6, py1 + 0.6, z + 0.1, conc)
+    eave = z + 0.1 + 2.8
+    for x in (px0, (px0 + px1) / 2, px1):
+        for y in (py0, py1):
+            pier_post(m, x, y, z + 0.1, eave, wood, conc)
+            y_braces(m, x, y, eave, "x", wood)
+    for y in (py0, py1):
+        m.box(px0 - 0.2, y - 0.13, eave - 0.05, px1 + 0.2, y + 0.13, eave + 0.22, wood)
+    pitch, ov, ym = 8 / 12, 0.6, cy
+    ridge = eave + 0.22 + (D / 2) * pitch
+    for ya in (py0 - ov, py1 + ov):
+        za = eave + 0.22 - ov * pitch
+        lo = [(px0 - ov, ya, za), (px1 + ov, ya, za), (px1 + ov, ym, ridge), (px0 - ov, ym, ridge)]
+        m.hexa(lo + [(x, y, zz + 0.14) for x, y, zz in lo], roof)
+    m.beam((px0 - ov, ym, ridge + 0.14), (px1 + ov, ym, ridge + 0.14), 0.18, 0.07, dark)
+    for x in (px0, px1):                          # open trusses at both gables
+        m.beam((x, py0, eave + 0.1), (x, py1, eave + 0.1), 0.18, 0.26, wood)
+        m.beam((x, ym, eave + 0.1), (x, ym, ridge - 0.1), 0.16, 0.16, wood)
+        for ya in (py0, py1):
+            m.beam((x, ya, eave + 0.2), (x, ym, ridge - 0.08), 0.14, 0.18, dark)
+    for k, xx in enumerate((px0 + W * 0.3, px0 + W * 0.7)):
+        beach.picnic_table(m, xx, cy, z + 0.1, math.pi / 2, wood)
+    iron = plain("Cabin_Iron", (0.03, 0.03, 0.03), 0.4, 0.8)
+    m.cylinder(px1 - 0.8, py1 - 0.8, z + 0.1, z + 0.9, 0.05, iron, n=8)          # pedestal grill
+    m.box(px1 - 1.1, py1 - 1.05, z + 0.9, px1 - 0.5, py1 - 0.55, z + 1.05, iron)
+    point_light(f"{key}_Pavilion", ((px0 + px1) / 2, cy, eave - 0.2), 60.0, (1.0, 0.72, 0.45), 0.1, coll)
+    rng = random.Random(f"pavilion-{key}")
+    red_maple(m, px1 + 5.0, py1 + 4.0, z, rng)
+    japanese_maple(m, px0 - 5.0, py1 + 2.5, z, rng)
+    peach(m, px1 + 4.0, py0 - 4.0, z, rng)
+
+
 def lawn():
     """Mown lawn on the graded site: fine colour variation and a little bump."""
     mat, tree = _mat("Cabin_Lawn")
@@ -1462,8 +1541,8 @@ def build(root, sampler, ribbon, sampler_class, terrain, record):
         grade_terrain(terrain, key, pad, T, E, terraces, design=pdesign, prefix="GradePad_", fill=True)
         tm = Mesh()
         garden_terraces(tm, terraces, T, key, uses=("empty",))
-        if tm.faces:
-            tm.object(f"PadOnly_{key}_Terraces", pad_only)
+        pavilion(tm, pad_only, pad, props["top_m"], key)
+        tm.object(f"PadOnly_{key}_Pavilion", pad_only)
         m = Mesh()
         info = cabin(m, coll, pad, T, E, grade, key)
         pc = patio_centre(pad)
