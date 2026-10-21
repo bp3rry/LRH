@@ -251,6 +251,9 @@ def main():
     if "--encode-only" not in argv:
         render.configure_device(scene)
         render.configure_sky(scene, SUN)
+        if variant == "low":
+            import sky
+            sky.world_clouds(scene)
         bpy.data.materials["Ground_Site"].node_tree.nodes["LRH_Cleared_Grassed"].outputs[0].default_value = 1.0
         life = None
         if variant == "oval":

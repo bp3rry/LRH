@@ -334,6 +334,7 @@ def render_shot(name, shot, config, args, out):
         wanted.add("Planting")
     if shot.get("beach", config.get("beach", False)):
         wanted.add("Beach")
+    clouds = shot.get("clouds", kind == "marketing")    # R4 sky clouds, marketing by default
     # Phase 2d cabins (cabins.py): `cabins: [Lot 5]` or `cabins: all`.
     cabin_lots, pad_lots = layout_lots(shot, config)
     if cabin_lots or pad_lots:
@@ -366,6 +367,9 @@ def render_shot(name, shot, config, args, out):
             if obj.name.startswith("Redline_") and obj.name.endswith("_Number"):
                 obj.rotation_euler = (0, 0, math.atan2(-forward.x, forward.y))
     sun = configure_sky(scene, shot["sun"])
+    if clouds:
+        import sky
+        sky.world_clouds(scene)
     with tempfile.TemporaryDirectory() as scratch:
         haze = configure_haze(scene, camera, shot.get("haze_visibility_km",
                                                       config.get("haze_visibility_km")), scratch,

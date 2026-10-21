@@ -29,6 +29,7 @@ import frontage  # noqa: E402
 import ground_detail  # noqa: E402
 import planting3d  # noqa: E402
 import site_works  # noqa: E402
+import sky  # noqa: E402
 import infrastructure  # noqa: E402
 import lotplan  # noqa: E402
 import scene_life  # noqa: E402

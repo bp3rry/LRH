@@ -1042,6 +1042,16 @@ which may raise the value of the pair.
 - The full build-out (`cabins: all`) is unchanged and still available.
 - Shots: `B_buildout_pairs`, `C_pair_5_6`; review sheet `out/2026-10-21/pairs_review.jpg`.
 
+**R4 sky and channel camera (21 Oct 2026):**
+- **Clouds:** `sky.world_clouds`, in the world shader over the physical sky. Noise on the
+  view direction projected to a cloud deck makes scattered strato-cumulus that thins to
+  the horizon, coloured from the sky's own brightness so they warm at golden hour.
+  - Because they have no depth, the compositor haze leaves them alone; they cost nothing
+    to render and do not flicker.
+  - They are on by default in marketing shots and the low flyover.
+- **Channel camera:** the flight rises to 200–206 m and looks further down the channel
+  (still passing all checks), so the docks, boats and beaches read past the timber.
+
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
 One illustrative cabin (Lot 5) is enough for now. A later phase renders a cabin on every
