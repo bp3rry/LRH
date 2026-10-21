@@ -214,10 +214,15 @@ def place_septic(poly, pad, cy, corridor=None, SEPTIC=SEPTIC, allow_west=False):
     return None, None
 
 
-def garden_terraces(dtm, pad, T, corridor):
+MINIMAL_LOTS = {"Lot 3", "Lot 7"}   # owner, 21 Oct 2026: Bear Creek / Creekside, minimal grading
+
+
+def garden_terraces(dtm, pad, T, corridor, label=None):
     """Garden / orchard terraces below the fire-pit terrace (owner, 20 Oct 2026), as far
     west as 2 m short of the access-road corridor (at most 18 m). Each step drops 1-2 ft
-    toward the natural grade, so the stone walls stay low."""
+    toward the natural grade, so the stone walls stay low. None on MINIMAL_LOTS."""
+    if label in MINIMAL_LOTS:
+        return []
     tf = grading.layout(pad.bounds)["terrace_flat"]
     ys = np.linspace(tf[1], tf[3], 9)
     east = -1e9
@@ -277,7 +282,7 @@ def flat_grade(x, y, ground, flats):
     return np.where(best_d == 0, edge, out)
 
 
-def walkout(dtm, pad, septic, corridor=None):
+def walkout(dtm, pad, septic, corridor=None, label=None):
     """Partly buried terrace level (Hemlock walk-out) on this pad, with the gravity check
     from the downstairs bath to the septic tank.
 
@@ -294,7 +299,7 @@ def walkout(dtm, pad, septic, corridor=None):
     g_e = float(np.mean(dtm(np.full(12, L["xe"]), ys)))
     T = g_w + 0.5 * FT
     E = T + grading.BURY
-    terr = garden_terraces(dtm, pad, T, corridor) if corridor is not None else []
+    terr = garden_terraces(dtm, pad, T, corridor, label) if corridor is not None else []
     bath = (L["xw"] + 4.5, L["y0"] + 2.0)
 
     def inlet_depth(tank):
@@ -647,7 +652,7 @@ def analyse():
             drive_back = LineString([(pad.bounds[0], cy), hp.coords[0]])
         septic_conflict = septic is not None and drive_front.buffer(DRIVE_W / 2).intersects(septic)
 
-        walk = walkout(dtm, pad, septic, corridor) if septic is not None and htype["name"] != "barndo" \
+        walk = walkout(dtm, pad, septic, corridor, label) if septic is not None and htype["name"] != "barndo" \
             else None
         barndo_terr, barndo_grading = [], None
         if htype["name"] == "barndo":

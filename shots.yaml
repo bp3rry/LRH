@@ -514,3 +514,37 @@ shots:
     docks: true
     beach: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  C_bear_creek_3:
+    kind: marketing
+    description: Lot 3 - Bear Creek-style cabin (one storey, low rust metal roof, front cross gable, deep porches) in the cabins' red-brown stain, minimal grading and landscaping. Golden hour.
+    camera: {position: [2.0, 72.0, 196.0], target: [29.0, 105.0, 183.0], lens_mm: 26.0}
+    sun: {datetime: "2026-10-14T18:10", utc_offset_h: -5}
+    exposure: -2.5
+    haze_visibility_km: 25
+    cleared_ground: grassed
+    ground_detail: true
+    layout: pairs
+    site_works: true
+    planting: true
+    shoreline: true
+    docks: true
+    beach: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  C_creekside_7:
+    kind: marketing
+    description: Lot 7 - Creekside-style cabin (1.5 storey, green shingle roof with long shed dormer, stone chimney on the lake gable, walk-out below) in the red-brown stain, minimal grading and landscaping. Golden hour.
+    camera: {position: [38.0, -112.0, 200.0], target: [64.0, -79.0, 187.0], lens_mm: 26.0}
+    sun: {datetime: "2026-10-14T18:10", utc_offset_h: -5}
+    exposure: -2.5
+    haze_visibility_km: 25
+    cleared_ground: grassed
+    ground_detail: true
+    layout: pairs
+    site_works: true
+    planting: true
+    shoreline: true
+    docks: true
+    beach: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]

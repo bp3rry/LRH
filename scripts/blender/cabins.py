@@ -746,10 +746,48 @@ def log_bench(m, cx, cy, z, face_deg, wood):
     m.beam((a[0], a[1], z + 0.45), (b[0], b[1], z + 0.45), 0.36, 0.14, wood)
 
 
-def cabin(m, coll, pad, T, E, grade, name):
-    """The Hemlock-style cabin on its walk-out site; `grade(x, y)` is finished grade."""
+# Owner, 21 Oct 2026: for variety, two lots get other Satterwhite plans, adapted to the
+# common 30 x 42 ft walk-out footprint (so pads, grading and septic are unchanged) in the
+# same dark red-brown stain, with minimal grading (no garden terraces) and landscaping:
+# - Bear Creek (1 storey, 1,240 sq ft, 750 sq ft porches): low 6:12 roof in rust metal, no
+#   dormers, a board-and-batten cross gable over the front entry, glazed lake gable.
+# - Creekside (1.5 storey with loft, walk-out terrace level): steep 9:12 dark green
+#   shingle roof, a long board-and-batten shed dormer on the north slope, a stone
+#   chimney up the lake gable, elevated lake deck.
+CABIN_STYLE = {"Lot 3": "bear_creek", "Lot 7": "creekside"}
+STYLE_PITCH = {"hemlock": PITCH, "bear_creek": 6 / 12, "creekside": 9 / 12}
+
+
+def roof_material(style):
+    if style == "bear_creek":
+        mat, tree = _mat("Roof_Metal_Rust")
+        if tree is not None:
+            tc, sep = _coord(tree)
+            f = _math(tree, "FRACT", _math(tree, "DIVIDE", sep.outputs["X"], 0.406))
+            seam = _math(tree, "LESS_THAN", _math(tree, "ABSOLUTE", _math(tree, "SUBTRACT", f, 0.5)), 0.03)
+            tree.nodes["Principled BSDF"].inputs["Metallic"].default_value = 0.5
+            _finish(tree, _ramp(tree, seam, (0.20, 0.07, 0.035), (0.30, 0.11, 0.05)), 0.4, seam, 0.01, 0.8)
+        return mat
+    if style == "creekside":
+        mat, tree = _mat("Roof_Shingle_Green")
+        if tree is not None:
+            tc, sep = _coord(tree)
+            rows = _math(tree, "FRACT", _math(tree, "DIVIDE", sep.outputs["X"], 0.14))
+            noise = tree.nodes.new("ShaderNodeTexNoise")
+            noise.inputs["Scale"].default_value = 9.0
+            tree.links.new(tc.outputs["Object"], noise.inputs["Vector"])
+            _finish(tree, _ramp(tree, noise.outputs["Fac"], (0.018, 0.035, 0.025), (0.04, 0.07, 0.05), 0.35, 0.7),
+                    0.8, rows, 0.01, 0.7)
+        return mat
+    return shingles()
+
+
+def cabin(m, coll, pad, T, E, grade, name, style="hemlock"):
+    """The cabin on its walk-out site; `grade(x, y)` is finished grade. `style`: hemlock
+    (default), bear_creek or creekside (CABIN_STYLE)."""
     logs, wood, dark, bb, rock = log_siding(), timber(), trim(), board_batten(), stone()
-    roof, glow, conc = shingles(), window_glow(), concrete()
+    roof, glow, conc = roof_material(style), window_glow(), concrete()
+    PITCH = STYLE_PITCH[style]
     L = grading.layout(pad.bounds)
     xw, xe, y0, y1, xp, ys, yn = (L[k] for k in ("xw", "xe", "y0", "y1", "xp", "ys", "yn"))
     cy = (y0 + y1) / 2
@@ -844,8 +882,43 @@ def cabin(m, coll, pad, T, E, grade, name):
             ya, yb = y1 + OVERHANG, yn + over
         lo = [(xr0, ya, eave - drop), (xe + 0.3, ya, eave - drop), (xe + 0.3, yb, z_lo), (xr0, yb, z_lo)]
         m.hexa(lo + [(x, y, z + 0.12) for x, y, z in lo], roof)
-    for k in range(3):
-        dormer(m, xw + BODY[0] * (k + 1) / 4, y0 + 0.35, eave + 0.15, roof, bb, glow, dark)
+    if style == "hemlock":
+        for k in range(3):
+            dormer(m, xw + BODY[0] * (k + 1) / 4, y0 + 0.35, eave + 0.15, roof, bb, glow, dark)
+    elif style == "bear_creek":
+        # Front cross gable over the entry, ridge north-south, out over the south porch.
+        cxm, hw = xw + 8.5, 3.4
+        zr = eave + hw * PITCH + 0.4
+        yf = ys - over
+        for sgn in (-1, 1):
+            lo = [(cxm + sgn * (hw + 0.4), yf, eave - drop), (cxm, yf, zr), (cxm, cy, zr),
+                  (cxm + sgn * (hw + 0.4), cy, eave - drop)]
+            m.hexa(lo + [(x, y, z + th) for x, y, z in lo], roof)
+        m.gable(cxm - hw, cxm + hw, yf + 0.3, eave - 0.3, zr - 0.15, 0.15, bb)
+        window(m, cxm, yf + 0.3, eave + 0.1, 1.6, (zr - eave) * 0.55, "S", glow)
+        for sgn in (-1, 1):                                     # rake boards
+            m.beam((cxm + sgn * (hw + 0.4), yf - 0.05, eave - drop), (cxm, yf - 0.05, zr), 0.08, 0.24, dark)
+        for x in (cxm - hw, cxm + hw):                         # heavy entry posts
+            pier_post(m, x, yf + 0.5, grade(x, yf + 0.5), eave - 0.3, wood, conc)
+    elif style == "creekside":
+        # Long board-and-batten shed dormer on the north slope (the loft), and a stone
+        # chimney up the middle of the lake gable.
+        dx0, dx1 = xw + 2.0, xe - 2.5
+        yd = cy + 0.6
+        top = ridge - 0.2
+        front = y1 - 0.9
+        zf = eave + (y1 - front) * PITCH + 0.1
+        m.box(dx0, front, zf - 0.2, dx1, front + 0.15, top, bb)
+        for x in (dx0, dx1 - 0.15):
+            m.hexa([(x, front, zf - 0.2), (x + 0.15, front, zf - 0.2), (x + 0.15, yd, top), (x, yd, top),
+                    (x, front, top), (x + 0.15, front, top), (x + 0.15, yd, top + 0.01), (x, yd, top + 0.01)], bb)
+        lo = [(dx0 - 0.3, front - 0.4, top - 0.05), (dx1 + 0.3, front - 0.4, top - 0.05),
+              (dx1 + 0.3, yd - 0.3, top + 0.35), (dx0 - 0.3, yd - 0.3, top + 0.35)]
+        m.hexa(lo + [(x, y, z + 0.12) for x, y, z in lo], roof)
+        for k in range(4):
+            window(m, dx0 + (dx1 - dx0) * (k + 0.5) / 4, front, zf + 0.15, 1.0, 1.0, "N", glow)
+        m.box(xp - 0.6, cy - 0.9, T, xp + 0.4, cy + 0.9, ridge + 1.2, rock)     # stone chimney
+        m.box(xp - 0.7, cy - 1.0, ridge + 1.2, xp + 0.5, cy + 1.0, ridge + 1.35, conc)
 
     # ---- Porch decks on log posts and concrete piers, with Y-brackets.
     m.box(xp, y0, F - 0.25, xw, y1, F, wood)                        # gable porch 8 x 30
@@ -1034,7 +1107,7 @@ def pear(m, x, y, z, rng, h=6.0):
                red if rng.random() < 0.65 else green, rng=rng)
 
 
-def landscaping(m, L, info, grade, drive, key):
+def landscaping(m, L, info, grade, drive, key, minimal=False):
     rng = random.Random(f"landscape-{key}")
     xe, xw, xp, ys, y0, y1 = L["xe"], L["xw"], L["xp"], L["ys"], L["y0"], L["y1"]
     (sw0, sw1), (fw0, fw1) = info["stairs_x"]
@@ -1048,6 +1121,9 @@ def landscaping(m, L, info, grade, drive, key):
                 muhly(m, x, (by0 + by1) / 2, z, rng)
             else:
                 shrub(m, x, (by0 + by1) / 2, z, rng.uniform(0.38, 0.48), rng)
+    if minimal:                       # front bed and the drive's pears only
+        _drive_pears(m, drive, grade, rng)
+        return
     # Corner beds at the lake end of the patio, each with a crape myrtle.
     px0 = L["patio"][0]
     fx, fy = L["firepit"]
@@ -1065,7 +1141,11 @@ def landscaping(m, L, info, grade, drive, key):
     tx, ty = xe - 5.0, ys - 4.6
     bed(m, tx - 1.2, tx + 1.2, ty - 1.2, ty + 1.2, grade)
     crape_myrtle(m, tx, ty, grade(tx, ty) + 0.07, rng)
-    # Two fruiting pears flanking the drive near the entry yard.
+    _drive_pears(m, drive, grade, rng)
+
+
+def _drive_pears(m, drive, grade, rng):
+    """Two fruiting pears flanking the drive near the entry yard."""
     if drive is not None:
         d = shapely.ops.substring(drive, max(0.0, drive.length - 14.0), drive.length - 13.0)
         (ax, ay), (bx, by) = list(d.coords)[0], list(d.coords)[-1]
@@ -1544,7 +1624,7 @@ def build(root, sampler, ribbon, sampler_class, terrain, record):
         pavilion(tm, pad_only, pad, props["top_m"], key)
         tm.object(f"PadOnly_{key}_Pavilion", pad_only)
         m = Mesh()
-        info = cabin(m, coll, pad, T, E, grade, key)
+        info = cabin(m, coll, pad, T, E, grade, key, CABIN_STYLE.get(label, "hemlock"))
         pc = patio_centre(pad)
         pz = grade(pc.x, pc.y) + LIFT
         m.cylinder(pc.x, pc.y, pz - 0.06, pz + 0.03, PATIO_R, decomposed_granite(), n=48)
@@ -1570,7 +1650,8 @@ def build(root, sampler, ribbon, sampler_class, terrain, record):
         sx, sy, sz = info["stair_bottom"]
         lamp_post(m, coll, sx - 1.6, sy - 1.0, sz, plain("Cabin_Iron", (0.03, 0.03, 0.03), 0.4, 0.8),
                   emitter("Cabin_Lantern", (1.0, 0.62, 0.3), 4.0), key)
-        landscaping(m, Lc, info, grade, site.get("drive_front", (None, None))[1], key)
+        landscaping(m, Lc, info, grade, site.get("drive_front", (None, None))[1], key,
+                    minimal=label in CABIN_STYLE)
         turnaround_mesh(m, site, grade, drive_gravel)
         garden_terraces(m, terraces, T, key)
         m.object(f"Cabin_{key}", coll)

@@ -1025,6 +1025,20 @@ which may raise the value of the pair.
   posts with Y-brackets, shingle gable, open trusses). It holds two picnic tables and a
   pedestal grill. Colour trees stand round it: a red maple, a Japanese maple and a peach.
   Shot: `C_pavilion_6`.
+- **Cabin variety (owner, 21 Oct 2026):** two house lots get other Satterwhite plans
+  (`cabins.CABIN_STYLE`), in the same dark red-brown stain with minimal grading (no garden
+  terraces; `build_sites.MINIMAL_LOTS`) and minimal landscaping (front bed and drive pears):
+  - **Lot 3, after Bear Creek** (1 storey, 2 BR / 1.5 BA, 1,240 sq ft, 750 sq ft
+    porches): a low 6:12 rust standing-seam roof, no dormers, a board-and-batten cross
+    gable with a window over the front entry.
+  - **Lot 7, after Creekside** (1.5 storey with loft, 2 BR / 2 BA, 1,787 sq ft with a
+    walk-out terrace level): a steep 9:12 dark green shingle roof, a long board-and-batten
+    shed dormer on the north slope, and a stone chimney up the lake gable.
+  - **Footprint:** both are adapted to the common 30 × 42 ft walk-out footprint, so pads,
+    grading, septic and drives are unchanged. Bear Creek's 1,240 sq ft matches it closely;
+    Creekside's 855 sq ft main floor is stretched.
+  - The pond re-balances to the lower fill need (still about 0.34 ac).
+  - Shots: `C_bear_creek_3`, `C_creekside_7`.
 - The full build-out (`cabins: all`) is unchanged and still available.
 - Shots: `B_buildout_pairs`, `C_pair_5_6`; review sheet `out/2026-10-21/pairs_review.jpg`.
 
