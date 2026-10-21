@@ -1008,6 +1008,21 @@ docks):** `lotplan.boat_channels`.
 - The "no docks" rule is removed from CLAUDE.md, PLAN §7, `shots.yaml` and Phase 3a;
   docks are shown (owner).
 
+**Paired-lot concept (owner, 21 Oct 2026):** sell one 2 ac lot for a lakehouse with an
+adjacent lot for recreation and privacy; fewer houses means less clutter and fewer people,
+which may raise the value of the pair.
+- **Layout `pairs`** (`layout: pairs` in a shot, `flyover.py --layout pairs`): houses on
+  the lots in `house_lots`, by default Lots 1, 3, 5, 7 and 10, which alternate down the
+  shore and keep the Lot 5 cabin and the Lot 10 barndo.
+- **Open lots** (2, 4, 6, 8, 9): graded pad (flat at the 2 ft raise) and terraces with
+  their stone walls and steps only. The terrain itself is shaped, so the lot keeps its
+  pasture and grass. No house, drive, walks, beach, shoreline access path or landscaping.
+- **Lot-line screens:** where a lot line touches a house lot, the bamboo is replaced by
+  flowering pears (Bradford / Oriental pear stand-ins from the scanned young tree, about
+  25 ft) at every other position. Elsewhere the bamboo stays.
+- The full build-out (`cabins: all`) is unchanged and still available.
+- Shots: `B_buildout_pairs`, `C_pair_5_6`; review sheet `out/2026-10-21/pairs_review.jpg`.
+
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
 One illustrative cabin (Lot 5) is enough for now. A later phase renders a cabin on every

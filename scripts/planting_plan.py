@@ -63,7 +63,7 @@ def main():
     trees = np.load(DERIVED / "lidar_trees.npz")["trees"]
     plants = []
 
-    def place(species, x, y, group, clear=2.0):
+    def place(species, x, y, group, clear=2.0, **extra):
         pt = Point(x, y)
         if not inside.contains(pt) or keep_out.contains(pt):
             return False
@@ -72,7 +72,7 @@ def main():
             return False
         if any(np.hypot(q["x"] - x, q["y"] - y) < (1.6 if species == "bamboo" else 4.0) for q in plants[-60:]):
             return False
-        plants.append({"species": species, "x": round(x, 2), "y": round(y, 2), "group": group})
+        plants.append({"species": species, "x": round(x, 2), "y": round(y, 2), "group": group, **extra})
         return True
 
     labels = sorted(lots, key=lambda k: int(k.split()[-1]))
@@ -99,7 +99,7 @@ def main():
             # Staggered on the line; where the north lot's utility easement runs along it,
             # step just south of the line instead.
             for dy in ((0.8, -0.8, -2.2, -3.2) if t % 2 else (-0.8, 0.8, -2.2, -3.2)):
-                if place("bamboo", x, y + dy, "bamboo screen", clear=1.0):
+                if place("bamboo", x, y + dy, "bamboo screen", clear=1.0, line=f"{a}|{b}"):
                     break
     # 2. Frontage screen along CR 3635 (and CR 3640 / north end) with crape myrtles at drives.
     for label in labels:

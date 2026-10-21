@@ -234,11 +234,12 @@ def main():
         SUN, HAZE_KM, COLLECTIONS = LOW["sun"], LOW["haze_km"], LOW["collections"]
         exposure, cabins = LOW["exposure"], LOW["cabins"]
     total = len(POSES) if POSES is not None else FPS * SECONDS
+    suffix = "_pairs" if "--layout" in argv and argv[argv.index("--layout") + 1] == "pairs" else ""
     if "--preview" in argv:
         RES, SAMPLES, step, fps = (960, 540), 8, 3, FPS // 3
-        variant_dir = f"{variant}_preview"
+        variant_dir = f"{variant}{suffix}_preview"
     else:
-        variant_dir = variant
+        variant_dir = variant + suffix
     only = None
     if "--frames" in argv:
         only = [int(f) for f in argv[argv.index("--frames") + 1].split(",")]
@@ -257,9 +258,13 @@ def main():
             life = Life(total)
         elif variant == "low":
             render.apply_collections(scene, set(COLLECTIONS + ["Cabins"]))
-            render.apply_cabins(cabins)
+            pads = []
+            if "--layout" in argv and argv[argv.index("--layout") + 1] == "pairs":
+                cabins, pads = render.layout_lots({"layout": "pairs"}, config)
+            render.apply_cabins(cabins, pads)
+            render.apply_screens(cabins if pads else [])
             render.apply_site_works(True)
-            render.apply_beach(True)
+            render.apply_beach(True, pads)
             life = BoatOnly()
         else:
             render.apply_collections(scene, set(COLLECTIONS))

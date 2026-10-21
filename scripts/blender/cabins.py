@@ -1131,7 +1131,9 @@ def garden_terraces(m, terraces, T, key, uses=("garden", "orchard", "orchard")):
                   rock)
         m.box(x0, cy - gap, level - 0.03, x1 - 0.4 - n * 0.35, cy + gap, level + 0.03, dg)  # DG path
         use = uses[min(i, len(uses) - 1)]
-        if use == "lawn":                                                     # open lawn, a bench
+        if use == "empty":                                                    # pad-only lots
+            pass
+        elif use == "lawn":                                                     # open lawn, a bench
             log_bench(m, x0 + 1.2, cy + gap + 1.6, level, 90, timber())
         elif use == "garden":                                                 # vegetable garden
             for bx in (x0 + 1.0, x1 - 0.4 - n * 0.35 - 2.2):
@@ -1395,7 +1397,7 @@ def site_surface(name, pad, T, E, sampler, mat, coll, terraces=(), design=None):
     return obj
 
 
-def grade_terrain(terrain, key, pad, T, E, terraces=(), design=None):
+def grade_terrain(terrain, key, pad, T, E, terraces=(), design=None, prefix="Grade_", fill=False):
     """Shape key on the site terrain lowering it where the grading cuts (so the finished
     surface shows); render.py turns it on with the lot's cabin."""
     mesh = terrain.data
@@ -1407,14 +1409,16 @@ def grade_terrain(terrain, key, pad, T, E, terraces=(), design=None):
     design = design or (lambda x, y, g: grading.design(x, y, g, pad.bounds, T, E, terraces))
     fin = design(co[sel, 0], co[sel, 1], co[sel, 2])
     lower = fin < co[sel, 2] - 0.01                      # cut only
+    if fill:                                              # shape the terrain itself, cut and fill
+        lower = np.abs(fin - co[sel, 2]) > 0.01
     if not lower.any():
         return 0
     if mesh.shape_keys is None:
         terrain.shape_key_add(name="Basis", from_mix=False)
-    sk = terrain.shape_key_add(name=f"Grade_{key}", from_mix=False)
+    sk = terrain.shape_key_add(name=f"{prefix}{key}", from_mix=False)
     new = co.copy()
     z = new[sel, 2]
-    z[lower] = fin[lower] - 0.06
+    z[lower] = fin[lower] - (0.0 if fill else 0.06)
     new[sel, 2] = z
     sk.data.foreach_set("co", new.ravel())
     sk.value = 0.0
@@ -1447,6 +1451,19 @@ def build(root, sampler, ribbon, sampler_class, terrain, record):
             nat = sampler(x, y)
             return float(grading.design([x], [y], [nat or T], pad.bounds, T, E, terraces)[0])
 
+        # Pad-only variant (owner, 21 Oct 2026): the graded pad and terraces with their
+        # walls and steps, no house, drive, walks or planting - the open lot of a pair.
+        pad_only = bpy.data.collections.new(f"PadOnly_{key}")
+        root.children.link(pad_only)
+        # A flat pad at the original 2 ft raise, with the terraces below it.
+        # The terrain itself is shaped (cut and fill), so the open lot keeps its pasture
+        # ground and grass rather than a separate lawn surface.
+        pdesign = flat_design(pad.bounds, props["top_m"], terraces)
+        grade_terrain(terrain, key, pad, T, E, terraces, design=pdesign, prefix="GradePad_", fill=True)
+        tm = Mesh()
+        garden_terraces(tm, terraces, T, key, uses=("empty",))
+        if tm.faces:
+            tm.object(f"PadOnly_{key}_Terraces", pad_only)
         m = Mesh()
         info = cabin(m, coll, pad, T, E, grade, key)
         pc = patio_centre(pad)

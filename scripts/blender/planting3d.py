@@ -120,15 +120,45 @@ def build(coll, sampler, record):
         meshes[species] = variants
     rng = random.Random(2026)
     placed = 0
+    # Owner, 21 Oct 2026: beside a house lot, the lot-line bamboo can be swapped for
+    # flowering pears (Bradford and Oriental pear, upright ovals ~25 ft at 5-7 years) at
+    # every other bamboo position. Each lot line gets its own pair of collections; render.py
+    # shows one (`Screen_<a>_<b>_Bamboo` or `_Pear`).
+    pear_mesh, pear_scale = None, 1.0
+    if "post_oak_young" in photo:
+        obj0, ph, _ = photo["post_oak_young"]
+        pear_mesh, pear_scale = obj0.data, 7.5 / ph
+    screens, line_seen = {}, {}
+
+    def screen(line, kind):
+        key = "Screen_" + line.replace("Lot ", "").replace("|", "_") + "_" + kind
+        if key not in screens:
+            c = bpy.data.collections.new(key)
+            coll.children.link(c)
+            screens[key] = c
+        return screens[key]
+
     for q in plan["plants"]:
         z = sampler(q["x"], q["y"])
         if z is None:
             continue
+        target = coll
+        if q["species"] == "bamboo" and q.get("line"):
+            target = screen(q["line"], "Bamboo")
+            n = line_seen.get(q["line"], 0)
+            line_seen[q["line"]] = n + 1
+            if pear_mesh is not None and n % 2 == 0:
+                pear = bpy.data.objects.new("Plant_pear", pear_mesh)
+                pear.location = (q["x"], q["y"], z - 0.05)
+                pear.rotation_euler = (0, 0, rng.uniform(0, 2 * math.pi))
+                s = pear_scale * rng.uniform(0.9, 1.1)
+                pear.scale = (s * 0.8, s * 0.8, s)
+                screen(q["line"], "Pear").objects.link(pear)
         obj = bpy.data.objects.new(f"Plant_{q['species']}", rng.choice(meshes[q["species"]]))
         obj.location = (q["x"], q["y"], z - 0.05)
         obj.rotation_euler = (0, 0, rng.uniform(0, 2 * math.pi))
         s = rng.uniform(0.85, 1.15) * photo_size.get(q["species"], 1.0)
         obj.scale = (s, s, s)
-        coll.objects.link(obj)
+        target.objects.link(obj)
         placed += 1
     record("planting", placed > 0, placed=placed, counts=plan["counts"])

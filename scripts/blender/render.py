@@ -214,33 +214,73 @@ def apply_collections(scene, wanted):
         child.exclude = child.name not in wanted and child.name != "Cameras"
 
 
-def apply_cabins(lots):
-    """Show the listed lots' cabins and remove the trees set aside on their footprints."""
-    keys = {lot.replace(" ", "_") for lot in lots}
+def apply_cabins(lots, pads=()):
+    """Show the listed lots' cabins (and `pads`: graded pad and terraces only), and remove
+    the trees set aside on their footprints."""
+    houses = {lot.replace(" ", "_") for lot in lots}
+    pad_keys = {lot.replace(" ", "_") for lot in pads}
+    keys = houses | pad_keys
     layer = bpy.context.view_layer.layer_collection
     if "Cabins" in layer.children:
         for child in layer.children["Cabins"].children:
-            child.exclude = child.name.removeprefix("Cabin_") not in keys
+            if child.name.startswith("PadOnly_"):
+                child.exclude = child.name.removeprefix("PadOnly_") not in pad_keys
+            else:
+                child.exclude = child.name.removeprefix("Cabin_") not in houses
     if "Vegetation" in layer.children:
         for child in layer.children["Vegetation"].children:
             if child.name.startswith("Vegetation_BuildSite_"):
                 child.exclude = child.name.removeprefix("Vegetation_BuildSite_") in keys
     if "Ground_Detail" in layer.children:
         for child in layer.children["Ground_Detail"].children:
-            if child.name.startswith("Ground_Detail_BuildSite_"):
-                child.exclude = child.name.removeprefix("Ground_Detail_BuildSite_") in keys
+            if child.name.startswith("Ground_Detail_BuildSite_"):     # open pads keep their grass
+                child.exclude = child.name.removeprefix("Ground_Detail_BuildSite_") in houses
     terrain = bpy.data.objects.get("Site_Terrain_1m")
     if terrain is not None and terrain.data.shape_keys is not None:
         for block in terrain.data.shape_keys.key_blocks:
             if block.name.startswith("Grade_"):
-                block.value = 1.0 if block.name.removeprefix("Grade_") in keys else 0.0
+                block.value = 1.0 if block.name.removeprefix("Grade_") in houses else 0.0
+            elif block.name.startswith("GradePad_"):
+                block.value = 1.0 if block.name.removeprefix("GradePad_") in pad_keys else 0.0
 
 
-def apply_beach(on):
-    """With the beaches shown, hide the mown shoreline circles they replace."""
+def apply_beach(on, open_lots=()):
+    """With the beaches shown, hide the mown shoreline circles they replace. Open lots of
+    a pair (owner, 21 Oct 2026) get no beach, circle or access path."""
+    quiet = {lot.replace(" ", "_") for lot in open_lots}
     for obj in bpy.data.objects:
-        if obj.name.startswith("Shore_Circle_"):
-            obj.hide_render = on
+        n = obj.name
+        if n.startswith("Shore_Circle_"):
+            obj.hide_render = on or any(n.startswith(f"Shore_Circle_{k}") and
+                                        n[len(f"Shore_Circle_{k}"):][:1] in ("", "_") for k in quiet)
+        elif n.startswith("Beach_"):
+            obj.hide_render = n.removeprefix("Beach_") in quiet
+        elif n.startswith("Shore_Access_"):
+            obj.hide_render = any(n.startswith(f"Shore_Access_{k}_") for k in quiet)
+
+
+def apply_screens(house_lots):
+    """Lot-line screens: flowering pears where a line touches a house lot, bamboo else."""
+    houses = {lot.split()[-1] for lot in house_lots}
+    layer = bpy.context.view_layer.layer_collection
+    if "Planting" not in layer.children:
+        return
+    for child in layer.children["Planting"].children:
+        if not child.name.startswith("Screen_"):
+            continue
+        _, a, b, kind = child.name.split("_")
+        pear = bool(houses) and (a in houses or b in houses)
+        child.exclude = (kind == "Pear") != pear
+
+
+def layout_lots(shot, config):
+    """(house lots, pad-only lots) for a shot. layout: pairs -> config house_lots get
+    houses, the other lots keep just the graded pad and terraces."""
+    if shot.get("layout") == "pairs":
+        houses = list(config.get("house_lots", []))
+        return houses, [f"Lot {i}" for i in range(1, 11) if f"Lot {i}" not in houses]
+    lots = shot.get("cabins", config.get("cabins", []))
+    return ([f"Lot {i}" for i in range(1, 11)] if lots == "all" else list(lots)), []
 
 
 def apply_site_works(on):
@@ -295,10 +335,8 @@ def render_shot(name, shot, config, args, out):
     if shot.get("beach", config.get("beach", False)):
         wanted.add("Beach")
     # Phase 2d cabins (cabins.py): `cabins: [Lot 5]` or `cabins: all`.
-    cabin_lots = shot.get("cabins", config.get("cabins", []))
-    if cabin_lots == "all":
-        cabin_lots = [f"Lot {i}" for i in range(1, 11)]
-    if cabin_lots:
+    cabin_lots, pad_lots = layout_lots(shot, config)
+    if cabin_lots or pad_lots:
         wanted.add("Cabins")
     cleared = args.cleared_ground or shot.get("cleared_ground", config.get("cleared_ground", "soil"))
     node = bpy.data.materials["Ground_Site"].node_tree.nodes["LRH_Cleared_Grassed"]
@@ -333,9 +371,10 @@ def render_shot(name, shot, config, args, out):
                                                       config.get("haze_visibility_km")), scratch,
                               shot.get("haze_colour") == "all_azimuths")
     apply_collections(scene, wanted)
-    apply_cabins(cabin_lots)
+    apply_cabins(cabin_lots, pad_lots)
+    apply_screens(cabin_lots if pad_lots else [])
     apply_site_works(works)
-    apply_beach("Beach" in wanted)
+    apply_beach("Beach" in wanted, pad_lots)
 
     stem = f"{name}_{args.res}"
     if args.flooded_timber or args.cleared_ground or args.spanish_moss:

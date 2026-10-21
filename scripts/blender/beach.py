@@ -176,7 +176,6 @@ def riprap(m, base, d, sampler, rng, half_dock=1.0):
 
 def build(beach_coll, docks_coll, shore_access, docks, water, sampler, record):
     rng = random.Random(2010)
-    m = cabins.Mesh()
     areas = {}
     for label, a in sorted(shore_access.items()):
         c = np.array(a["circle"], float)
@@ -188,8 +187,9 @@ def build(beach_coll, docks_coll, shore_access, docks, water, sampler, record):
                 v = np.array([-u[1], u[0]])
                 side = 1.0 if float(np.dot(off, v)) >= 0 else -1.0
                 c = c + v * side * (17.0 - dist + 1.0)
+        m = cabins.Mesh()
         areas[label] = beach(m, label, tuple(c), water, sampler, rng)
-    m.object("Beaches", beach_coll)
+        m.object(f"Beach_{label.replace(' ', '_')}", beach_coll)
     d_mesh = cabins.Mesh()
     boats = 0
     for i, d in enumerate(docks):
