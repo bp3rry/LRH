@@ -21,11 +21,12 @@ render:
   ground_detail: false     # Phase 3a grass tufts along the low flight path
   site_works: false        # drainage plan in 3D: pond, creek channel, swales
   planting: false          # planting plan in 3D: bamboo screens, frontage trees, lowland trees
+  beach: false             # sand beaches with umbrellas, tables, canoes at the shoreline circles
   draft: {resolution: [1920, 1080], samples: 96}
   final: {resolution: [7680, 4320], samples: 1024, tile_size: 2048}
   4k: {resolution: [3840, 2160], samples: 256}
   caption: "Artist's conception. Lake shown at conservation pool. Lot lines approximate, subject to survey and plat."
-  caption_docks: "Docks conceptual, subject to UTRWD Shoreline Use Permit."
+  caption_docks: ""        # owner, 20 Oct 2026: no extra caution captions (RISK REVIEW phase)
   caption_cabins: ""       # owner, 19 Oct 2026: no extra caution captions (RISK REVIEW phase)
 
 shots:
@@ -401,6 +402,21 @@ shots:
     haze_visibility_km: 0
     cleared_ground: grassed
     ground_detail: true
+    planting: true
+    cabins: all
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_beach_dock:
+    kind: check
+    description: Lot 5-6 shoreline - sand beach with umbrella, picnic table, chairs, canoe and kayaks at the Lot 5 circle, and the paired boat dock with riprap 10 ft each side and moored boats (draft LSMP).
+    camera: {position: [-120.0, -30.0, 186.0], target: [-150.0, 8.0, 168.5], lens_mm: 26.0}
+    sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
+    haze_visibility_km: 0
+    cleared_ground: grassed
+    ground_detail: true
+    shoreline: true
+    docks: true
+    beach: true
     planting: true
     cabins: all
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]

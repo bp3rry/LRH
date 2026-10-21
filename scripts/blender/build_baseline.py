@@ -23,6 +23,7 @@ from mathutils.bvhtree import BVHTree
 from mathutils.geometry import delaunay_2d_cdt
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import beach  # noqa: E402
 import cabins  # noqa: E402
 import frontage  # noqa: E402
 import ground_detail  # noqa: E402
@@ -956,6 +957,9 @@ def main():
                                                      colls["Shoreline"])
     docks = lotplan.dock_layout(context, pooled, grid, sampler, record)
     lotplan.build_docks(docks, sampler, colls["Docks"])
+    # Owner, 20 Oct 2026: sand beaches at the shoreline circles; dock riprap and boats.
+    colls["Beach"] = collection("Beach")
+    beach.build(colls["Beach"], colls["Docks"], shore_access, docks, pooled, sampler, record)
     parcels = unary_union([Polygon(np.array(b["lines_local_m"][0])[:, :2])
                            for b in context["boundaries"] if b["kind"] == "owner_parcel_boundary"])
     # Phase 2d: trees on each lot's pad, patio and drive are set aside per lot, so a shot

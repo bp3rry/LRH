@@ -8,6 +8,7 @@
   `read_factory_settings()` (it unloads importers). Verify renders numerically: a
   blank frame must fail.
 - Coordinates: PTM `origin.json` local metres, EPSG:6344, NAVD88. The PTM OBJ files are Y-up.
-- Marketing frames: no overlays, no docks, creek preservation zone stays wooded, and
-  the artist's-conception caption is required (PLAN.md §7).
+- Marketing frames: no overlays, creek preservation zone stays wooded, and the
+  artist's-conception caption is required (PLAN.md §7). Docks may be shown (owner,
+  20 Oct 2026), placed to the draft LSMP rules with riprap each side.
 - No binaries in git.

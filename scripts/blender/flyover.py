@@ -87,7 +87,7 @@ LOW = {"sun": {"datetime": "2026-10-14T18:10", "utc_offset_h": -5}, "exposure": 
        "haze_km": 25, "cabins": [f"Lot {i}" for i in range(1, 11)],   # build-out (owner, 20 Oct)
        "collections": ["Terrain", "Water", "Roads", "Landmarks", "Vegetation", "Shoreline",
                        "Flooded_Timber_Dying", "Spanish_Moss", "Lake_Life", "Ground_Detail",
-                       "Site_Works", "Planting"]}
+                       "Site_Works", "Planting", "Beach", "Docks"]}
 POSES = None
 KEYS, SECONDS, SAMPLES = TEST_KEYS, 12, 32
 
@@ -259,6 +259,7 @@ def main():
             render.apply_collections(scene, set(COLLECTIONS + ["Cabins"]))
             render.apply_cabins(cabins)
             render.apply_site_works(True)
+            render.apply_beach(True)
             life = BoatOnly()
         else:
             render.apply_collections(scene, set(COLLECTIONS))

@@ -332,6 +332,13 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
             placed[species].append((x[i], y[i], z[i], np.nan, np.nan, boost))
 
     counts, build_counts = {}, {}
+    # Phase 3a R3: photoreal models near the low flight path.
+    near_line = None
+    flight = lrh.ROOT / "out/derived/flight_low.json"
+    if flight.is_file():
+        near_line = shapely.LineString([p[0][:2] for p in json.loads(flight.read_text())["poses"][::10]])
+    photo = trees.load_photoreal(proto_coll) if near_line is not None else {}
+    photo_counts = {}
     for species, rows in placed.items():
         if not rows:
             continue
@@ -340,6 +347,40 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
         lo, hi = spec["heights"]
         measured = ~np.isnan(arr[:, 3])
         heights = np.where(measured, arr[:, 3], rng.uniform(lo, hi, len(arr)))
+        crowns = np.where(measured, arr[:, 4], spec["crown_radius"] * heights / spec["height"])
+        if photo and species in photo:
+            near = shapely.distance(near_line, shapely.points(arr[:, 0], arr[:, 1])) < trees.NEAR_M
+            if near.any():
+                young = near & (heights < 7.0) & ("post_oak_young" in photo) & (species == "post_oak")
+                for key, sel in ((species, near & ~young), ("post_oak_young", young)):
+                    if not sel.any() or key not in photo:
+                        continue
+                    obj, ph, pr = photo[key]
+                    sz = heights[sel] / ph
+                    sxy = np.clip(crowns[sel] / pr, 0.75 * sz, 1.35 * sz)
+                    scales = np.column_stack([sxy, sxy, sz])
+                    rots = np.column_stack([np.zeros(sel.sum()), np.zeros(sel.sum()),
+                                            rng.uniform(0, 2 * math.pi, sel.sum())])
+                    pts = np.column_stack([arr[sel, 0], arr[sel, 1], arr[sel, 2] - 0.15])
+                    rest = np.ones(len(pts), bool)
+                    for label, area in (build_sites or {}).items():
+                        on = rest & shapely.contains_xy(area, pts[:, 0], pts[:, 1])
+                        if on.any():
+                            sub_name = f"Vegetation_BuildSite_{label.replace(' ', '_')}"
+                            sub = bpy.data.collections.get(sub_name)
+                            if sub is None:
+                                sub = bpy.data.collections.new(sub_name)
+                                coll.children.link(sub)
+                            point_cloud(f"Photo_{key}_{label.replace(' ', '_')}", pts[on], scales[on],
+                                        rots[on], obj, sub)
+                            rest &= ~on
+                    point_cloud(f"Photo_{key}", pts[rest], scales[rest], rots[rest], obj, coll)
+                    photo_counts[key] = photo_counts.get(key, 0) + int(sel.sum())
+                keep_rows = ~near
+                arr, heights, measured = arr[keep_rows], heights[keep_rows], measured[keep_rows]
+                if not len(arr):
+                    counts[species] = int(near.sum())
+                    continue
         variant = rng.integers(0, trees.VARIANTS, len(arr))
         for v in range(trees.VARIANTS):
             sel = variant == v
@@ -376,6 +417,7 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
     total = sum(counts.values())
     record("trees_placed", total > 1000 and lstats["lidar_placed"] > 10000, total=total,
            by_species=counts, **lstats, mask_scatter=stats, on_build_sites=build_counts,
+           photoreal_near_flight=photo_counts,
            height_source="StratMap 2025 lidar inside its coverage (source a); "
                          "species-random ranges outside it (source c)")
     # Preservation zone: trees present, and no zone cell was reclassified as cleared.

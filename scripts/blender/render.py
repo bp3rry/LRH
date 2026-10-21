@@ -236,6 +236,13 @@ def apply_cabins(lots):
                 block.value = 1.0 if block.name.removeprefix("Grade_") in keys else 0.0
 
 
+def apply_beach(on):
+    """With the beaches shown, hide the mown shoreline circles they replace."""
+    for obj in bpy.data.objects:
+        if obj.name.startswith("Shore_Circle_"):
+            obj.hide_render = on
+
+
 def apply_site_works(on):
     """Drainage works: the terrain key, and the trees standing where the pond goes."""
     layer = bpy.context.view_layer.layer_collection
@@ -285,6 +292,8 @@ def render_shot(name, shot, config, args, out):
         wanted.add("Site_Works")
     if shot.get("planting", config.get("planting", False)):
         wanted.add("Planting")
+    if shot.get("beach", config.get("beach", False)):
+        wanted.add("Beach")
     # Phase 2d cabins (cabins.py): `cabins: [Lot 5]` or `cabins: all`.
     cabin_lots = shot.get("cabins", config.get("cabins", []))
     if cabin_lots == "all":
@@ -326,6 +335,7 @@ def render_shot(name, shot, config, args, out):
     apply_collections(scene, wanted)
     apply_cabins(cabin_lots)
     apply_site_works(works)
+    apply_beach("Beach" in wanted)
 
     stem = f"{name}_{args.res}"
     if args.flooded_timber or args.cleared_ground or args.spanish_moss:

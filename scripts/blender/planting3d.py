@@ -20,19 +20,24 @@ def _fol(name, rgb):
 
 
 def bamboo(m, rng):
-    """Clumping bamboo: a dense clump of tall arching culms, leafy in the upper half."""
-    culm = cabins.plain("Plant_Bamboo_Culm", (0.22, 0.28, 0.07), 0.45)
+    """Clumping bamboo: a dense clump of slender arching culms with fine leafy sprays
+    along their upper two-thirds."""
+    culm = cabins.plain("Plant_Bamboo_Culm", (0.20, 0.27, 0.07), 0.45)
     leaf = _fol("bamboo_leaf", (0.07, 0.15, 0.03))
-    for _ in range(18):
-        a, r = rng.uniform(0, 2 * math.pi), rng.uniform(0, 0.45)
-        h = rng.uniform(5.5, 7.5)
-        lean = rng.uniform(0.3, 1.1)
+    for _ in range(34):
+        a, r = rng.uniform(0, 2 * math.pi), rng.uniform(0, 0.5)
+        h = rng.uniform(5.0, 7.5)
+        lean = rng.uniform(0.4, 1.4)
         base = (math.cos(a) * r, math.sin(a) * r, 0.0)
+        mid = (base[0] + math.cos(a) * lean * 0.35, base[1] + math.sin(a) * lean * 0.35, h * 0.6)
         top = (base[0] + math.cos(a) * lean, base[1] + math.sin(a) * lean, h)
-        m.beam(base, top, 0.045, 0.045, culm)
-    for _ in range(12):
-        a, r = rng.uniform(0, 2 * math.pi), rng.uniform(0.3, 1.2)
-        m.blob(math.cos(a) * r, math.sin(a) * r, rng.uniform(3.2, 6.8), 0.8, 0.8, 1.1, leaf, rng=rng)
+        m.beam(base, mid, 0.03, 0.03, culm)
+        m.beam(mid, top, 0.02, 0.02, culm)
+        for k in range(5):                                   # leaf sprays along the culm
+            t = 0.45 + 0.55 * k / 4
+            px = base[0] + (top[0] - base[0]) * t + rng.uniform(-0.25, 0.25)
+            py = base[1] + (top[1] - base[1]) * t + rng.uniform(-0.25, 0.25)
+            m.blob(px, py, h * t, 0.32, 0.32, 0.22, leaf, seg=6, rings=4, rng=rng)
 
 
 def pine(m, rng):
@@ -93,7 +98,20 @@ def build(coll, sampler, record):
     protos.hide_render = True
     protos.hide_viewport = True
     meshes = {}
+    # Phase 3a R3: scanned CC0 models for the broadleaf trees (sizes ~5-7 years on).
+    import trees
+    photo = trees.load_photoreal(protos)
+    PHOTO_FOR = {"oak": ("post_oak_young", 7.0), "water_oak": ("post_oak_young", 8.0),
+                 "pecan": ("cedar_elm", 9.0), "sycamore": ("cedar_elm", 9.5)}
+    photo_size = {}
+    for species, (key, h) in PHOTO_FOR.items():
+        if key in photo:
+            obj, ph, pr = photo[key]
+            meshes[species] = [obj.data]
+            photo_size[species] = h / ph
     for species, fn in BUILDERS.items():
+        if species in meshes:
+            continue
         variants = []
         for v in range(3):
             m = cabins.Mesh()
@@ -109,7 +127,7 @@ def build(coll, sampler, record):
         obj = bpy.data.objects.new(f"Plant_{q['species']}", rng.choice(meshes[q["species"]]))
         obj.location = (q["x"], q["y"], z - 0.05)
         obj.rotation_euler = (0, 0, rng.uniform(0, 2 * math.pi))
-        s = rng.uniform(0.85, 1.15)
+        s = rng.uniform(0.85, 1.15) * photo_size.get(q["species"], 1.0)
         obj.scale = (s, s, s)
         coll.objects.link(obj)
         placed += 1

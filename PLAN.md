@@ -967,6 +967,33 @@ is shown.
 
   Lot 2 has no room (the access road passes close); Lot 1 (no corridor) has three.
 
+**R3 start, beaches and docks (owner, 20 Oct 2026):**
+- **Scanned trees** (CC0 Poly Haven, fetched by `scripts/fetch_assets.py` into `assets/`,
+  recorded in `assets.lock.json` and ASSETS.md):
+  - `island_tree_01` for post oak, `tree_small_02` for young oaks, `jacaranda_tree` for
+    cedar elm and bois d'arc;
+  - they replace the procedural crowns for lidar trees within 160 m of the low flight path
+    (`trees.load_photoreal`), 719 trees;
+  - the planted oak, water oak, pecan and sycamore use them too;
+  - bamboo is rebuilt as slender culms with leaf sprays; eastern red cedar and the pine
+    stay procedural for now;
+  - frames take about 30–90 s at 1080p.
+- **Beaches** (`scripts/blender/beach.py`, layer `beach`): each lot's mown shoreline circle
+  is replaced by a sand beach running down to the water. Each has an umbrella, a picnic
+  table, two Adirondack chairs, a canoe and two kayaks. A beach shifts along the shore to
+  stay 17 m clear of a dock.
+- **Docks** (`docks`): the four paired docks from Phase 2b, now in muted composite decking.
+  - **Riprap:** a band 10 ft past each side of every gangway at the waterline (draft LSMP
+    §4.1.3: at least 10 ft of non-vertical protection each side).
+  - **Boats:** a ski boat or pontoon moored in each slip, and a kayak on each walkway.
+  - **Lake plan rules already met (§6.2–6.3, App. D):**
+    - length within 120 ft and 1/3 of the cove width, 300 ft spacing;
+    - slips in at least 3 ft of water (1.0–1.9 m);
+    - walkway 3–6 ft wide, gangway perpendicular to the shore.
+- **Flyover:** the low variant now includes beaches and docks, and `check_beach_dock` is
+  the review still. CLAUDE.md now allows docks in marketing frames (owner); `caption_docks`
+  is blank.
+
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
 One illustrative cabin (Lot 5) is enough for now. A later phase renders a cabin on every
@@ -1223,6 +1250,9 @@ replies. Items already raised, kept here for that review:
   rental-income figures, and short-term-rental rules (County, UTRWD, deed, lender).
 - The marketing items in §7 and the KwikImage licence.
 - Structural and geotechnical design for the walk-out, piers and backfilled walls.
+- Beaches, picnic furniture and moored boats on UTRWD shoreline: the draft LSMP allows
+  access paths, docks and riprap by permit, and bars landform change on UTRWD land
+  without approval.
 
 ### Phase 3+ — Later releases (planned after Phase 2 is accepted)
 

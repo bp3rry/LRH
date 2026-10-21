@@ -637,7 +637,7 @@ def build_docks(docks, sampler, coll):
     """Docks plus access paths: a mown-grass corridor cleared of trees, with a 5 ft grey
     gravel trail down its centre (owner, 14 Oct 2026; the LSMP allows 5 ft paths and
     6 ft vegetation trimming by permit). Returns the footprint where trees are removed."""
-    wood = material("Dock_Wood", (0.30, 0.24, 0.17), 0.85)
+    wood = material("Dock_Wood", (0.21, 0.18, 0.15), 0.8)   # muted composite decking (LSMP)
     roof = material("Dock_Roof", (0.42, 0.45, 0.43), 0.45)
     mown = material("Path_Mown_Grass", (0.09, 0.15, 0.04), 1.0)
     gravel = material("Path_Gravel_Grey", (0.46, 0.46, 0.44), 0.95)

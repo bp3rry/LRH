@@ -337,3 +337,38 @@ def make_bare(prototype, collection):
 def make_prototypes(collection):
     return {species: [make_prototype(species, v, collection) for v in range(VARIANTS)]
             for species in SPECIES}
+
+
+# --------------------------------------------------------------------------- photoreal near field
+# Phase 3a R3 (owner, 20 Oct 2026): CC0 scanned tree models from Poly Haven replace the
+# procedural prototypes within NEAR_M of the low flight path (assets.lock.json; fetched by
+# scripts/fetch_assets.py). Species stand-ins: post oak -> island_tree_01 (gnarled oak-
+# like, 5 m model), young trees -> tree_small_02, cedar elm / bois d'arc -> jacaranda_tree
+# (broad spreading, 19 m model). Eastern red cedar keeps the procedural cone.
+PHOTOREAL = {"post_oak": ("island_tree_01", "island_tree_01_LOD1"),
+             "post_oak_young": ("tree_small_02", "tree_small_02_LOD1"),
+             "cedar_elm": ("jacaranda_tree", "jacaranda_tree_LOD1"),
+             "bois_darc": ("jacaranda_tree", "jacaranda_tree_LOD1")}
+NEAR_M = 160.0
+
+
+def load_photoreal(collection):
+    """Append the Poly Haven tree meshes once; returns {key: (object, height, crown radius)}."""
+    import lrh
+    out, cache = {}, {}
+    for key, (aid, objname) in PHOTOREAL.items():
+        if objname not in cache:
+            path = lrh.ROOT / f"assets/polyhaven/{aid}/{aid}_1k.blend"
+            if not path.is_file():
+                continue
+            with bpy.data.libraries.load(str(path), link=False) as (src, dst):
+                dst.objects = [objname]
+            obj = dst.objects[0]
+            collection.objects.link(obj)
+            obj.location = (0, 0, 0)
+            d = obj.dimensions
+            cache[objname] = (obj, float(d.z), float(max(d.x, d.y)) / 2)
+        out[key] = cache[objname]
+    if cache:
+        bpy.ops.file.make_paths_absolute()          # textures resolve from assets/
+    return out

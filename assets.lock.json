@@ -1,0 +1,51 @@
+{
+ "source": "Poly Haven (CC0)",
+ "assets": {
+  "island_tree_01": {
+   "name": "Island Tree 01",
+   "res": "1k",
+   "file": "assets/polyhaven/island_tree_01/island_tree_01_1k.blend",
+   "sha256": "127d2b17778e0dd28508195e9095fe6e78cbcb6c6adb02faf3034506e29c9cd3",
+   "licence": "CC0",
+   "url": "https://polyhaven.com/a/island_tree_01",
+   "authors": [
+    "Rob Tuytel",
+    "Rico Cilliers"
+   ]
+  },
+  "jacaranda_tree": {
+   "name": "Jacaranda Tree",
+   "res": "1k",
+   "file": "assets/polyhaven/jacaranda_tree/jacaranda_tree_1k.blend",
+   "sha256": "e28e9ea0deb782a830420126b3c5536bde44d1b532cbfb4dccbcc0e46119a0ce",
+   "licence": "CC0",
+   "url": "https://polyhaven.com/a/jacaranda_tree",
+   "authors": [
+    "Rob Tuytel",
+    "Rico Cilliers"
+   ]
+  },
+  "tree_small_02": {
+   "name": "Tree Small 02",
+   "res": "1k",
+   "file": "assets/polyhaven/tree_small_02/tree_small_02_1k.blend",
+   "sha256": "af3fef6da3eb97057d9d4d3c4281c5944696b8d518715deddd8500482d30b1bd",
+   "licence": "CC0",
+   "url": "https://polyhaven.com/a/tree_small_02",
+   "authors": [
+    "Rico Cilliers"
+   ]
+  },
+  "shrub_04": {
+   "name": "Shrub 04",
+   "res": "1k",
+   "file": "assets/polyhaven/shrub_04/shrub_04_1k.blend",
+   "sha256": "ad93ddeadad90597b5a55997f6a4da1b6c4e6ba195f17895667d6acb73029038",
+   "licence": "CC0",
+   "url": "https://polyhaven.com/a/shrub_04",
+   "authors": [
+    "Rico Cilliers"
+   ]
+  }
+ }
+}
