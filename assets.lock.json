@@ -46,6 +46,30 @@
    "authors": [
     "Rico Cilliers"
    ]
+  },
+  "pine_tree_01": {
+   "name": "Pine Tree 01",
+   "res": "1k",
+   "file": "assets/polyhaven/pine_tree_01/pine_tree_01_1k.blend",
+   "sha256": "db517cc486475860f308b8064673b841fee6f9ad2986446d8e02d1b81b22284d",
+   "licence": "CC0",
+   "url": "https://polyhaven.com/a/pine_tree_01",
+   "authors": [
+    "Rob Tuytel",
+    "Rico Cilliers"
+   ]
+  },
+  "fir_sapling_medium": {
+   "name": "Fir Sapling Medium",
+   "res": "1k",
+   "file": "assets/polyhaven/fir_sapling_medium/fir_sapling_medium_1k.blend",
+   "sha256": "478c8aae188fadcbc32db31fa3bd4ecc8ef9250754bf692af3bff4356eee1d3a",
+   "licence": "CC0",
+   "url": "https://polyhaven.com/a/fir_sapling_medium",
+   "authors": [
+    "Rob Tuytel",
+    "Rico Cilliers"
+   ]
   }
  }
 }

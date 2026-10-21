@@ -1042,6 +1042,10 @@ which may raise the value of the pair.
 - The full build-out (`cabins: all`) is unchanged and still available.
 - Shots: `B_buildout_pairs`, `C_pair_5_6`; review sheet `out/2026-10-21/pairs_review.jpg`.
 
+**Conifers (21 Oct 2026):** CC0 Poly Haven `fir_sapling_medium` stands in for eastern red
+cedar within 160 m of the flight path (146 trees), and `pine_tree_01` for the planted
+loblolly pines. All near-field trees are now scanned models.
+
 **R4 sky and channel camera (21 Oct 2026):**
 - **Clouds:** `sky.world_clouds`, in the world shader over the physical sky. Noise on the
   view direction projected to a cloud deck makes scattered strato-cumulus that thins to

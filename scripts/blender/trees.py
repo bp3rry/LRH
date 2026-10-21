@@ -348,7 +348,11 @@ def make_prototypes(collection):
 PHOTOREAL = {"post_oak": ("island_tree_01", "island_tree_01_LOD1"),
              "post_oak_young": ("tree_small_02", "tree_small_02_LOD1"),
              "cedar_elm": ("jacaranda_tree", "jacaranda_tree_LOD1"),
-             "bois_darc": ("jacaranda_tree", "jacaranda_tree_LOD1")}
+             "bois_darc": ("jacaranda_tree", "jacaranda_tree_LOD1"),
+             # Owner, 21 Oct 2026: conifers - eastern red cedar -> fir_sapling_medium
+             # (dense cone, 9 m model), loblolly pine -> pine_tree_01 (20 m model).
+             "red_cedar": ("fir_sapling_medium", "fir_sapling_medium_a_LOD0"),
+             "loblolly_pine": ("pine_tree_01", "pine_tree_01_a_LOD2")}
 NEAR_M = 160.0
 
 
@@ -359,13 +363,15 @@ def load_photoreal(collection):
     for key, (aid, objname) in PHOTOREAL.items():
         if objname not in cache:
             path = lrh.ROOT / f"assets/polyhaven/{aid}/{aid}_1k.blend"
-            if not path.is_file():
-                continue
-            with bpy.data.libraries.load(str(path), link=False) as (src, dst):
-                dst.objects = [objname]
-            obj = dst.objects[0]
-            collection.objects.link(obj)
-            obj.location = (0, 0, 0)
+            obj = bpy.data.objects.get(objname)
+            if obj is None:
+                if not path.is_file():
+                    continue
+                with bpy.data.libraries.load(str(path), link=False) as (src, dst):
+                    dst.objects = [objname]
+                obj = dst.objects[0]
+                collection.objects.link(obj)
+                obj.location = (0, 0, 0)
             d = obj.dimensions
             cache[objname] = (obj, float(d.z), float(max(d.x, d.y)) / 2)
         out[key] = cache[objname]

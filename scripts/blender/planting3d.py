@@ -102,7 +102,8 @@ def build(coll, sampler, record):
     import trees
     photo = trees.load_photoreal(protos)
     PHOTO_FOR = {"oak": ("post_oak_young", 7.0), "water_oak": ("post_oak_young", 8.0),
-                 "pecan": ("cedar_elm", 9.0), "sycamore": ("cedar_elm", 9.5)}
+                 "pecan": ("cedar_elm", 9.0), "sycamore": ("cedar_elm", 9.5),
+                 "loblolly_pine": ("loblolly_pine", 10.0)}
     photo_size = {}
     for species, (key, h) in PHOTO_FOR.items():
         if key in photo:
