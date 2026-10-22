@@ -21,7 +21,7 @@ CENTRE, ORTHO_M = (0.0, 35.0), 600.0
 SPECIES = {"bamboo": ((120, 200, 70), 4), "loblolly_pine": ((20, 90, 40), 7), "oak": ((60, 120, 40), 8),
            "pecan": ((150, 160, 60), 8), "crape_myrtle": ((235, 80, 160), 6),
            "bald_cypress": ((200, 110, 50), 7), "water_oak": ((40, 140, 120), 8),
-           "sycamore": ((230, 230, 200), 8)}
+           "sycamore": ((230, 230, 200), 8), "redbud": ((200, 60, 150), 6)}
 
 
 def main():
@@ -101,7 +101,9 @@ def main():
         for q in pl["plants"]:
             col, r = SPECIES[q["species"]]
             x, y = px(q["x"], q["y"])
-            d.ellipse([x - r, y - r, x + r, y + r], fill=col + (235,), outline=(0, 0, 0, 200))
+            d.ellipse([x - r, y - r, x + r, y + r], fill=col + (235,),
+                      outline=(255, 255, 255, 255) if q.get("group") == "reclamation" else (0, 0, 0, 200),
+                      width=2 if q.get("group") == "reclamation" else 1)
         d.polygon([px(*p) for p in dr["pond"]["polygon"]], fill=(30, 110, 200, 200))
         d.line([px(*p) for p in dr["creek"]], fill=(0, 90, 255, 200), width=4)
 
@@ -124,7 +126,9 @@ def main():
         (f"Crape myrtle at drives ({counts.get('crape_myrtle', 0)})", SPECIES["crape_myrtle"][0]),
         (f"Bald cypress ({counts.get('bald_cypress', 0)})", SPECIES["bald_cypress"][0]),
         (f"Water oak ({counts.get('water_oak', 0)})", SPECIES["water_oak"][0]),
-        (f"Sycamore ({counts.get('sycamore', 0)})", SPECIES["sycamore"][0])]).save(out / "planting_plan.png")
+        (f"Sycamore ({counts.get('sycamore', 0)})", SPECIES["sycamore"][0]),
+        (f"Redbud ({counts.get('redbud', 0)})", SPECIES["redbud"][0]),
+        ("Ringed: shoreline reclamation, young ~15 ft (56)", (255, 255, 255))]).save(out / "planting_plan.png")
     print(out / "drainage_plan.png", out / "planting_plan.png")
 
 

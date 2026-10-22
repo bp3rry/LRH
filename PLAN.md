@@ -1066,6 +1066,17 @@ loblolly pines. All near-field trees are now scanned models.
   `out/derived/boat_routes.json`). That removes 56 more lidar trees, 132 for boats in all.
 - Check shot: `check_boat_route_west`.
 
+**Shoreline reclamation (owner, 22 Oct 2026):** one young native tree for each of the 56
+trees cleared for the boat channels (`planting_plan.reclamation`).
+- **Placement:** about 15 ft trees in the band 10–35 m landward of the 551 ft shoreline in
+  front of the lots, behind the docks and beaches, spread evenly at least 7 m apart. They
+  stay clear of the shoreline path, beaches, access paths, dock approaches and existing
+  trees.
+- **Species by distance from the water:** bald cypress and sycamore nearest, water oak in
+  the middle, redbud on the higher edge. That gives water oak 19, sycamore 15, redbud 15,
+  bald cypress 7.
+- Shown ringed in white on `planting_plan.png`; check shot `check_reclamation`.
+
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
 One illustrative cabin (Lot 5) is enough for now. A later phase renders a cabin on every

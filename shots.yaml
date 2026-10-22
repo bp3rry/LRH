@@ -562,3 +562,19 @@ shots:
     docks: true
     beach: true
     collections: [Terrain, Water, Roads, Vegetation]
+
+  check_reclamation:
+    kind: check
+    description: Shoreline reclamation - 56 young native trees (bald cypress, sycamore, water oak, redbud, ~15 ft) planted behind the docks and beaches, one for each tree cleared for the boat channels.
+    camera: {position: [-60.0, -40.0, 215.0], target: [-165.0, 60.0, 170.0], lens_mm: 26.0}
+    sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
+    haze_visibility_km: 0
+    cleared_ground: grassed
+    ground_detail: true
+    layout: pairs
+    shoreline: true
+    docks: true
+    beach: true
+    planting: true
+    site_works: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]

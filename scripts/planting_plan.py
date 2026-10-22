@@ -38,6 +38,71 @@ FRONT = ["loblolly_pine", "oak", "pecan", "loblolly_pine", "oak"]
 LOWLAND = ["bald_cypress", "water_oak", "sycamore", "bald_cypress"]
 
 
+RECLAIM_N = 56                 # one new tree for each tree cleared for the boat channels
+RECLAIM_H = 15 * 0.3048        # young nursery trees, ~15 ft
+
+
+def reclamation(plants, lots, trees, keep_out):
+    """Owner, 22 Oct 2026 ("reclamation"): native trees replanted along the shoreline in
+    front of the lots, behind the docks and beaches - one for each of the 56 trees cleared
+    for the boat channels. Young (~15 ft) trees in the band 10-35 m landward of the 551 ft
+    shoreline, kept off the shoreline path (which runs ~4 m from the water), beaches,
+    access paths, dock approaches and existing trees, spread evenly along the shore.
+    Species by distance from the water: bald cypress and sycamore nearest, water oak in the
+    middle, redbud on the higher edge."""
+    from kwik_ortho import Surface
+    POOL = 167.9448
+    dtm = Surface(DERIVED / "lidar_dtm_1m.tif")
+    y0 = min(p.bounds[1] for p in lots.values()) - 10
+    y1 = max(p.bounds[3] for p in lots.values()) + 10
+    xw = min(p.bounds[0] for p in lots.values())
+    gx, gy = np.meshgrid(np.arange(xw - 160, xw + 60, 2.0), np.arange(y0, y1, 2.0))
+    X, Y = gx.ravel(), gy.ravel()
+    z = dtm(X, Y)
+    water = z < POOL
+    wx, wy = X[water], Y[water]
+    land = (z >= POOL + 0.2) & (z < POOL + 6.0)
+    cx, cy = X[land], Y[land]
+    # Distance to water, from the water cells within 50 m (chunked).
+    dist = np.full(len(cx), np.inf)
+    for i in range(0, len(cx), 2000):
+        a, b = cx[i:i + 2000, None], cy[i:i + 2000, None]
+        near = (np.abs(wy[None, :] - b) < 50) & (np.abs(wx[None, :] - a) < 50)
+        d = np.where(near, np.hypot(wx[None, :] - a, wy[None, :] - b), np.inf)
+        dist[i:i + 2000] = d.min(axis=1)
+    band = (dist >= 10.0) & (dist <= 35.0)
+    cx, cy, dist = cx[band], cy[band], dist[band]
+    sites = json.loads(sorted(ROOT.glob("out/*/lot_sites.json"))[-1].read_text())
+    docks = json.loads(sorted(ROOT.glob("out/*/baseline_checks.json"))[-1].read_text())["checks"]["docks_lsmp"]["docks"]
+    block = [Point(v["shore_circle"]).buffer(16.0) for v in sites.values()]
+    block += [LineString([v["west"], v["shore_circle"]]).buffer(4.0) for v in sites.values()]
+    block += [Point(d["base"]).buffer(20.0) for d in docks]
+    block = shapely.union_all(block + [keep_out])
+    ok = ~shapely.contains_xy(block, cx, cy)
+    tr = np.min(np.hypot(trees[:, None, 0] - cx[None, ok], trees[:, None, 1] - cy[None, ok]) - trees[:, None, 4],
+                axis=0) if ok.any() else np.array([])
+    cx, cy, dist = cx[ok][tr > 2.5], cy[ok][tr > 2.5], dist[ok][tr > 2.5]
+    # Even spread: farthest-point sampling, at least 7 m apart, from the south end.
+    chosen = [int(np.argmin(cy))]
+    dmin = np.hypot(cx - cx[chosen[0]], cy - cy[chosen[0]])
+    while len(chosen) < RECLAIM_N and dmin.max() >= 7.0:
+        k = int(np.argmax(dmin))
+        chosen.append(k)
+        dmin = np.minimum(dmin, np.hypot(cx - cx[k], cy - cy[k]))
+    rng = np.random.default_rng(2210)
+    for k in chosen:
+        d = dist[k]
+        if d < 18:
+            sp = "bald_cypress" if rng.random() < 0.55 else "sycamore"
+        elif d < 28:
+            sp = "water_oak" if rng.random() < 0.7 else "sycamore"
+        else:
+            sp = "redbud" if rng.random() < 0.6 else "water_oak"
+        plants.append({"species": sp, "x": round(float(cx[k]), 2), "y": round(float(cy[k]), 2),
+                       "group": "reclamation", "h": round(RECLAIM_H, 2)})
+    return len(chosen)
+
+
 def main():
     lots, road = bs.lots_and_road()
     feats = json.loads((DERIVED / "build_sites.geojson").read_text())["features"]
@@ -148,6 +213,7 @@ def main():
             if row.is_empty:
                 continue
             place(LOWLAND[int(y) % len(LOWLAND)], row.bounds[0] + 9.0, y, "lake-side corners")
+    reclamation(plants, lots, trees, keep_out)
     counts = {}
     for q in plants:
         counts[q["species"]] = counts.get(q["species"], 0) + 1

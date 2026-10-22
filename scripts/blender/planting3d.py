@@ -71,7 +71,21 @@ def bald_cypress(m, rng):
         m.blob(0, 0, z, r, r, 0.6, rust if k % 3 == 0 else green, rng=rng)
 
 
+def redbud(m, rng):
+    """Eastern redbud: low multi-stem, spreading flat-topped crown, yellow in fall."""
+    bark = cabins.plain("Plant_Redbud_Bark", (0.10, 0.07, 0.06), 0.7)
+    for k in range(3):
+        a = 2 * math.pi * k / 3 + rng.uniform(-0.4, 0.4)
+        m.beam((0, 0, 0), (math.cos(a) * 0.8, math.sin(a) * 0.8, 2.4), 0.09, 0.09, bark)
+    cols = [_fol("redbud_fall", (0.40, 0.30, 0.05)), _fol("redbud_leaf", (0.13, 0.15, 0.04))]
+    for _ in range(10):
+        a, r = rng.uniform(0, 2 * math.pi), rng.uniform(0.2, 1.8)
+        m.blob(math.cos(a) * r, math.sin(a) * r, rng.uniform(2.6, 4.0), 1.0, 1.0, 0.6,
+               cols[0] if rng.random() < 0.6 else cols[1], rng=rng)
+
+
 BUILDERS = {
+    "redbud": redbud,
     "bamboo": bamboo,
     "loblolly_pine": pine,
     "oak": lambda m, rng: broadleaf(m, rng, (0.08, 0.06, 0.05), (0.045, 0.085, 0.022), "oak", 2.4, 1.5,
@@ -121,6 +135,11 @@ def build(coll, sampler, record):
         meshes[species] = variants
     rng = random.Random(2026)
     placed = 0
+
+    def height_of(mesh):
+        zs = [v.co.z for v in mesh.vertices]
+        return max(zs) - min(zs) if zs else 1.0
+    native_h = {sp: height_of(ms[0]) * (photo_size.get(sp, 1.0)) for sp, ms in meshes.items()}
     # Owner, 21 Oct 2026: beside a house lot, the lot-line bamboo can be swapped for
     # flowering pears (Bradford and Oriental pear, upright ovals ~25 ft at 5-7 years) at
     # every other bamboo position. Each lot line gets its own pair of collections; render.py
@@ -159,6 +178,8 @@ def build(coll, sampler, record):
         obj.location = (q["x"], q["y"], z - 0.05)
         obj.rotation_euler = (0, 0, rng.uniform(0, 2 * math.pi))
         s = rng.uniform(0.85, 1.15) * photo_size.get(q["species"], 1.0)
+        if q.get("h"):                         # sized plantings (reclamation: ~15 ft young trees)
+            s = rng.uniform(0.9, 1.1) * q["h"] / native_h[q["species"]] * photo_size.get(q["species"], 1.0)
         obj.scale = (s, s, s)
         target.objects.link(obj)
         placed += 1
