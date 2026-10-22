@@ -38,6 +38,7 @@ FRONT = ["loblolly_pine", "oak", "pecan", "loblolly_pine", "oak"]
 LOWLAND = ["bald_cypress", "water_oak", "sycamore", "bald_cypress"]
 
 
+SCREEN_MIX = ["bamboo", "crape_myrtle", "bamboo", "redbud"]
 RECLAIM_N = 56                 # one new tree for each tree cleared for the boat channels
 RECLAIM_H = 15 * 0.3048        # young nursery trees, ~15 ft
 
@@ -172,15 +173,18 @@ def main():
         hit = access.buffer(bs.ACCESS_HALF_M + 3.0).intersection(LineString([(-1e4, yl), (1e4, yl)]))
         west = (hit.bounds[2] + 3.0) if not hit.is_empty else \
             min([pads[k][1].bounds[0] - 6.0 for k in (a, b) if k in pads] or [line.bounds[0]])
-        for t, x in enumerate(np.arange(west, east - 12.0, 2.4)):
+        # Owner, 22 Oct 2026: screens thinned by 80% (one plant every 12 m instead of
+        # every 2.4 m), alternating clumping bamboo, crape myrtle and redbud.
+        for t, x in enumerate(np.arange(west, east - 12.0, 12.0)):
             hit = line.intersection(LineString([(x, -1e4), (x, 1e4)]))
             if hit.is_empty:
                 continue
             y = hit.centroid.y
-            # Staggered on the line; where the north lot's utility easement runs along it,
-            # step just south of the line instead.
-            for dy in ((0.8, -0.8, -2.2, -3.2) if t % 2 else (-0.8, 0.8, -2.2, -3.2)):
-                if place("bamboo", x, y + dy, "bamboo screen", clear=1.0, line=f"{a}|{b}"):
+            sp = SCREEN_MIX[t % len(SCREEN_MIX)]
+            # On the line; where the north lot's utility easement runs along it, step just
+            # south of the line instead.
+            for dy in (0.0, -1.5, 1.5, -3.0):
+                if place(sp, x, y + dy, "lot-line screen", clear=1.0, line=f"{a}|{b}"):
                     break
     # 2. Frontage screen along CR 3635 (and CR 3640 / north end) with crape myrtles at drives.
     for label in labels:

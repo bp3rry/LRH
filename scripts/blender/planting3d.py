@@ -163,11 +163,11 @@ def build(coll, sampler, record):
         if z is None:
             continue
         target = coll
-        if q["species"] == "bamboo" and q.get("line"):
+        if q.get("line"):                      # lot-line screen (bamboo / crape myrtle / redbud)
             target = screen(q["line"], "Bamboo")
             n = line_seen.get(q["line"], 0)
             line_seen[q["line"]] = n + 1
-            if pear_mesh is not None and n % 2 == 0:
+            if pear_mesh is not None:
                 pear = bpy.data.objects.new("Plant_pear", pear_mesh)
                 pear.location = (q["x"], q["y"], z - 0.05)
                 pear.rotation_euler = (0, 0, rng.uniform(0, 2 * math.pi))

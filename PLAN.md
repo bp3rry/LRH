@@ -1066,6 +1066,13 @@ loblolly pines. All near-field trees are now scanned models.
   `out/derived/boat_routes.json`). That removes 56 more lidar trees, 132 for boats in all.
 - Check shot: `check_boat_route_west`.
 
+**Lot-line screens thinned (owner, 22 Oct 2026):**
+- **Spacing:** one plant every 12 m along each interior lot line instead of a solid bamboo
+  row every 2.4 m. That is an 80% cut, from 228 bamboo clumps to 48 plants.
+- **Mix:** alternating clumping bamboo, crape myrtle and redbud (26 bamboo, 13 crape
+  myrtle, 9 redbud; `planting_plan.SCREEN_MIX`).
+- **Beside a house lot** (paired layout): flowering pears take every screen position.
+
 **Shoreline reclamation (owner, 22 Oct 2026):** one young native tree for each of the 56
 trees cleared for the boat channels (`planting_plan.reclamation`).
 - **Placement:** about 15 ft trees in the band 10–35 m landward of the 551 ft shoreline in
