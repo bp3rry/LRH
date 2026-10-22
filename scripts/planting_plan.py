@@ -70,13 +70,24 @@ def reclamation(plants, lots, trees, keep_out):
         near = (np.abs(wy[None, :] - b) < 50) & (np.abs(wx[None, :] - a) < 50)
         d = np.where(near, np.hypot(wx[None, :] - a, wy[None, :] - b), np.inf)
         dist[i:i + 2000] = d.min(axis=1)
-    band = (dist >= 10.0) & (dist <= 35.0)
+    # Owner, 22 Oct 2026: on the shoreline, further north, views need not be kept clear;
+    # only the boat routes and docks must stay open.
+    south = lots["Lot 10"].bounds[1] + 25.0
+    band = (dist >= 8.0) & (dist <= 45.0) & (cy >= south)
     cx, cy, dist = cx[band], cy[band], dist[band]
     sites = json.loads(sorted(ROOT.glob("out/*/lot_sites.json"))[-1].read_text())
     docks = json.loads(sorted(ROOT.glob("out/*/baseline_checks.json"))[-1].read_text())["checks"]["docks_lsmp"]["docks"]
     block = [Point(v["shore_circle"]).buffer(16.0) for v in sites.values()]
     block += [LineString([v["west"], v["shore_circle"]]).buffer(4.0) for v in sites.values()]
     block += [Point(d["base"]).buffer(20.0) for d in docks]
+    # Dock gangways and the cleared boat routes stay open (with crown room).
+    for d in docks:
+        b = np.array(d["base"])
+        u = np.array(d.get("dir") or [-1.0, 0.0])
+        block.append(LineString([tuple(b), tuple(b + u * 40.0)]).buffer(12.0))
+    routes = DERIVED / "boat_routes.json"
+    if routes.is_file():
+        block += [LineString(r).buffer(15.0) for r in json.loads(routes.read_text()).values()]
     block = shapely.union_all(block + [keep_out])
     ok = ~shapely.contains_xy(block, cx, cy)
     tr = np.min(np.hypot(trees[:, None, 0] - cx[None, ok], trees[:, None, 1] - cy[None, ok]) - trees[:, None, 4],
@@ -122,6 +133,11 @@ def main():
         L = grading.layout(pad.bounds)
         keep_out.append(shapely.union_all([pad, box(*L["carport"])] +
                                           [box(*t[:4]) for t in p.get("terraces", [])]).buffer(4.0))
+    # Nothing on or beside relocated CR 3640 (owner, 22 Oct 2026).
+    origin = json.loads((ROOT / "inputs/terrain/origin.json").read_text())["origin"]
+    c3640 = np.array(json.loads((ROOT / "inputs/geometry/cr3640-composite-context-route-epsg6344.geojson")
+                                .read_text())["features"][0]["geometry"]["coordinates"])[:, :2]
+    keep_out.append(LineString(c3640 - [origin["easting"], origin["northing"]]).buffer(14.0))
     keep_out = shapely.union_all(keep_out)
     parcel = shapely.union_all(list(lots.values()))
     inside = parcel.buffer(-1.5)

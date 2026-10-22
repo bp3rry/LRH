@@ -1075,6 +1075,13 @@ trees cleared for the boat channels (`planting_plan.reclamation`).
 - **Species by distance from the water:** bald cypress and sycamore nearest, water oak in
   the middle, redbud on the higher edge. That gives water oak 19, sycamore 15, redbud 15,
   bald cypress 7.
+- **Revised, same day:**
+  - No tree stands within 14 m of relocated CR 3640.
+  - The reclamation band is limited to north of 25 m inside Lot 10's south line and
+    widened to 8–45 m from the water, so the 56 trees sit along the shoreline in front of
+    Lots 1–9. Lake views need not be kept clear (owner).
+  - The boat routes (15 m clear) and dock gangways (12 m clear) stay open.
+  - Mix: redbud 22, water oak 16, bald cypress 9, sycamore 9.
 - Shown ringed in white on `planting_plan.png`; check shot `check_reclamation`.
 
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
