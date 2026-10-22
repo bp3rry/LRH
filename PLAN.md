@@ -1056,6 +1056,16 @@ loblolly pines. All near-field trees are now scanned models.
 - **Channel camera:** the flight rises to 200–206 m and looks further down the channel
   (still passing all checks), so the docks, boats and beaches read past the timber.
 
+**West boat route from the Lot 1–2 dock (owner, 21 Oct 2026):** `scripts/boat_route.py`.
+- **Method:** a least-cost path over the flooded arm (2 m lidar grid, water at least 1 m
+  deep at 551 ft) with cost rising steeply in shallow water, so it makes for the old creek
+  channel. The channel is 10–11 m deep at x ≈ −390.
+- **Route:** about 557 m (1,830 ft). Northwest from the dock through the timber for about
+  220 m, then north up the deep creek, which is already open water, to the main lake.
+- **Clearing:** cleared 40 ft wide like the shore channel (`lotplan.boat_channels` reads
+  `out/derived/boat_routes.json`). That removes 56 more lidar trees, 132 for boats in all.
+- Check shot: `check_boat_route_west`.
+
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
 One illustrative cabin (Lot 5) is enough for now. A later phase renders a cabin on every

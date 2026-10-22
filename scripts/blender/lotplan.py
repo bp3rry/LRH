@@ -649,8 +649,15 @@ def boat_channels(docks, water, timber_zone, width=40 * FT, basin=10.0):
         n = float(np.linalg.norm(v)) or 1.0
         pts += [t.coords[0], tuple(np.array(t.coords[0]) + v / n * 25.0)]
     line = LineString(pts)
-    polys = [line.buffer(width / 2)] + [LineString([d["base"], d["end"]]).buffer(basin) for d in docks]
-    return unary_union(polys), [line]
+    lines = [line]
+    # Extra routes (scripts/boat_route.py), e.g. Lot 1-2 dock west to the deep creek and
+    # north along it to the main lake (owner, 21 Oct 2026).
+    extra = lrh.ROOT / "out/derived/boat_routes.json"
+    if extra.is_file():
+        lines += [LineString(r) for r in json.loads(extra.read_text()).values()]
+    polys = [l.buffer(width / 2) for l in lines] + \
+        [LineString([d["base"], d["end"]]).buffer(basin) for d in docks]
+    return unary_union(polys), lines
 
 
 MOWN_CORRIDOR_M = 4.0

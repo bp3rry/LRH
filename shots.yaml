@@ -548,3 +548,17 @@ shots:
     docks: true
     beach: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_boat_route_west:
+    kind: check
+    description: Lot 1-2 dock route west to the deep creek channel and north along it to the main lake (40 ft, cleared in the one-time clearing event), north-up.
+    camera: {type: ortho, center: [-290.0, 450.0], ortho_scale_m: 560.0}
+    haze_visibility_km: 0
+    exposure: -2.5   # mostly dark water
+    resolution: [1200, 1500]
+    sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
+    cleared_ground: grassed
+    shoreline: true
+    docks: true
+    beach: true
+    collections: [Terrain, Water, Roads, Vegetation]
