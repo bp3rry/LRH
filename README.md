@@ -45,6 +45,9 @@ $BPY scripts/digitize_fwh_zone.py             # LSMP habitat zone -> out/derived
 $BPY scripts/lidar_surfaces.py                # 1 m lidar DSM/DTM -> out/derived/
 $BPY scripts/calibrate_crowns.py              # crown radii calibrated to lidar canopy cover
 $BPY scripts/kwik_ortho.py 24 18 14 15 17 28  # KwikImage cameras, ortho, canopy checks
+$B -b --command extension install -e sapling_tree_gen      # once (free, GPL)
+python3 scripts/fetch_assets.py island_tree_01 jacaranda_tree tree_small_02 shrub_04 pine_tree_01 fir_sapling_medium
+$B -b --python-exit-code 1 --python scripts/blender/gen_trees.py           # -> assets/generated/sapling_trees.blend
 $B -b --python-exit-code 1 --python scripts/blender/build_baseline.py          # -> out/<date>/lrh_baseline.blend
 $B -b --python-exit-code 1 --python scripts/blender/render.py -- --shot all --kind check
 ```

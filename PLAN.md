@@ -1066,6 +1066,26 @@ loblolly pines. All near-field trees are now scanned models.
   `out/derived/boat_routes.json`). That removes 56 more lidar trees, 132 for boats in all.
 - Check shot: `check_boat_route_west`.
 
+**Generated trees and spacing (owner, 22 Oct 2026):**
+- **Sapling Tree Gen** (free Blender add-on, GPL) builds, in `scripts/blender/gen_trees.py`,
+  species with real branching that no scanned model covers:
+  - bald cypress: a narrow spire on a flared base, even rust-bronze, replacing the
+    "Christmas tree";
+  - redbud (yellow fall colour), red maple, Japanese maple, peach and Mexican plum;
+  - crape myrtle in white, pink, watermelon and lavender, assigned at random so
+    neighbours differ.
+
+  These replace the procedural shapes in the planting plan, cabin landscaping, pavilions
+  and orchard.
+- **Mexican plum:** seven trees at the sunny edge of existing wooded clumps on the lots, at
+  least 30 m apart.
+- **Spacing:** every planted tree keeps the sum of the two species' half-spacings
+  (`planting_plan.SPREAD`, about the mature crown radius) from every other.
+  - Reclamation trees follow the same rule (still 56).
+  - The closest pair is now 5.5 m apart, two small screen plants.
+- **Frame 1953 streak:** the low sun's glitter path on open water, smeared by the
+  preview's 8 samples. It is a soft glint at full samples.
+
 **Lot-line screens thinned (owner, 22 Oct 2026):**
 - **Spacing:** one plant every 12 m along each interior lot line instead of a solid bamboo
   row every 2.4 m. That is an 80% cut, from 228 bamboo clumps to 48 plants.

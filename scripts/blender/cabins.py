@@ -1073,7 +1073,54 @@ def muhly(m, x, y, z, rng):
     m.blob(x, y, z + 0.5, 0.5, 0.5, 0.36, _foliage("muhly_plume", (0.42, 0.13, 0.22)), rng=rng)
 
 
+# Sapling Tree Gen species (scripts/blender/gen_trees.py -> assets/generated/
+# sapling_trees.blend). When loaded and a target collection is set (CURRENT_COLL), the
+# small ornamental trees are placed as instances of these meshes instead of the simple
+# procedural shapes.
+SAP = {}
+SAP_H = {}
+CURRENT_COLL = [None]
+CRAPE_COLOURS = ["white", "pink", "watermelon", "lavender"]
+
+
+def load_sapling():
+    if SAP:
+        return SAP
+    path = lrh.ROOT / "assets/generated/sapling_trees.blend"
+    if not path.is_file():
+        return SAP
+    with bpy.data.libraries.load(str(path), link=False) as (src, dst):
+        dst.meshes = [n for n in src.meshes if n.startswith("Sap_")]
+    for me in dst.meshes:
+        name = me.name[4:]                       # e.g. crape_myrtle_pink_1, redbud_0
+        key = name.rsplit("_", 1)[0]
+        SAP.setdefault(key, []).append(me)
+    return SAP
+
+
+def sap_tree(key, x, y, z, rng, h=None):
+    """Place a Sapling tree instance; returns False if unavailable (caller falls back)."""
+    coll = CURRENT_COLL[0]
+    meshes = load_sapling().get(key)
+    if coll is None or not meshes:
+        return False
+    me = rng.choice(meshes)
+    obj = bpy.data.objects.new(f"Tree_{key}", me)
+    obj.location = (x, y, z - 0.05)
+    obj.rotation_euler = (0, 0, rng.uniform(0, 2 * math.pi))
+    if me.name not in SAP_H:
+        co = np.empty(len(me.vertices) * 3, np.float32)
+        me.vertices.foreach_get("co", co)
+        SAP_H[me.name] = float(co[2::3].max()) if len(co) else 1.0
+    s = (h / SAP_H[me.name] if h else 1.0) * rng.uniform(0.9, 1.1)
+    obj.scale = (s, s, s)
+    coll.objects.link(obj)
+    return True
+
+
 def crape_myrtle(m, x, y, z, rng, h=4.2):
+    if sap_tree(f"crape_myrtle_{rng.choice(CRAPE_COLOURS)}", x, y, z, rng, h + 0.6):
+        return
     """Multi-trunk crape myrtle: smooth cinnamon trunks in a vase, pink bloom clusters."""
     bark = plain("Cabin_Crape_Bark", (0.30, 0.17, 0.10), 0.5)
     for k in range(5):                     # trunks curve out from the base, then branch
@@ -1097,6 +1144,8 @@ def crape_myrtle(m, x, y, z, rng, h=4.2):
 
 def pear(m, x, y, z, rng, h=6.0):
     """A fruiting pear: straight trunk, upright oval crown turning red in fall."""
+    if sap_tree("red_maple", x, y, z, rng, h):        # upright oval, red fall colour
+        return
     m.cylinder(x, y, z, z + h * 0.42, 0.13, plain("Cabin_Pear_Bark", (0.09, 0.07, 0.06), 0.8), n=10)
     red, green = _foliage("pear_fall", (0.30, 0.05, 0.035)), _foliage("pear_leaf", (0.12, 0.13, 0.03))
     for k in range(11):
@@ -1175,6 +1224,8 @@ def raised_bed(m, x0, y0, x1, y1, z, rng):
 
 def fruit_tree(m, x, y, z, rng):
     """A young orchard tree (peach / apple): short trunk, open vase crown, some fall colour."""
+    if sap_tree("peach", x, y, z, rng, 3.0):
+        return
     m.cylinder(x, y, z, z + 0.7, 0.08, plain("Cabin_Fruit_Bark", (0.07, 0.05, 0.04), 0.8), n=8)
     m.cylinder(x, y, z, z + 0.05, 0.9, mulch(), n=16)
     leaf, fall = _foliage("orchard_leaf", (0.07, 0.11, 0.03)), _foliage("orchard_fall", (0.30, 0.17, 0.03))
@@ -1350,6 +1401,7 @@ def build_barndo(root, label, site, sampler, ribbon, sampler_class, terrain, dri
     lowered = grade_terrain(terrain, key, pad, top, top, flats, design=design)
     on_site = sampler_class([surface])
     m = Mesh()
+    CURRENT_COLL[0] = coll
     info = barndo(m, coll, pad, top + LIFT, key)
     rng = random.Random(f"barndo-{key}")
     (xw, yb0, xe, yb1) = info["house"]
@@ -1400,6 +1452,8 @@ def turnaround_mesh(m, site, grade, gravel_mat):
 
 def red_maple(m, x, y, z, rng, h=7.5):
     """Red maple (e.g. 'October Glory' / 'Red Sunset') in fall: oval crown of scarlet."""
+    if sap_tree("red_maple", x, y, z, rng, h):
+        return
     m.cylinder(x, y, z, z + h * 0.4, 0.15, plain("Plant_Maple_Bark", (0.16, 0.15, 0.14), 0.8), n=10, r_top=0.09)
     reds = [_foliage("maple_scarlet", (0.48, 0.035, 0.02)), _foliage("maple_orange", (0.55, 0.14, 0.02))]
     for k in range(14):
@@ -1410,6 +1464,8 @@ def red_maple(m, x, y, z, rng, h=7.5):
 
 def japanese_maple(m, x, y, z, rng, h=3.2):
     """Japanese maple: low multi-stem, layered, deep crimson."""
+    if sap_tree("japanese_maple", x, y, z, rng, h):
+        return
     bark = plain("Plant_JMaple_Bark", (0.12, 0.08, 0.07), 0.6)
     crim = _foliage("jmaple_crimson", (0.30, 0.015, 0.02))
     for k in range(4):
@@ -1423,6 +1479,8 @@ def japanese_maple(m, x, y, z, rng, h=3.2):
 
 def peach(m, x, y, z, rng):
     """Peach tree: short trunk, open vase, fall foliage turning yellow-orange."""
+    if sap_tree("peach", x, y, z, rng, 3.4):
+        return
     m.cylinder(x, y, z, z + 0.8, 0.09, plain("Cabin_Fruit_Bark", (0.07, 0.05, 0.04), 0.8), n=8)
     m.cylinder(x, y, z, z + 0.05, 0.9, mulch(), n=16)
     cols = [_foliage("peach_leaf", (0.12, 0.13, 0.03)), _foliage("peach_fall", (0.42, 0.22, 0.03))]
@@ -1620,10 +1678,12 @@ def build(root, sampler, ribbon, sampler_class, terrain, record):
         pdesign = flat_design(pad.bounds, props["top_m"], terraces)
         grade_terrain(terrain, key, pad, T, E, terraces, design=pdesign, prefix="GradePad_", fill=True)
         tm = Mesh()
+        CURRENT_COLL[0] = pad_only
         garden_terraces(tm, terraces, T, key, uses=("empty",))
         pavilion(tm, pad_only, pad, props["top_m"], key)
         tm.object(f"PadOnly_{key}_Pavilion", pad_only)
         m = Mesh()
+        CURRENT_COLL[0] = coll
         info = cabin(m, coll, pad, T, E, grade, key, CABIN_STYLE.get(label, "hemlock"))
         pc = patio_centre(pad)
         pz = grade(pc.x, pc.y) + LIFT

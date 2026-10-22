@@ -39,6 +39,12 @@ LOWLAND = ["bald_cypress", "water_oak", "sycamore", "bald_cypress"]
 
 
 SCREEN_MIX = ["bamboo", "crape_myrtle", "bamboo", "redbud"]
+# Half the spacing (m) each species needs from its neighbours (about its mature crown
+# radius); two trees must be at least the sum apart.
+SPREAD = {"bamboo": 1.5, "crape_myrtle": 2.5, "redbud": 3.0, "mexican_plum": 3.0,
+          "loblolly_pine": 4.0, "bald_cypress": 3.5, "oak": 5.0, "water_oak": 5.0,
+          "pecan": 6.0, "sycamore": 6.0}
+PLUM_N = 7                     # a few Mexican plums (owner: likely already on the property)
 RECLAIM_N = 56                 # one new tree for each tree cleared for the boat channels
 RECLAIM_H = 15 * 0.3048        # young nursery trees, ~15 ft
 
@@ -97,12 +103,15 @@ def reclamation(plants, lots, trees, keep_out):
     # Even spread: farthest-point sampling, at least 7 m apart, from the south end.
     chosen = [int(np.argmin(cy))]
     dmin = np.hypot(cx - cx[chosen[0]], cy - cy[chosen[0]])
-    while len(chosen) < RECLAIM_N and dmin.max() >= 7.0:
+    while len(chosen) < RECLAIM_N * 4 and dmin.max() >= 6.0:      # oversample, then space
         k = int(np.argmax(dmin))
         chosen.append(k)
         dmin = np.minimum(dmin, np.hypot(cx - cx[k], cy - cy[k]))
     rng = np.random.default_rng(2210)
+    placed = 0
     for k in chosen:
+        if placed >= RECLAIM_N:
+            break
         d = dist[k]
         if d < 18:
             sp = "bald_cypress" if rng.random() < 0.55 else "sycamore"
@@ -110,9 +119,13 @@ def reclamation(plants, lots, trees, keep_out):
             sp = "water_oak" if rng.random() < 0.7 else "sycamore"
         else:
             sp = "redbud" if rng.random() < 0.6 else "water_oak"
+        if any(np.hypot(q["x"] - cx[k], q["y"] - cy[k]) < SPREAD.get(sp, 4.0) + SPREAD.get(q["species"], 4.0)
+               for q in plants):
+            continue
         plants.append({"species": sp, "x": round(float(cx[k]), 2), "y": round(float(cy[k]), 2),
                        "group": "reclamation", "h": round(RECLAIM_H, 2)})
-    return len(chosen)
+        placed += 1
+    return placed
 
 
 def main():
@@ -152,7 +165,9 @@ def main():
         d = np.hypot(trees[:, 0] - x, trees[:, 1] - y) - trees[:, 4]
         if d.min() < clear:
             return False
-        if any(np.hypot(q["x"] - x, q["y"] - y) < (1.6 if species == "bamboo" else 4.0) for q in plants[-60:]):
+        # Owner, 22 Oct 2026: no trees too close together - spacing by mature size.
+        r_new = SPREAD.get(species, 4.0)
+        if any(np.hypot(q["x"] - x, q["y"] - y) < r_new + SPREAD.get(q["species"], 4.0) for q in plants):
             return False
         plants.append({"species": species, "x": round(x, 2), "y": round(y, 2), "group": group, **extra})
         return True
@@ -234,6 +249,22 @@ def main():
                 continue
             place(LOWLAND[int(y) % len(LOWLAND)], row.bounds[0] + 9.0, y, "lake-side corners")
     reclamation(plants, lots, trees, keep_out)
+    # 4. Mexican plum: understory trees at the sunny edge of existing wooded clumps on the
+    # lots, as they grow wild here.
+    rng = np.random.default_rng(2211)
+    lot_area = shapely.union_all(list(lots.values())).buffer(-4.0)
+    inner = trees[shapely.contains_xy(lot_area, trees[:, 0], trees[:, 1]) & (trees[:, 3] > 6.0)]
+    placed_plums = 0
+    for k in rng.permutation(len(inner)):
+        if placed_plums >= PLUM_N:
+            break
+        tx, ty, _, th, tc = inner[k][:5]
+        a = rng.uniform(0, 2 * np.pi)
+        x, y = tx + np.cos(a) * (tc + 3.0), ty + np.sin(a) * (tc + 3.0)
+        if any(q["species"] == "mexican_plum" and np.hypot(q["x"] - x, q["y"] - y) < 30.0 for q in plants):
+            continue
+        if place("mexican_plum", x, y, "native plum", clear=1.5):
+            placed_plums += 1
     counts = {}
     for q in plants:
         counts[q["species"]] = counts.get(q["species"], 0) + 1

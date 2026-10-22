@@ -9,6 +9,7 @@ import math
 import random
 
 import bpy
+import numpy as np
 
 import cabins
 import lrh
@@ -124,6 +125,13 @@ def build(coll, sampler, record):
             obj, ph, pr = photo[key]
             meshes[species] = [obj.data]
             photo_size[species] = h / ph
+    sap = cabins.load_sapling()
+    for species, key in (("bald_cypress", "bald_cypress"), ("redbud", "redbud"),
+                         ("mexican_plum", "mexican_plum")):
+        if sap.get(key):
+            meshes[species] = sap[key]
+    if sap:
+        meshes["crape_myrtle"] = [me for c in cabins.CRAPE_COLOURS for me in sap.get(f"crape_myrtle_{c}", [])]
     for species, fn in BUILDERS.items():
         if species in meshes:
             continue
@@ -137,8 +145,9 @@ def build(coll, sampler, record):
     placed = 0
 
     def height_of(mesh):
-        zs = [v.co.z for v in mesh.vertices]
-        return max(zs) - min(zs) if zs else 1.0
+        co = np.empty(len(mesh.vertices) * 3, np.float32)
+        mesh.vertices.foreach_get("co", co)
+        return float(co[2::3].max() - co[2::3].min()) if len(co) else 1.0
     native_h = {sp: height_of(ms[0]) * (photo_size.get(sp, 1.0)) for sp, ms in meshes.items()}
     # Owner, 21 Oct 2026: beside a house lot, the lot-line bamboo can be swapped for
     # flowering pears (Bradford and Oriental pear, upright ovals ~25 ft at 5-7 years) at
