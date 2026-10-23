@@ -243,7 +243,10 @@ def main():
     only = None
     if "--frames" in argv:
         only = [int(f) for f in argv[argv.index("--frames") + 1].split(",")]
-    out = lrh.out_dir() / "video" / variant_dir
+    # Write next to the .blend being rendered (out/<build date>/), not today's date: a long
+    # render that resumes after midnight must keep filling the same folder.
+    out = Path(bpy.data.filepath).parent / "video" / variant_dir if bpy.data.filepath \
+        else lrh.out_dir() / "video" / variant_dir
     frames_dir = out / "frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
     config = yaml.safe_load((lrh.ROOT / "shots.yaml").read_text())["render"]
