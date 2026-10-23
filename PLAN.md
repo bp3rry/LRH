@@ -1111,6 +1111,15 @@ trees cleared for the boat channels (`planting_plan.reclamation`).
   - Mix: redbud 22, water oak 16, bald cypress 9, sycamore 9.
 - Shown ringed in white on `planting_plan.png`; check shot `check_reclamation`.
 
+**R8 started: full-quality 1080p flyover (22–23 Oct 2026):**
+- **Settings:** `flyover.py --variant low --layout pairs`, scene
+  `out/2026-10-22/lrh_baseline.blend`, 3,256 frames, 1080p, 64 samples, about 30–60 s a
+  frame.
+- **Paused** at the owner's request (scheduled power outage) with frames 0–793 done (26.5 s)
+  in `out/2026-10-22/video/low_pairs/frames/`.
+- **Resume** with the same command (wrapped in `caffeinate` and a retry loop). Finished
+  frames are skipped. About 2,460 frames remain, roughly 25–35 h.
+
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
 One illustrative cabin (Lot 5) is enough for now. A later phase renders a cabin on every
