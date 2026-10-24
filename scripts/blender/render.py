@@ -297,16 +297,7 @@ def apply_site_works(on):
 
 
 def caption(src, dst, text):
-    from PIL import Image, ImageDraw, ImageFont  # from .blender-site
-    image = Image.open(src).convert("RGB")
-    draw = ImageDraw.Draw(image)
-    size = max(14, image.height // 60)
-    font = ImageFont.truetype(lrh.caption_font(), size)
-    margin = size
-    x, y = margin, image.height - margin - size
-    draw.text((x + max(1, size // 12), y + max(1, size // 12)), text, font=font, fill=(0, 0, 0))
-    draw.text((x, y), text, font=font, fill=(245, 245, 240))
-    image.save(dst)
+    lrh.caption_image(src, dst, text)
 
 
 def render_shot(name, shot, config, args, out):

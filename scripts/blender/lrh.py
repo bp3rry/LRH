@@ -160,8 +160,22 @@ def frame_stats(path):
         image.reload()
     pixels = np.empty(len(image.pixels), dtype=np.float32)   # foreach_get: a 4K frame is
     image.pixels.foreach_get(pixels)                          # 33M values, slow via a list
-    pixels = pixels.reshape(-1, 4)[:, :3].astype(np.float64)
-    luminance = 0.2126 * pixels[:, 0] + 0.7152 * pixels[:, 1] + 0.0722 * pixels[:, 2]
+    return luminance_stats(pixels.reshape(-1, 4)[:, :3], path.name)
+
+
+def frame_stats_file(path):
+    """frame_stats without Blender (flyover post-processing workers): reads the PNG with
+    PIL and undoes the sRGB curve, which is how Blender loads a display-referred PNG."""
+    from PIL import Image                                     # from .blender-site
+    with Image.open(path) as image:
+        srgb = np.asarray(image.convert("RGB"), dtype=np.float32).reshape(-1, 3) / 255.0
+    linear = np.where(srgb <= 0.04045, srgb / 12.92, ((srgb + 0.055) / 1.055) ** 2.4)
+    return luminance_stats(linear, Path(path).name)
+
+
+def luminance_stats(rgb, name):
+    """Luminance statistics of linear RGB pixels (N x 3); raises CheckFailed if blank."""
+    luminance = 0.2126 * rgb[:, 0] + 0.7152 * rgb[:, 1] + 0.0722 * rgb[:, 2]
     stats = {
         "mean": float(luminance.mean()),
         "std": float(luminance.std()),
@@ -170,11 +184,25 @@ def frame_stats(path):
     }
     print("frame luminance " + " ".join(f"{k}={v:.3f}" for k, v in stats.items()))
     if stats["std"] < 0.04:
-        raise CheckFailed(f"{path.name} looks blank (luminance std {stats['std']:.4f})")
+        raise CheckFailed(f"{name} looks blank (luminance std {stats['std']:.4f})")
     # Low views under canopy legitimately hold deep shadow; a blank frame fails on std.
     if stats["clipped_fraction"] > 0.25 or stats["black_fraction"] > 0.4:
-        raise CheckFailed(f"{path.name} is mostly clipped or black; check exposure")
+        raise CheckFailed(f"{name} is mostly clipped or black; check exposure")
     return stats
+
+
+def caption_image(src, dst, text, compress_level=6):
+    """The artist's-conception caption (PLAN.md §7), bottom left, with a drop shadow."""
+    from PIL import Image, ImageDraw, ImageFont               # from .blender-site
+    image = Image.open(src).convert("RGB")
+    draw = ImageDraw.Draw(image)
+    size = max(14, image.height // 60)
+    font = ImageFont.truetype(caption_font(), size)
+    margin = size
+    x, y = margin, image.height - margin - size
+    draw.text((x + max(1, size // 12), y + max(1, size // 12)), text, font=font, fill=(0, 0, 0))
+    draw.text((x, y), text, font=font, fill=(245, 245, 240))
+    image.save(dst, compress_level=compress_level)
 
 
 def utc_now():

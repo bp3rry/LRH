@@ -20,6 +20,7 @@ Output: out/<date>/video/frames/f_NNNN.png, flyover_test.mp4, flyover_test.json
 
 import json
 import math
+import subprocess
 import sys
 import tempfile
 import time
@@ -35,6 +36,7 @@ import render  # noqa: E402
 import yaml  # noqa: E402
 
 FPS = 30
+POST_WORKERS = 3
 RES = (1920, 1080)
 LENS_MM = 24.0
 SUN = {"datetime": "2026-10-14T16:30", "utc_offset_h": -5}
@@ -297,8 +299,10 @@ def main():
         scene.render.use_persistent_data = True
         if RES[0] > 2048:                      # one tile for 4K (tiles cost a full-buffer re-read)
             scene.cycles.use_auto_tile, scene.cycles.tile_size = True, 4096
-        # The raw frame is temporary (captioned to f_NNNN.png, then deleted): write it
-        # uncompressed to local disk, not to the frames folder (a network volume on a pod).
+        # The raw frame is temporary (captioned to f_NNNN.png, then deleted): 8-bit like the
+        # caption output, uncompressed, on local disk (not the frames folder, which is a
+        # network volume on a pod).
+        scene.render.image_settings.color_depth = "8"
         scene.render.image_settings.compression = 0
         raw_dir = Path(tempfile.mkdtemp(prefix="lrh_raw_"))
         scene.view_settings.exposure = exposure if exposure is not None else config.get("exposure", -4.0)
@@ -326,6 +330,16 @@ def main():
             todo = [f for k, f in enumerate(todo) if k % shard[1] == shard[0]]
         caption = config["caption"] + (" " + config["caption_cabins"] if cabins and config.get("caption_cabins") else "")
         started = time.time()
+        # Post-processing (blank-frame check, caption) runs in up to POST_WORKERS separate
+        # processes while the GPU renders the next frame: on a cloud pod's slow CPU it took
+        # about two minutes a 4K frame. A blank frame still stops the render (CLAUDE.md).
+        post, post_script = [], Path(__file__).resolve().parent / "frame_post.py"
+
+        def reap(keep):
+            while post and (len(post) > keep or post[0][1].poll() is not None):
+                done_frame, proc = post.pop(0)
+                if proc.wait() != 0:
+                    lrh.fail(f"frame {done_frame}: post-processing failed (exit {proc.returncode})")
         for f in todo:
             path = frames_dir / f"f_{f:04d}.png"
             if path.exists() and only is None:
@@ -339,14 +353,10 @@ def main():
             scene.render.filepath = str(raw)
             t0 = time.time()
             bpy.ops.render.render(write_still=True)
-            if True:  # every frame: a blank frame must fail (CLAUDE.md)
-                try:
-                    lrh.frame_stats(raw)
-                except lrh.CheckFailed as error:
-                    lrh.fail(f"frame {f}: {error}")
-            render.caption(raw, path, caption)
-            raw.unlink()
+            post.append((f, subprocess.Popen([sys.executable, str(post_script), str(raw), str(path), caption])))
+            reap(POST_WORKERS)
             print(f"FRAME {f} {time.time() - t0:.1f}s", flush=True)
+        reap(0)
         print(f"RENDERED {len(list(todo))} frames in {time.time() - started:.0f}s")
     if only is not None or shard is not None:
         return
