@@ -3,7 +3,7 @@
 # (a GPU out-of-memory stop resumes, skipping finished frames). Detaches; logs go next to
 # the frames. Extra arguments are passed to flyover.py.
 # Usage (on the pod): bash scripts/cloud/render.sh <build-date> --variant low --layout pairs --4k
-#        test first: bash scripts/cloud/render.sh <build-date> ... --frames 0,1600,3000
+#        test first: bash scripts/cloud/render.sh <build-date> ... --frames 0,1600,3000 (shared out across the GPUs)
 set -euo pipefail
 
 DAY=$1; shift
@@ -12,9 +12,6 @@ B=/workspace/blender-5.0.1-linux-x64/blender
 N=$(nvidia-smi -L | wc -l)
 LOGS=out/$DAY/cloud_logs
 mkdir -p "$LOGS"
-case " $* " in
-    *" --frames "*) N=1 ;;                 # spot frames: one process, all GPUs on each frame
-esac
 # Threads per Blender from the pod's CPU quota, not the host's core count: Blender otherwise
 # starts a thread per host core (128) and the quota throttles it hard (GPU idle, 450 s
 # 4K frames in the 24 Oct 2026 test).
