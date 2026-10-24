@@ -8,7 +8,7 @@ Blender's built-in FFmpeg encoder. Interrupted runs resume: existing frames are 
 Usage:
   Blender -b out/<date>/lrh_baseline.blend --python scripts/blender/flyover.py -- \
       [--variant test|full|oval|low] [--frames 0,120,240,359] [--encode-only] [--preview]
-      [--4k] [--shard i/n]
+      [--4k] [--shard i/n] [--partial]
 
 Variant "low" (Phase 3a) reads its per-frame poses from out/derived/flight_low.json
 (scripts/flight_path.py), shows the Lot 5 cabin and the walking path, at golden hour.
@@ -333,19 +333,23 @@ def main():
         return
     # Encode with Blender's FFmpeg through the sequencer.
     missing = [f for f in range(0, total, step) if not (frames_dir / f"f_{f:04d}.png").exists()]
-    if missing:
+    name = f"flyover_{variant_dir}"
+    files = sorted(p.name for p in frames_dir.glob("f_*.png"))
+    if missing and "--partial" in argv:      # review cut of a paused render: frames before the first gap
+        files = [f"f_{f:04d}.png" for f in range(0, missing[0], step)]
+        name += f"_partial_{len(files)}"
+    elif missing:
         lrh.fail(f"{len(missing)} frames missing, first {missing[0]}")
     enc = bpy.data.scenes.new("LRH_Encode")
     enc.render.resolution_x, enc.render.resolution_y = RES
     enc.render.resolution_percentage = 100
     enc.render.fps = fps
-    files = sorted(p.name for p in frames_dir.glob("f_*.png"))
     enc.frame_start, enc.frame_end = 1, len(files)
     seq = enc.sequence_editor_create()
     strips = seq.strips if hasattr(seq, "strips") else seq.sequences
     strip = strips.new_image("frames", str(frames_dir / files[0]), 1, 1)
-    for name in files[1:]:
-        strip.elements.append(name)
+    for fname in files[1:]:
+        strip.elements.append(fname)
     if hasattr(enc.render.image_settings, "media_type"):  # Blender 5: video is a media type
         enc.render.image_settings.media_type = "VIDEO"
     enc.render.image_settings.file_format = "FFMPEG"
@@ -354,14 +358,14 @@ def main():
     enc.render.ffmpeg.constant_rate_factor = "HIGH"
     enc.render.ffmpeg.ffmpeg_preset = "GOOD"
     enc.view_settings.view_transform = "Standard"  # frames are already display-referred
-    enc.render.filepath = str(out / f"flyover_{variant_dir}.mp4")
+    enc.render.filepath = str(out / f"{name}.mp4")
     bpy.ops.render.render(animation=True, scene=enc.name)
-    (out / f"flyover_{variant_dir}.json").write_text(json.dumps({"variant": variant_dir,
+    (out / f"{name}.json").write_text(json.dumps({"variant": variant_dir,
         "schema": "lrh.flyover/1", "rendered_utc": lrh.utc_now(), "git": lrh.git_commit(),
         "blend": bpy.data.filepath, "fps": fps, "seconds": SECONDS, "resolution": RES,
         "samples": SAMPLES, "lens_mm": LENS_MM, "sun": SUN, "haze_km": HAZE_KM,
         "collections": COLLECTIONS, "keys": KEYS, "caption": config["caption"]}, indent=1) + "\n")
-    print("ENCODED", out / f"flyover_{variant_dir}.mp4")
+    print("ENCODED", out / f"{name}.mp4")
 
 
 if __name__ == "__main__":
