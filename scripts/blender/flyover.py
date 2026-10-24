@@ -8,10 +8,13 @@ Blender's built-in FFmpeg encoder. Interrupted runs resume: existing frames are 
 Usage:
   Blender -b out/<date>/lrh_baseline.blend --python scripts/blender/flyover.py -- \
       [--variant test|full|oval|low] [--frames 0,120,240,359] [--encode-only] [--preview]
+      [--4k] [--shard i/n]
 
 Variant "low" (Phase 3a) reads its per-frame poses from out/derived/flight_low.json
 (scripts/flight_path.py), shows the Lot 5 cabin and the walking path, at golden hour.
 --preview renders the animatic: 960 x 540, 8 samples, every third frame, encoded at 10 fps.
+--4k renders 3840 x 2160 into <variant>_4k/. --shard i/n renders one GPU's share and
+skips the encode (scripts/cloud/ runs one shard per GPU on a RunPod pod).
 Output: out/<date>/video/frames/f_NNNN.png, flyover_test.mp4, flyover_test.json
 """
 
@@ -240,9 +243,19 @@ def main():
         variant_dir = f"{variant}{suffix}_preview"
     else:
         variant_dir = variant + suffix
+    if "--4k" in argv:
+        RES = (3840, 2160)
+        variant_dir += "_4k"
     only = None
     if "--frames" in argv:
         only = [int(f) for f in argv[argv.index("--frames") + 1].split(",")]
+    # --shard i/n: this process renders every n-th frame from i (one process per cloud
+    # GPU; interleaved so each gets its share of the heavy and light stretches). The
+    # shards share one frames folder; encode afterwards with --encode-only.
+    shard = None
+    if "--shard" in argv:
+        i, n = (int(v) for v in argv[argv.index("--shard") + 1].split("/"))
+        shard = (i, n)
     # Write next to the .blend being rendered (out/<build date>/), not today's date: a long
     # render that resumes after midnight must keep filling the same folder.
     out = Path(bpy.data.filepath).parent / "video" / variant_dir if bpy.data.filepath \
@@ -290,6 +303,8 @@ def main():
             render.configure_haze(scene, cam, HAZE_KM, scratch,  # horizon colour from frame 0
                                   all_azimuths=variant == "low")
         todo = only if only is not None else range(0, total, step)
+        if shard is not None:
+            todo = [f for k, f in enumerate(todo) if k % shard[1] == shard[0]]
         caption = config["caption"] + (" " + config["caption_cabins"] if cabins and config.get("caption_cabins") else "")
         started = time.time()
         for f in todo:
@@ -314,7 +329,7 @@ def main():
             raw.unlink()
             print(f"FRAME {f} {time.time() - t0:.1f}s", flush=True)
         print(f"RENDERED {len(list(todo))} frames in {time.time() - started:.0f}s")
-    if only is not None:
+    if only is not None or shard is not None:
         return
     # Encode with Blender's FFmpeg through the sequencer.
     missing = [f for f in range(0, total, step) if not (frames_dir / f"f_{f:04d}.png").exists()]

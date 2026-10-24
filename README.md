@@ -57,4 +57,22 @@ check fails. `render.py` writes a JSON sidecar beside each frame and fails on a 
 black or clipped frame. `scripts/solve_drone_camera.py` re-solves the drone-match camera
 in `shots.yaml` if the inputs change.
 
+## Cloud render (RunPod)
+
+Long flyovers (4K) can run on a rented RunPod GPU pod with the same scripts. Pod: an
+NVIDIA GPU template (Ubuntu) with SSH over exposed TCP, a network volume on
+`/workspace`, and the public key `~/.ssh/runpod_ed25519.pub` in RunPod settings. On
+Linux the scripts render with OptiX (`LRH_GPU` overrides) and caption in Liberation Sans.
+
+```sh
+scripts/cloud/push.sh <ip> <port>             # repo, derived data, newest .blend, assets; pod_setup.sh
+ssh -i ~/.ssh/runpod_ed25519 -p <port> root@<ip> \
+    'cd /workspace/LRH && bash scripts/cloud/render.sh <date> --variant low --layout pairs --4k'
+scripts/cloud/pull.sh <ip> <port> <date>      # frames back to out/<date>/video/ (repeatable)
+$B -b out/<date>/lrh_baseline.blend --python-exit-code 1 --python scripts/blender/flyover.py \
+    -- --variant low --layout pairs --4k --encode-only
+```
+
+`render.sh` runs one Blender per GPU (`--shard i/n`), each resuming after a stop.
+
 All published images are artist's conceptions; see PLAN.md §7.

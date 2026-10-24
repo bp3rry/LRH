@@ -6,6 +6,7 @@ Usage:
 """
 
 import json
+import os
 import re
 import sys
 from datetime import date
@@ -83,7 +84,7 @@ def dae_mesh(text, geometry_id, name):
 def setup_render(scene):
     scene.render.engine = "CYCLES"
     prefs = bpy.context.preferences.addons["cycles"].preferences
-    prefs.compute_device_type = "METAL"
+    prefs.compute_device_type = os.environ.get("LRH_GPU") or ("METAL" if sys.platform == "darwin" else "OPTIX")
     prefs.get_devices()
     for device in prefs.devices:
         device.use = True

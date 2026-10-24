@@ -57,12 +57,7 @@ def newest_blend():
 
 def configure_device(scene):
     scene.render.engine = "CYCLES"
-    prefs = bpy.context.preferences.addons["cycles"].preferences
-    prefs.compute_device_type = "METAL"
-    prefs.get_devices()
-    for device in prefs.devices:
-        device.use = True
-    scene.cycles.device = "GPU"
+    lrh.use_gpu(scene)
     scene.cycles.use_denoising = True
     scene.cycles.denoiser = "OPENIMAGEDENOISE"
     scene.cycles.use_adaptive_sampling = True
@@ -302,7 +297,7 @@ def caption(src, dst, text):
     image = Image.open(src).convert("RGB")
     draw = ImageDraw.Draw(image)
     size = max(14, image.height // 60)
-    font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", size)
+    font = ImageFont.truetype(lrh.caption_font(), size)
     margin = size
     x, y = margin, image.height - margin - size
     draw.text((x + max(1, size // 12), y + max(1, size // 12)), text, font=font, fill=(0, 0, 0))

@@ -7,6 +7,7 @@ Extra packages (PyYAML, shapely) live in .blender-site/; see requirements.txt th
 import hashlib
 import json
 import math
+import os
 import re
 import subprocess
 import sys
@@ -22,6 +23,36 @@ SITE_PACKAGES = ROOT / ".blender-site"
 # Appended, not prepended, so Blender's own numpy always wins.
 if str(SITE_PACKAGES) not in sys.path:
     sys.path.append(str(SITE_PACKAGES))
+
+# Cloud GPU pods (Linux, NVIDIA) render with OptiX; this Mac with Metal. LRH_GPU overrides
+# (METAL, OPTIX, CUDA, HIP, ONEAPI).
+GPU_BACKEND = os.environ.get("LRH_GPU") or ("METAL" if sys.platform == "darwin" else "OPTIX")
+# Caption font: Helvetica on macOS; Liberation Sans (metric-compatible) on Linux pods.
+CAPTION_FONTS = [os.environ.get("LRH_FONT", ""), "/System/Library/Fonts/Helvetica.ttc",
+                 "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                 "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"]
+
+
+def use_gpu(scene):
+    """Cycles on every GPU of GPU_BACKEND. On Metal the CPU stays in the device list, as
+    before; elsewhere it is left out so it does not hold back the GPUs."""
+    import bpy
+    prefs = bpy.context.preferences.addons["cycles"].preferences
+    prefs.compute_device_type = GPU_BACKEND
+    prefs.get_devices()
+    for device in prefs.devices:
+        device.use = GPU_BACKEND == "METAL" or device.type != "CPU"
+    if not any(d.use and d.type != "CPU" for d in prefs.devices):
+        fail(f"no {GPU_BACKEND} GPU found")
+    scene.cycles.device = "GPU"
+
+
+def caption_font():
+    path = next((p for p in CAPTION_FONTS if p and Path(p).is_file()), None)
+    if path is None:
+        fail("no caption font; set LRH_FONT (Linux: apt install fonts-liberation)")
+    return path
+
 
 ORIGIN_JSON = json.loads((INPUTS / "terrain/origin.json").read_text())
 ORIGIN_E = ORIGIN_JSON["origin"]["easting"]
