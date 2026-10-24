@@ -60,6 +60,10 @@ def configure_device(scene):
     lrh.use_gpu(scene)
     scene.cycles.use_denoising = True
     scene.cycles.denoiser = "OPENIMAGEDENOISE"
+    # Denoise and composite on the GPU (both default to the CPU): on a cloud pod's slow,
+    # quota-limited CPU they took 94 s and 23 s of a 4K frame (24 Oct 2026 profile).
+    scene.cycles.denoising_use_gpu = True
+    scene.render.compositor_device = "GPU"
     scene.cycles.use_adaptive_sampling = True
     # Sparse crowns (bare flooded timber) stack many cut-out leaf cards: rays that run
     # out of transparent bounces render black.

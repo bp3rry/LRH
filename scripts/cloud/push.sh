@@ -11,7 +11,8 @@ DAY=${3:-$(basename "$(dirname "$(ls out/*/lrh_baseline.blend | sort | tail -1)"
 SSH="ssh -i $HOME/.ssh/runpod_ed25519 -p $PORT -o StrictHostKeyChecking=accept-new"
 DEST=root@$HOST:/workspace/LRH
 
-send() { rsync -az -e "$SSH" "$@"; }
+# -rltz, not -a: the network volume refuses chown, so owner and group are not copied.
+send() { rsync -rltz -e "$SSH" "$@"; }
 
 $SSH root@"$HOST" "command -v rsync >/dev/null || (apt-get update -qq && apt-get install -y -qq rsync >/dev/null);
     mkdir -p /workspace/LRH/out/$DAY /workspace/LRH/inputs/terrain /workspace/LRH/assets"

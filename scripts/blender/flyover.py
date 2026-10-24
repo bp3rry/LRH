@@ -8,7 +8,7 @@ Blender's built-in FFmpeg encoder. Interrupted runs resume: existing frames are 
 Usage:
   Blender -b out/<date>/lrh_baseline.blend --python scripts/blender/flyover.py -- \
       [--variant test|full|oval|low] [--frames 0,120,240,359] [--encode-only] [--preview]
-      [--4k] [--shard i/n] [--partial]
+      [--4k] [--shard i/n] [--partial] [--profile]
 
 Variant "low" (Phase 3a) reads its per-frame poses from out/derived/flight_low.json
 (scripts/flight_path.py), shows the Lot 5 cabin and the walking path, at golden hour.
@@ -295,6 +295,12 @@ def main():
         scene.render.resolution_percentage = 100
         scene.cycles.samples = SAMPLES
         scene.render.use_persistent_data = True
+        if RES[0] > 2048:                      # one tile for 4K (tiles cost a full-buffer re-read)
+            scene.cycles.use_auto_tile, scene.cycles.tile_size = True, 4096
+        # The raw frame is temporary (captioned to f_NNNN.png, then deleted): write it
+        # uncompressed to local disk, not to the frames folder (a network volume on a pod).
+        scene.render.image_settings.compression = 0
+        raw_dir = Path(tempfile.mkdtemp(prefix="lrh_raw_"))
         scene.view_settings.exposure = exposure if exposure is not None else config.get("exposure", -4.0)
         loc, look = pose(0, total)
         cam.location = Vector(loc)
@@ -302,6 +308,19 @@ def main():
         with tempfile.TemporaryDirectory() as scratch:
             render.configure_haze(scene, cam, HAZE_KM, scratch,  # horizon colour from frame 0
                                   all_azimuths=variant == "low")
+        if "--profile" in argv:                # log each Cycles phase change with its time
+            phase = {"name": None, "t": time.time()}
+
+            def stats(text, *_):
+                if not isinstance(text, str):
+                    return
+                name = text.split("|")[-1].strip().split(" ")[0:2]
+                name = " ".join(name)
+                if name != phase["name"]:
+                    now = time.time()
+                    print(f"PHASE {now - phase['t']:7.1f}s  {phase['name']} -> {text.strip()[:110]}", flush=True)
+                    phase["name"], phase["t"] = name, now
+            bpy.app.handlers.render_stats.append(stats)
         todo = only if only is not None else range(0, total, step)
         if shard is not None:
             todo = [f for k, f in enumerate(todo) if k % shard[1] == shard[0]]
@@ -316,7 +335,7 @@ def main():
             cam.rotation_euler = (Vector(look) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
             if life is not None:
                 life(f)
-            raw = frames_dir / f"raw_{f:04d}.png"
+            raw = raw_dir / f"raw_{f:04d}.png"
             scene.render.filepath = str(raw)
             t0 = time.time()
             bpy.ops.render.render(write_still=True)

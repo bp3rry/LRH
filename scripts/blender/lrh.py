@@ -149,9 +149,18 @@ def solar_position(when_local, utc_offset_h, lat=SITE_LAT, lon=SITE_LON):
 def frame_stats(path):
     """Luminance statistics of a rendered frame; raises CheckFailed if it is blank."""
     import bpy
-    image = bpy.data.images.load(str(path), check_existing=False)
-    pixels = np.array(image.pixels[:], dtype=np.float64).reshape(-1, 4)[:, :3]
-    bpy.data.images.remove(image)
+    # One image datablock, reloaded per frame: adding and removing an ID each frame makes
+    # the depsgraph re-evaluate, and Cycles then re-syncs the instanced grass.
+    image = bpy.data.images.get("LRH_FrameStats")
+    if image is None:
+        image = bpy.data.images.load(str(path), check_existing=False)
+        image.name = "LRH_FrameStats"
+    else:
+        image.filepath = str(path)
+        image.reload()
+    pixels = np.empty(len(image.pixels), dtype=np.float32)   # foreach_get: a 4K frame is
+    image.pixels.foreach_get(pixels)                          # 33M values, slow via a list
+    pixels = pixels.reshape(-1, 4)[:, :3].astype(np.float64)
     luminance = 0.2126 * pixels[:, 0] + 0.7152 * pixels[:, 1] + 0.0722 * pixels[:, 2]
     stats = {
         "mean": float(luminance.mean()),

@@ -10,6 +10,6 @@ HOST=$1 PORT=$2 DAY=$3
 cd "$(dirname "$0")/../.."
 SSH="ssh -i $HOME/.ssh/runpod_ed25519 -p $PORT -o StrictHostKeyChecking=accept-new"
 for part in video cloud_logs; do
-    rsync -az --exclude 'raw_*' -e "$SSH" root@"$HOST":/workspace/LRH/out/"$DAY"/$part out/"$DAY"/
+    rsync -rltz --exclude 'raw_*' -e "$SSH" root@"$HOST":/workspace/LRH/out/"$DAY"/$part out/"$DAY"/
 done
 for d in out/"$DAY"/video/*/frames; do echo "$d: $(ls "$d" | grep -c '^f_') frames"; done
