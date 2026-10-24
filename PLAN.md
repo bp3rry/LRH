@@ -1119,6 +1119,19 @@ trees cleared for the boat channels (`planting_plan.reclamation`).
   in `out/2026-10-22/video/low_pairs/frames/`.
 - **Resume** with the same command (wrapped in `caffeinate` and a retry loop). Finished
   frames are skipped. About 2,460 frames remain, roughly 25–35 h.
+- **24 Oct 2026:** resumed 23 Oct; paused again at frame 2601 for a Claude Code restart.
+  Review cut `video/low_pairs/flyover_low_pairs_partial_2602.mp4` (86.7 s; `--partial`).
+  Resumed detached (`nohup`, parent launchd; logs `render_8.log` on,
+  `loop_detached.log`), about 46 s a frame, 654 frames left (~8.5 h). When done, the MP4
+  encodes itself (`flyover_low_pairs.mp4`).
+- **Cloud (RunPod, owner-funded 24 Oct 2026):** `scripts/cloud/` and README "Cloud render".
+  RunPod Claude Code plugin installed (user scope); its MCP server connects in a new
+  session (`/mcp`, OAuth sign-in). SSH key `~/.ssh/runpod_ed25519` (to be added to the
+  RunPod account). Next: test pod with one RTX 4090 and a ~15 GB network volume, push,
+  render 3 spot 4K frames (`--4k --frames 0,1600,3000`), check that the Sapling trees
+  appear (the .blend stores their library path as `//..assets/...`), measure s/frame, quote
+  cost to the owner before a full 4K run. Confirm GPU, region and hourly price with the
+  owner before creating anything; stop the pod after the test.
 
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
