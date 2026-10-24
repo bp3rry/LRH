@@ -1121,9 +1121,9 @@ trees cleared for the boat channels (`planting_plan.reclamation`).
   frames are skipped. About 2,460 frames remain, roughly 25–35 h.
 - **24 Oct 2026:** resumed 23 Oct; paused again at frame 2601 for a Claude Code restart.
   Review cut `video/low_pairs/flyover_low_pairs_partial_2602.mp4` (86.7 s; `--partial`).
-  Resumed detached (`nohup`, parent launchd; logs `render_8.log` on,
-  `loop_detached.log`), about 46 s a frame, 654 frames left (~8.5 h). When done, the MP4
-  encodes itself (`flyover_low_pairs.mp4`).
+  Briefly resumed detached, then **stopped for good at the owner's request** (24 Oct
+  2026) with frames 0–2602 done: the owner has reviewed the cut and is moving to the
+  high-res render on RunPod. The partial MP4 is the 1080p deliverable for now.
 - **Cloud (RunPod, owner-funded 24 Oct 2026):** `scripts/cloud/` and README "Cloud render".
   RunPod Claude Code plugin installed (user scope); its MCP server connects in a new
   session (`/mcp`, OAuth sign-in). SSH key `~/.ssh/runpod_ed25519` (to be added to the
