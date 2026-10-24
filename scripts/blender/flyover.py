@@ -208,10 +208,18 @@ class Life:
 
 
 class BoatOnly:
-    """The ski boat on its open-lake route (no gulls: their flocks are placed for the oval)."""
+    """The ski boat on its open-lake route (no gulls: their flocks are placed for the oval).
+    Moved only on frames where it is within the camera's horizontal field of view (plus a
+    margin): it stays 1-1.9 km off, and every move makes Cycles rebuild the scene BVH,
+    which costs minutes a frame on a busy cloud host. Off-screen it simply waits."""
 
-    def __init__(self):
+    MARGIN_DEG = 10.0
+
+    def __init__(self, total, lens_mm):
         self.boat = bpy.data.objects.get("Ski_Boat")
+        self.total = total
+        self.half_fov = math.degrees(math.atan(18.0 / lens_mm)) + self.MARGIN_DEG  # 36 mm sensor
+        self.placed = False
 
     def __call__(self, frame):
         if self.boat is None:
@@ -219,8 +227,20 @@ class BoatOnly:
         h = math.radians(BOAT_ROUTE["heading_deg"])
         x0, y0 = BOAT_ROUTE["start"]
         dist = BOAT_ROUTE["speed_ms"] * frame / FPS
-        self.boat.location = (x0 + math.sin(h) * dist, y0 + math.cos(h) * dist, lrh.POOL_M)
+        bx, by = x0 + math.sin(h) * dist, y0 + math.cos(h) * dist
+        cam, look = pose(frame, self.total)
+        view = math.atan2(look[0] - cam[0], look[1] - cam[1])
+
+        def in_view(x, y):
+            off = math.degrees(math.atan2(x - cam[0], y - cam[1]) - view)
+            return abs((off + 180.0) % 360.0 - 180.0) <= self.half_fov
+        # Place it on the first frame rendered; after that only while it, or the spot it
+        # was left at, can be seen.
+        if self.placed and not in_view(bx, by) and not in_view(*self.boat.location[:2]):
+            return
+        self.boat.location = (bx, by, lrh.POOL_M)
         self.boat.rotation_euler = (0.0, 0.0, math.pi / 2 - h)
+        self.placed = True
 
 
 def main():
@@ -286,7 +306,7 @@ def main():
             render.apply_screens(cabins if pads else [])
             render.apply_site_works(True)
             render.apply_beach(True, pads)
-            life = BoatOnly()
+            life = BoatOnly(total, LENS_MM)
         else:
             render.apply_collections(scene, set(COLLECTIONS))
         cam = bpy.data.objects.new("CAM_flyover", bpy.data.cameras.new("CAM_flyover"))
