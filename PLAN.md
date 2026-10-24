@@ -1125,13 +1125,22 @@ trees cleared for the boat channels (`planting_plan.reclamation`).
   2026) with frames 0–2602 done: the owner has reviewed the cut and is moving to the
   high-res render on RunPod. The partial MP4 is the 1080p deliverable for now.
 - **Cloud (RunPod, owner-funded 24 Oct 2026):** `scripts/cloud/` and README "Cloud render".
-  RunPod Claude Code plugin installed (user scope); its MCP server connects in a new
-  session (`/mcp`, OAuth sign-in). SSH key `~/.ssh/runpod_ed25519` (to be added to the
-  RunPod account). Next: test pod with one RTX 4090 and a ~15 GB network volume, push,
-  render 3 spot 4K frames (`--4k --frames 0,1600,3000`), check that the Sapling trees
-  appear (the .blend stores their library path as `//..assets/...`), measure s/frame, quote
-  cost to the owner before a full 4K run. Confirm GPU, region and hourly price with the
-  owner before creating anything; stop the pod after the test.
+  - **1x RTX 4090 test (US-IL-1):** frames 4K-correct but 180-500 s each. The pod shared
+    an overloaded host (load ~341), and per-frame CPU work dominated. Fixes, which also
+    help the Mac:
+    - GPU denoise and compositor;
+    - Blender threads from the pod's CPU quota;
+    - frame check without re-syncing the grass each frame;
+    - check and caption in background workers;
+    - boat moved only while in view.
+  - **4x L40S pod (US-TX-4, $4.36/hr):** a quiet EPYC 9354 host, about 34 s per 4K
+    frame per GPU (24 s lake views), four GPUs in parallel.
+  - **Full 4K render started 24 Oct 2026, 20:55 UTC:** pod `eo70zmtediq9s0`, estimated
+    ~7.5 h and ~$32. Frames are pulled to `out/2026-10-22/video/low_pairs_4k/frames/`.
+    When done, encode on the Mac with `flyover.py -- --variant low --layout pairs --4k
+    --encode-only`, then stop the pod.
+  - **Left over from the first test:** stopped pod `xhgqg5lpde3vt2` and network volume
+    `po130qjogg` (20 GB, US-IL-1) are kept until the owner decides.
 
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
