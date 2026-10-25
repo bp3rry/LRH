@@ -1162,6 +1162,24 @@ trees cleared for the boat channels (`planting_plan.reclamation`).
   `flyover_low_pairs_4k_v1.mp4`.
 - **Next 4K run:** about 1.3x the last one, so ~9.5-10 h on 4x L40S, about $45.
 
+**Planned for the next cloud run (owner, 25 Oct 2026): multi-pod rendering for bigger jobs**
+(for example a whole-lakeshore flyover):
+- **Shared work list:** each Blender process repeatedly claims the next unrendered frame on
+  the shared network volume (a claim file per frame, created atomically), renders it and
+  writes it.
+  - Faster GPUs take more frames.
+  - Claims from a crashed process time out and are re-taken.
+  - No static shard can lag behind, which happened to GPU 2 on 24 Oct.
+- **Elastic pods:** pods in the same data center mount the same network volume, so a pod
+  added mid-run joins by running the same command, and pods can be stopped early.
+  Several data centers fall back to fixed frame ranges per data center.
+- **One launcher:** upload once to the network volume, start the render on N pods, show
+  progress across all of them; frames are pulled to the Mac and encoded there as now.
+- **Scale guide:** about 9-10 L40S-class GPU-hours per 1,000 4K frames. Cost hardly
+  depends on the GPU count; more GPUs only shorten the run.
+- **Scope:** a whole-lakeshore flyover first needs the scene extended along the shore
+  (terrain, timber, shoreline); that is a separate phase.
+
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
 One illustrative cabin (Lot 5) is enough for now. A later phase renders a cabin on every
