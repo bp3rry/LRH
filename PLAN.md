@@ -1135,12 +1135,17 @@ trees cleared for the boat channels (`planting_plan.reclamation`).
     - boat moved only while in view.
   - **4x L40S pod (US-TX-4, $4.36/hr):** a quiet EPYC 9354 host, about 34 s per 4K
     frame per GPU (24 s lake views), four GPUs in parallel.
-  - **Full 4K render started 24 Oct 2026, 20:55 UTC:** pod `eo70zmtediq9s0`, estimated
-    ~7.5 h and ~$32. Frames are pulled to `out/2026-10-22/video/low_pairs_4k/frames/`.
-    When done, encode on the Mac with `flyover.py -- --variant low --layout pairs --4k
-    --encode-only`, then stop the pod.
-  - **Left over from the first test:** stopped pod `xhgqg5lpde3vt2` and network volume
-    `po130qjogg` (20 GB, US-IL-1) are kept until the owner decides.
+  - **Full 4K render done (24-25 Oct 2026):** 3,256 frames on pod `eo70zmtediq9s0`,
+    8.3 h, about $36. GPU 2 fell behind (45 s a frame on average against about 31 s);
+    its last 250 frames were split across the idle GPUs (`--frames` lists).
+  - **Output:** `out/2026-10-22/video/low_pairs_4k/flyover_low_pairs_4k.mp4` (3840x2160,
+    108.5 s, H.264, 1.45 GB), encoded on the Mac. Frames and MP4 are backed up to LaCie.
+    The pod is stopped; its 120 GB disk bills until it is terminated.
+  - **First-test pod and volume:** deleted at the owner's request (24 Oct 2026).
+  - **Backup:** the whole Projects folder is on the LaCie drive
+    (`/Volumes/LaCie/Backups/Projects-2026-10-24/`, exFAT, verified). Old renders were
+    then removed from the Mac: `out/2026-10-14`..`21` and the 1080p and preview frames
+    (their MP4s are kept).
 
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
