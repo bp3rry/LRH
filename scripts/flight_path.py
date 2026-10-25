@@ -40,7 +40,19 @@ CABIN = (47.3, 12.9, 182.0)        # Lot 5 cabin (grading.layout), look-at heigh
 # walking path to the shoreline, run up the flooded timber and finish over the main lake
 # turning back toward the lots in golden light. (name, camera, look-at, speed m/s)
 POB = (114.5, -46.7)
-KEYS = [
+# Owner, 25 Oct 2026: open on the whole property from high over the POB (110 m, 361 ft
+# AGL; ground 180 m), the shoreline the main subject and the cabins in the distance: look
+# south-west at the pond, Lot 10 and the south shore, pan slowly north along the shoreline
+# to the Lot 1-2 dock, then settle west and descend into B1. The camera drifts a few metres
+# east and back so the crane-down has parallax.
+OPENING = [
+    ("O1", (POB[0], POB[1], 290.0), (-260.0, -330.0, 168.0), 2.0),   # pond, Lot 10, south shore, horizon
+    ("", (120.0, -40.0, 282.0), (-300.0, -110.0, 168.0), 3.0),       # south-west shoreline
+    ("O2", (124.0, -30.0, 270.0), (-210.0, 120.0, 168.0), 3.5),      # shoreline, docks, timber
+    ("", (122.0, -36.0, 250.0), (-200.0, 220.0, 168.0), 3.5),        # north to the Lot 1-2 dock
+    ("", (118.0, -44.0, 225.0), (-140.0, 60.0, 170.0), 3.0),         # settle west, descending
+]
+KEYS = OPENING + [
     ("B1", (POB[0], POB[1], 202.0), (-80.0, -10.0, 176.0), 3.0),     # over the POB, looking west
     ("", (88.0, -44.0, 202.0), (-20.0, 10.0, 178.0), 5.5),
     ("", (62.0, -36.0, 199.0), (40.0, 40.0, 181.0), 5.0),

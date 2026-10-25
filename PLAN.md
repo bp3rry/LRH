@@ -1148,6 +1148,20 @@ trees cleared for the boat channels (`planting_plan.reclamation`).
     then removed from the Mac: `out/2026-10-14`..`21` and the 1080p and preview frames
     (their MP4s are kept).
 
+**Opening added (owner, 25 Oct 2026):**
+- **Shot:** the flight now opens high over the point of beginning (290 m, 110 m or 361 ft
+  AGL). It looks south-west at the pond, Lot 10 and the south shore, with the horizon
+  showing, then pans slowly north along the whole shoreline to the Lot 1-2 dock. The
+  shoreline is the subject and the cabins sit in the distance. It then settles west and
+  descends into the old start (B1).
+- **Length:** 32.7 s added, so the flight is 4,220 frames (140.7 s). All flight checks
+  pass (max 361 ft AGL, turn 9.3 deg/s, tilt 17.8 deg).
+- **Guard:** frame numbers shifted, so each frames folder now records the flight's
+  fingerprint (`flight.id`), and flyover.py refuses to mix flights.
+- **Old 4K flight:** kept as `video/low_pairs_4k/frames_v1` and
+  `flyover_low_pairs_4k_v1.mp4`.
+- **Next 4K run:** about 1.3x the last one, so ~9.5-10 h on 4x L40S, about $45.
+
 ### Phase 3b — Cabins on every lot (planned; owner direction, 19 Oct 2026)
 
 One illustrative cabin (Lot 5) is enough for now. A later phase renders a cabin on every

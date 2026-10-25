@@ -18,6 +18,7 @@ skips the encode (scripts/cloud/ runs one shard per GPU on a RunPod pod).
 Output: out/<date>/video/frames/f_NNNN.png, flyover_test.mp4, flyover_test.json
 """
 
+import hashlib
 import json
 import math
 import subprocess
@@ -284,6 +285,17 @@ def main():
         else lrh.out_dir() / "video" / variant_dir
     frames_dir = out / "frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
+    # Frames resume by number, so a folder must hold one flight only: record the path's
+    # fingerprint and refuse to mix (the 25 Oct 2026 opening renumbered every frame).
+    flight_id = hashlib.sha256(json.dumps([POSES, KEYS, SECONDS], default=str).encode()).hexdigest()[:16]
+    stamp = frames_dir / "flight.id"
+    if stamp.exists() and stamp.read_text().strip() != flight_id:
+        lrh.fail(f"{frames_dir} holds frames of a different flight path ({stamp.read_text().strip()}, "
+                 f"now {flight_id}); move them aside before rendering or encoding")
+    if not stamp.exists():
+        if any(frames_dir.glob("f_*.png")):
+            lrh.fail(f"{frames_dir} has frames but no flight.id; move them aside or stamp them")
+        stamp.write_text(flight_id + "\n")
     config = yaml.safe_load((lrh.ROOT / "shots.yaml").read_text())["render"]
     scene = bpy.context.scene
     if "--encode-only" not in argv:
