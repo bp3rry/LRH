@@ -1140,7 +1140,8 @@ trees cleared for the boat channels (`planting_plan.reclamation`).
     its last 250 frames were split across the idle GPUs (`--frames` lists).
   - **Output:** `out/2026-10-22/video/low_pairs_4k/flyover_low_pairs_4k.mp4` (3840x2160,
     108.5 s, H.264, 1.45 GB), encoded on the Mac. Frames and MP4 are backed up to LaCie.
-    The pod is stopped; its 120 GB disk bills until it is terminated.
+    The pod was terminated after the backup was verified; the RunPod account then had
+    no pods and no volumes. To resume, deploy a fresh pod and run `scripts/cloud/push.sh`.
   - **First-test pod and volume:** deleted at the owner's request (24 Oct 2026).
   - **Backup:** the whole Projects folder is on the LaCie drive
     (`/Volumes/LaCie/Backups/Projects-2026-10-24/`, exFAT, verified). Old renders were
