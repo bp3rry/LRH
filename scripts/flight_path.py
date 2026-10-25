@@ -34,42 +34,40 @@ MIN_AGL, MIN_CANOPY = 15.0, 8.0
 MAX_TURN_DEG_S, MAX_TILT_DEG = 10.0, 35.0   # pans at low altitude; oval was 4.3 deg/s
 CABIN = (47.3, 12.9, 182.0)        # Lot 5 cabin (grading.layout), look-at height ~ main floor
 
-# Owner, 19 Oct 2026: start at the survey's point of beginning on CR 3635 (signed survey,
-# fitted to the TxDOT centreline: LRH (114.5, -46.7); the model's parcel corner is 10 m
-# west at (104.3, -48.5)), look west across the lots, sweep to the Lot 5 cabin, follow the
-# walking path to the shoreline, run up the flooded timber and finish over the main lake
-# turning back toward the lots in golden light. (name, camera, look-at, speed m/s)
+# Owner, 19 Oct 2026: the survey's point of beginning on CR 3635 (signed survey, fitted to
+# the TxDOT centreline: LRH (114.5, -46.7); the model's parcel corner is 10 m west).
 POB = (114.5, -46.7)
-# Owner, 25 Oct 2026: open on the whole property from high over the POB (110 m, 361 ft
-# AGL; ground 180 m), the shoreline the main subject and the cabins in the distance: look
-# south-west at the pond, Lot 10 and the south shore, pan slowly north along the shoreline
-# to the Lot 1-2 dock, then settle west and descend into B1. The camera drifts a few metres
-# east and back so the crane-down has parallax.
-OPENING = [
-    ("O1", (POB[0], POB[1], 290.0), (-260.0, -330.0, 168.0), 2.0),   # pond, Lot 10, south shore, horizon
-    ("", (120.0, -40.0, 282.0), (-300.0, -110.0, 168.0), 3.0),       # south-west shoreline
-    ("O2", (124.0, -30.0, 270.0), (-210.0, 120.0, 168.0), 3.5),      # shoreline, docks, timber
-    ("", (122.0, -36.0, 250.0), (-200.0, 220.0, 168.0), 3.5),        # north to the Lot 1-2 dock
-    ("", (118.0, -44.0, 225.0), (-140.0, 60.0, 170.0), 3.0),         # settle west, descending
+SE_CORNER = (140.0, -210.0)        # CR 3635 x relocated CR 3640, ground 184.7 m
+# Owner, 25 Oct 2026 (replaces the POB start and the cabin close-ups): take off at the SE
+# corner and climb while heading west along the CR 3640 side; cross the pond; at the SW
+# corner pan north to the cleared shoreline and run up it (beaches, docks and riprap
+# ahead, lots and cabins on the right); out the boat channel past the flooded timber to
+# the open lake; a left-hand turn over the western open water ending in a hover that looks back at the property
+# in golden light. (name, camera, look-at, ground speed m/s)
+KEYS = [
+    ("T0", (SE_CORNER[0], SE_CORNER[1], 187.0), (-40.0, -60.0, 176.0), 2.5),   # takeoff, 2 m up, facing the lots
+    ("", (134.0, -208.0, 206.0), (-70.0, -130.0, 174.0), 4.0),        # climbing, turning west
+    ("", (100.0, -205.0, 226.0), (-100.0, -195.0, 171.0), 7.0),
+    ("B1", (30.0, -198.0, 236.0), (-110.0, -192.0, 171.0), 8.0),      # pond ahead, Lot 10 right
+    ("B2", (-46.0, -192.0, 236.0), (-170.0, -222.0, 168.0), 7.0),     # over the pond
+    ("", (-130.0, -214.0, 226.0), (-195.0, -120.0, 168.0), 7.0),      # SW corner, pan north
+    ("B3", (-178.0, -185.0, 216.0), (-160.0, -50.0, 168.0), 7.5),     # lined up on the shore
+    ("", (-182.0, -120.0, 210.0), (-140.0, 20.0, 172.0), 8.5),        # shoreline run: lots right
+    ("B4", (-178.0, -20.0, 208.0), (-130.0, 110.0, 172.0), 8.5),      # beach and Lot 5-6 dock
+    ("", (-170.0, 80.0, 206.0), (-130.0, 210.0, 172.0), 8.5),
+    ("B5", (-182.0, 175.0, 206.0), (-160.0, 290.0, 170.0), 9.5),      # Lot 3-4 dock
+    ("B6", (-195.0, 270.0, 206.0), (-235.0, 390.0, 168.5), 13.0),     # Lot 1-2 dock, timber
+    ("", (-238.0, 390.0, 206.0), (-280.0, 600.0, 168.0), 15.0),       # out the boat channel
+    ("", (-290.0, 480.0, 212.0), (-380.0, 640.0, 168.0), 13.0),       # open lake to the north-west
+    ("", (-340.0, 555.0, 216.0), (-520.0, 520.0, 168.0), 10.0),        # left-hand turn begins
+    ("", (-405.0, 520.0, 220.0), (-430.0, 300.0, 168.0), 9.0),        # over the western open water
+    ("", (-400.0, 430.0, 224.0), (-100.0, 250.0, 172.0), 8.0),        # swinging back to the property
+    ("B7", (-315.0, 340.0, 230.0), (-20.0, 30.0, 176.0), 3.5),        # hover: shore, docks, cabins
 ]
-KEYS = OPENING + [
-    ("B1", (POB[0], POB[1], 202.0), (-80.0, -10.0, 176.0), 3.0),     # over the POB, looking west
-    ("", (88.0, -44.0, 202.0), (-20.0, 10.0, 178.0), 5.5),
-    ("", (62.0, -36.0, 199.0), (40.0, 40.0, 181.0), 5.0),
-    ("B2", (40.0, -28.0, 197.0), (38.0, 45.0, 181.0), 5.0),          # parking, porch, cabin
-    ("B3", (10.0, -18.0, 195.0), (45.0, 50.0, 181.0), 5.5),          # lake gable, patio
-    ("", (-20.0, -10.0, 194.0), (-50.0, 130.0, 176.0), 5.5),
-    ("", (-55.0, 0.0, 193.0), (-210.0, 70.0, 172.0), 5.5),
-    ("B4", (-100.0, 12.0, 192.0), (-210.0, 100.0, 170.0), 10.0),     # walking path to shore
-    ("B5", (-138.0, 35.0, 192.0), (-215.0, 70.0, 168.5), 7.0),       # beach and Lot 5-6 dock
-    ("", (-160.0, 80.0, 200.0), (-195.0, 200.0, 168.5), 8.0),        # up the boat channel
-    ("", (-180.0, 175.0, 204.0), (-200.0, 290.0, 168.5), 11.0),      # past the Lot 3-4 dock
-    ("B6", (-195.0, 270.0, 206.0), (-235.0, 390.0, 168.5), 12.0),    # Lot 1-2 dock, timber
-    ("", (-235.0, 380.0, 198.0), (-280.0, 620.0, 168.0), 13.0),      # out to the open lake
-    ("", (-275.0, 480.0, 202.0), (-200.0, 720.0, 168.0), 13.0),
-    ("", (-282.0, 560.0, 207.0), (-80.0, 560.0, 170.0), 6.0),
-    ("B7", (-272.0, 610.0, 212.0), (-60.0, 280.0, 176.0), 3.5),      # look back at the lots
-]
+# The takeoff is exempt from the clearance minimums (open road intersection, nothing
+# overhead) for its first TAKEOFF_S seconds; everything after must meet them.
+TAKEOFF_S = 10.0
+TAKEOFF_MIN_AGL = 1.5
 
 
 def catmull_rom(points, t):
@@ -148,9 +146,13 @@ def main():
     looks = gimbal(cams, np.array([f[1] for f in frames]))
     frames = [(c, lk, f[2]) for c, lk, f in zip(cams, looks, frames)]
     ground = np.maximum(dtm(cams[:, 0], cams[:, 1]), POOL_M)
+    takeoff = np.arange(len(cams)) < TAKEOFF_S * FPS
     canopy = np.maximum(dsm(cams[:, 0], cams[:, 1]), ground)
     agl = cams[:, 2] - ground
     above_canopy = cams[:, 2] - canopy
+    # Clearance is checked after the takeoff; the takeoff itself only has to stay above
+    # TAKEOFF_MIN_AGL.
+    agl_flight, canopy_flight = agl[~takeoff], above_canopy[~takeoff]
     d = looks - cams
     heading = np.degrees(np.unwrap(np.arctan2(d[:, 0], d[:, 1])))
     turn = np.abs(np.gradient(heading)) * FPS
@@ -159,15 +161,18 @@ def main():
     us = np.array([f[2] for f in frames])
     bench = {k[0]: int(np.argmin(np.abs(us - key_u[i]))) for i, k in enumerate(KEYS) if k[0]}
     checks = {
-        "min_agl_m": round(float(agl.min()), 1), "min_agl_frame": int(agl.argmin()),
-        "min_above_canopy_m": round(float(above_canopy.min()), 1),
-        "min_above_canopy_frame": int(above_canopy.argmin()),
+        "min_agl_m": round(float(agl_flight.min()), 1),
+        "min_agl_frame": int(agl_flight.argmin()) + int(takeoff.sum()),
+        "min_above_canopy_m": round(float(canopy_flight.min()), 1),
+        "min_above_canopy_frame": int(canopy_flight.argmin()) + int(takeoff.sum()),
+        "takeoff_s": TAKEOFF_S, "takeoff_min_agl_m": round(float(agl[takeoff].min()), 1),
         "max_turn_deg_s": round(float(turn.max()), 2), "max_turn_frame": int(turn.argmax()),
         "max_tilt_deg": round(float(tilt.max()), 1),
         "max_agl_ft": round(float(agl.max() / 0.3048)),
         "max_speed_ms": round(float(speed.max()), 1),
     }
-    checks["passed"] = bool(agl.min() >= MIN_AGL and above_canopy.min() >= MIN_CANOPY
+    checks["passed"] = bool(agl_flight.min() >= MIN_AGL and canopy_flight.min() >= MIN_CANOPY
+                            and agl[takeoff].min() >= TAKEOFF_MIN_AGL
                             and turn.max() <= MAX_TURN_DEG_S and tilt.max() <= MAX_TILT_DEG
                             and agl.max() < 400 * 0.3048)
     out = {"schema": "lrh.flight/1", "fps": FPS, "frames": len(frames),

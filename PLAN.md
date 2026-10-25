@@ -1148,19 +1148,28 @@ trees cleared for the boat channels (`planting_plan.reclamation`).
     then removed from the Mac: `out/2026-10-14`..`21` and the 1080p and preview frames
     (their MP4s are kept).
 
-**Opening added (owner, 25 Oct 2026):**
-- **Shot:** the flight now opens high over the point of beginning (290 m, 110 m or 361 ft
-  AGL). It looks south-west at the pond, Lot 10 and the south shore, with the horizon
-  showing, then pans slowly north along the whole shoreline to the Lot 1-2 dock. The
-  shoreline is the subject and the cabins sit in the distance. It then settles west and
-  descends into the old start (B1).
-- **Length:** 32.7 s added, so the flight is 4,220 frames (140.7 s). All flight checks
-  pass (max 361 ft AGL, turn 9.3 deg/s, tilt 17.8 deg).
-- **Guard:** frame numbers shifted, so each frames folder now records the flight's
-  fingerprint (`flight.id`), and flyover.py refuses to mix flights.
+**New flight route (owner, 25 Oct 2026; replaces the POB start, the cabin close-ups and the
+short-lived POB opening):**
+
+| Time | Segment |
+|---|---|
+| 0-24 s | Takeoff at CR 3635 x relocated CR 3640 (140, -210); climb west along the south line |
+| 24-54 s | Over the pond and around the SW corner, panning north |
+| 54-105 s | Shoreline run to the Lot 1-2 dock: beaches, docks and riprap ahead, lots and cabins right |
+| 105-150 s | Out the boat channel; a left-hand turn over the western open water |
+| 150-171 s | Hover over the flooded timber (-315, 340, 230 m) looking back at the property |
+
+- **Length:** 5,128 frames (170.9 s).
+- **Checks:** the takeoff is exempt from the 15 m AGL minimum for its first 10 s (open
+  intersection; >= 1.5 m). After that, the minimum is 29.8 m AGL and 24.7 m above the
+  canopy; max 212 ft AGL, turn 9.96 deg/s, tilt 32 deg.
+- **Scene:** rebuilt so the flight-path-dependent detail (photoreal trees, grass) follows the
+  new route.
+- **Frame guard:** each frames folder records the flight's fingerprint (`flight.id`), and
+  flyover.py refuses to mix flights.
 - **Old 4K flight:** kept as `video/low_pairs_4k/frames_v1` and
   `flyover_low_pairs_4k_v1.mp4`.
-- **Next 4K run:** about 1.3x the last one, so ~9.5-10 h on 4x L40S, about $45.
+- **Next 4K run:** about 45-50 L40S GPU-hours, ~$50.
 
 **Planned for the next cloud run (owner, 25 Oct 2026): multi-pod rendering for bigger jobs**
 (for example a whole-lakeshore flyover):
