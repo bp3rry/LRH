@@ -1448,6 +1448,46 @@ replies. Items already raised, kept here for that review:
   Phase 3a, which includes the compute budget.
 - **Lot-plan graphic:** north-up plan over orthoimagery with lot numbers and acreage.
 
+### Phase 5 — Lakeshore flyover (planned; owner direction, 25 Oct 2026)
+
+A flyover of the whole Lake Ralph Hall shoreline, built mainly from lidar.
+
+**Owner rules for this phase:**
+- **No photos:** the owner will not provide drone or other photos. The lake is modelled
+  from public data, mainly StratMap 1 m lidar, with NAIP for ground cover.
+- **Same look as the property scene:** the flooded-timber motif (dying rust and bare grey,
+  Bois d'Arc reference); lake life such as the motorboat moves only while in view; no
+  overlays; the artist's-conception caption is required; no caution captions (RISK REVIEW).
+- **Inland detail is low priority:**
+  - all major roads are mapped;
+  - downtown Ladonia may be a generic outline;
+  - houses are generic and read from a distance.
+
+**Sources and methods (all public, reusing the property pipeline):**
+- **Terrain and lake:** lidar surfaces along a shoreline corridor; lake surface at the 551 ft
+  pool.
+- **Flooded timber:** lidar canopy and tree heights below the pool line, with the property
+  scene's timber look and density rules.
+- **Shore woods and fields:** lidar tree detection, NAIP ground cover. Distant trees use
+  cheaper stand-ins.
+- **Roads:** public centrelines (TxDOT roadway inventory or OpenStreetMap) draped on the
+  terrain, built the simplified CR 3635 / CR 3640 way.
+- **Buildings:** footprints from lidar building classification or public footprint data,
+  with generic house models sized to each footprint. Downtown Ladonia gets a generic block
+  massing. `../Ladonia` may hold town data, used read-only.
+
+**Compute plan:**
+1. Define the corridor (shoreline plus an inland band).
+2. Download and process lidar and imagery tiles on parallel RunPod CPU pods.
+3. Build the scene in sections on a large-memory pod, with an owner review of stills per
+   section.
+4. Render on GPU pods with the multi-pod work queue (Phase 3a cloud notes).
+
+Expected compute is tens of dollars; most of the time goes to design iterations.
+
+**Rough render scale:** 5 minutes is about 9,000 4K frames, about 80-90 L40S GPU-hours,
+roughly $90-100 whatever the GPU count.
+
 ## 6. Compute Notes
 
 The machine is an Apple M4 with 10 GPU cores and 24 GB unified memory, using Cycles on
