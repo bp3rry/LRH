@@ -7,6 +7,12 @@ The script exits non-zero if any check fails, after saving the .blend for inspec
 
 Usage:
   /Applications/Blender.app/Contents/MacOS/Blender -b --python scripts/blender/build_baseline.py
+  ... build_baseline.py -- --scene permit     # -> out/<date>/lrh_permit.blend
+
+--scene permit (owner, 31 Oct 2026): the property as it stands, with no structures - no
+driveways, cabins, docks, beaches, works or planting, and nothing cleared for them - plus
+the two 6 ft permit paths to the proposed dock sites (lotplan.permit_layout) and the open
+ground as freshly baled hay fields (hay.py).
 """
 
 import json
@@ -27,6 +33,7 @@ import beach  # noqa: E402
 import cabins  # noqa: E402
 import frontage  # noqa: E402
 import ground_detail  # noqa: E402
+import hay  # noqa: E402
 import planting3d  # noqa: E402
 import site_works  # noqa: E402
 import sky  # noqa: E402
@@ -265,6 +272,36 @@ def imagery_ground_material(name, product, image_path, cleared_mask=None):
         links.new(factor(noise(0.09, 3.0), -0.35, 0.3), dry.inputs["Factor"])
         links.new(colour, dry.inputs["A"])
         colour = dry.outputs["Result"]
+        # Owner, 31 Oct 2026: hay fields just cut and baled (hay.py) - pale stubble in
+        # 12 ft swath stripes, the mower's direction alternating each pass. The terrain's
+        # `hay_field` weight marks the fields; render.py sets LRH_Hay.
+        hay_on = nodes.new("ShaderNodeValue")
+        hay_on.name = "LRH_Hay"
+        hay_on.outputs[0].default_value = 0.0
+        hay_field = nodes.new("ShaderNodeAttribute")
+        hay_field.attribute_name = "hay_field"
+        hay_weight = nodes.new("ShaderNodeMath")
+        hay_weight.operation = "MULTIPLY"
+        links.new(hay_on.outputs[0], hay_weight.inputs[0])
+        links.new(hay_field.outputs["Fac"], hay_weight.inputs[1])
+        swaths = nodes.new("ShaderNodeTexWave")
+        swaths.bands_direction = "X"             # stripes run north-south
+        swaths.inputs["Scale"].default_value = 2 * math.pi / (10.0 * 7.3)
+        swaths.inputs["Distortion"].default_value = 2.5   # passes are not ruler-straight
+        swaths.inputs["Detail Scale"].default_value = 0.15
+        links.new(coord.outputs["Object"], swaths.inputs["Vector"])
+        stubble = nodes.new("ShaderNodeValToRGB")   # warm straw, a faint stripe only
+        stubble.color_ramp.elements[0].position = 0.2
+        stubble.color_ramp.elements[0].color = (0.18, 0.15, 0.065, 1)
+        stubble.color_ramp.elements[1].position = 0.8
+        stubble.color_ramp.elements[1].color = (0.23, 0.19, 0.08, 1)
+        links.new(swaths.outputs["Fac"], stubble.inputs["Fac"])
+        cut = nodes.new("ShaderNodeMix")
+        cut.data_type = "RGBA"
+        links.new(hay_weight.outputs[0], cut.inputs["Factor"])
+        links.new(colour, cut.inputs["A"])
+        links.new(multiply(stubble.outputs["Color"], factor(noise(1.6), 0.85, 1.12)), cut.inputs["B"])
+        colour = cut.outputs["Result"]
         # Where grass tufts stand (ground_detail.py), the ground between blades is the
         # shaded base of the sward, not the bright imagery colour.
         sward = nodes.new("ShaderNodeAttribute")
@@ -824,37 +861,8 @@ def preservation_zone(context, grid, pooled, coll):
 
 # --------------------------------------------------------------------------- cameras
 
-def look_at(obj, target):
-    direction = Vector(target) - obj.location
-    obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
-
-
 def build_cameras(shots, coll):
-    made = []
-    for name, shot in shots.items():
-        spec = shot["camera"]
-        cam_data = bpy.data.cameras.new(f"CAM_{name}")
-        cam_data.clip_start = spec.get("clip_start", 1.0)
-        cam_data.clip_end = spec.get("clip_end", 60000.0)  # default 1000 m clips the scene
-        cam_data.sensor_width = spec.get("sensor_width_mm", 36.0)
-        cam = bpy.data.objects.new(f"CAM_{name}", cam_data)
-        coll.objects.link(cam)
-        if spec.get("type") == "ortho":
-            cam_data.type = "ORTHO"
-            cam_data.ortho_scale = spec["ortho_scale_m"]
-            cx, cy = spec["center"]
-            cam.location = (cx, cy, 2000.0)
-            cam.rotation_euler = (0.0, 0.0, math.radians(spec.get("rotation_deg", 0.0)))
-        else:
-            cam_data.lens = spec["lens_mm"]
-            cam.location = spec["position"]
-            look_at(cam, spec["target"])
-            if "roll_deg" in spec:
-                cam.rotation_euler.rotate_axis("Z", math.radians(spec["roll_deg"]))
-        if "shift" in spec:
-            cam_data.shift_x, cam_data.shift_y = spec["shift"]
-        made.append(cam)
-    return made
+    return [lrh.camera_from_spec(name, shot["camera"], coll) for name, shot in shots.items()]
 
 
 # --------------------------------------------------------------------------- main
@@ -873,7 +881,140 @@ def default_world(scene):
     scene.collection.objects.link(sun)
 
 
+def build_lot_plan(colls, context, grid, sampler, pooled, road_lines, zone, timber_zone,
+                   parcels, cr3635, cr3640_line, terrain, path, cover, out):
+    """The baseline scene's lot plan, cabins, works and planting (all switchable per shot)."""
+    # Phase 2b lot plan: redlines, driveways, docks and paths (switchable per shot).
+    for name in ("Redline", "Driveways", "Shoreline", "Docks"):
+        colls[name] = collection(name)
+    lotplan.build_redline(context, sampler, colls["Redline"])
+    drives = lotplan.driveway_lines(context, road_lines[:-1])
+    drive_area, drive_lines = lotplan.build_driveways(drives, sampler, colls["Driveways"], context)
+    # Owner, 15 Oct 2026: a mown shoreline path at 551 ft and, per lot, an access path and a
+    # cleared circle at a possible dock site. Dock positions are undecided, so the paired
+    # dock layout stays an optional layer that clears no trees.
+    shore_path, shore_access = lotplan.shoreline_layout(context, pooled)
+    shore_area, shore_open = lotplan.build_shoreline(shore_path, shore_access, sampler,
+                                                     colls["Shoreline"])
+    docks = lotplan.dock_layout(context, pooled, grid, sampler, record)
+    boat_clear, boat_lanes = lotplan.boat_channels(docks, pooled, timber_zone)
+    record("boat_channels", len(boat_lanes) > 0, docks=len(docks), lanes=len(boat_lanes),
+           lane_lengths_m=[round(l.length) for l in boat_lanes], lane_width_ft=40,
+           basis="UTRWD one-time clearing event (owner, 21 Oct 2026)")
+    dock_area, dock_paths = lotplan.build_docks(docks, sampler, colls["Docks"])
+    # Owner, 20 Oct 2026: sand beaches at the shoreline circles; dock riprap and boats.
+    colls["Beach"] = collection("Beach")
+    beach.build(colls["Beach"], colls["Docks"], shore_access, docks, pooled, sampler, record)
+    # Phase 2d: trees on each lot's pad, patio and drive are set aside per lot, so a shot
+    # that shows that lot's cabin (cabins.py) can remove them.
+    sites = cabins.build_sites()
+    set_aside = {label: cabins.clearing(site, label) for label, site in sites.items()}
+    works_clear = site_works.clearing()            # the pond and its dam (drainage plan)
+    if works_clear is not None:
+        set_aside["Site Works"] = works_clear
+    vegetation.scatter(colls["Vegetation"], grid, sampler, road_lines, zone, timber_zone, record,
+                       clear=unary_union([drive_area, shore_area, dock_area, boat_clear]),
+                       open_sky=(shapely.GeometryCollection([shore_open, drive_lines]),
+                                 lotplan.MOWN_CORRIDOR_M / 2), scrub_zone=parcels,
+                       build_sites=set_aside, boat_clear=boat_clear)
+    colls["Cabins"] = collection("Cabins")
+    cabins.build(colls["Cabins"], sampler, ribbon, HeightSampler, terrain, record)
+    # CR 3635 frontage: the existing barbed-wire fence, a gate per drive, culverts, aprons.
+    access_line = [shapely.geometry.shape(f["geometry"]) for f in json.loads(
+        (lrh.ROOT / "out/derived/build_sites.geojson").read_text())["features"]
+        if f["properties"]["kind"] == "access_road"]
+    frontage.build(colls["Roads"], {c.name.removeprefix("Cabin_").replace("_", " "): c
+                                    for c in colls["Cabins"].children},
+                   parcels, {"CR3635": cr3635, "CR3640": cr3640_line},
+                   {k: v["drive_front"][1] for k, v in sites.items() if "drive_front" in v},
+                   sampler, record, gate_lines=access_line)
+    # Phase 3a R2: grass tufts along the low flight path (switchable: Ground_Detail).
+    colls["Ground_Detail"] = collection("Ground_Detail")
+    no_grass = [LineString(l).buffer(7.0) for l in road_lines]
+    no_grass += [shore_path.buffer(lotplan.PATH_WIDTH_M / 2 + 1.0)]
+    no_grass += [LineString(a["path"]).buffer(lotplan.PATH_WIDTH_M / 2 + 1.0) for a in shore_access.values()]
+    # Each cabin lot's lawn apron, carport, drive and walk get their own scatter, hidden
+    # only when that lot's cabin is shown.
+    aprons = {}
+    for label, site in sites.items():
+        _, pad = site["pad"]
+        parts = [cabins.graded_area(pad, site["pad"][0].get("terraces")).buffer(cabins.LAWN),
+                 box(*cabins.grading.layout(pad.bounds)["carport"]).buffer(1.0)]
+        if "drive_front" in site:
+            parts.append(site["drive_front"][1].buffer(3.0))
+        walk = cabins.walk_line(label, pad, site["pad"][0].get("terraces"), site["pad"][0].get("house"))
+        if walk is not None:
+            parts.append(walk.buffer(1.5))
+        if cabins.turn_area(site) is not None:
+            parts.append(cabins.turn_area(site).buffer(1.0))
+        aprons[label] = unary_union(parts)
+    ground_detail.build(colls["Ground_Detail"], terrain, path, unary_union(no_grass),
+                        lambda x, y: cover.lookup(x, y)[0] == vegetation.WOODS, record,
+                        aprons=aprons)
+    # Drainage works (pond, creek, swales) and the planting plan, both switchable.
+    colls["Site_Works"] = collection("Site_Works")
+    site_works.build(colls["Site_Works"], terrain, record)
+    colls["Planting"] = collection("Planting")
+    planting3d.build(colls["Planting"], sampler, record)
+    (out / "lot_sites.json").write_text(json.dumps(
+        {label: {**site, "shore_circle": shore_access[label]["circle"]}
+         for label, site in lotplan.house_sites(context).items()}, indent=1) + "\n")
+
+
+def build_permit(colls, context, grid, sampler, pooled, road_lines, zone, timber_zone,
+                 parcels, cr3635, cr3640_line, terrain, path, cover, out):
+    """Owner, 31 Oct 2026: the property as it stands with no structures, the two 6 ft
+    permit paths to the proposed dock sites, and the open ground baled for hay."""
+    colls["Redline"] = collection("Redline")
+    lotplan.build_redline(context, sampler, colls["Redline"])
+    colls["Permit_Paths"] = collection("Permit_Paths")
+    paths = lotplan.permit_layout(context, pooled, grid, sampler, record)
+    corridor, removed = lotplan.build_permit_paths(paths, sampler, colls["Permit_Paths"])
+    record("permit_path_trees", True, lidar_trees_removed={k: len(v) for k, v in removed.items()},
+           trunk_margin_m=lotplan.PERMIT_TRUNK_MARGIN_M)
+    # Only the permit paths are cleared: woods, creek preservation zone and flooded timber
+    # otherwise stay as they stand (scrub under 4 m in the parcels is cleared, owner).
+    vegetation.scatter(colls["Vegetation"], grid, sampler, road_lines, zone, timber_zone, record,
+                       clear=corridor, scrub_zone=parcels)
+    frontage.build(colls["Roads"], {}, parcels, {"CR3635": cr3635, "CR3640": cr3640_line}, {},
+                   sampler, record)
+    colls["Hay"] = collection("Hay")
+    field, _ = hay.fields(context, road_lines)
+    bales, yields = hay.build(colls["Hay"], terrain, sampler, field, record)
+    colls["Ground_Detail"] = collection("Ground_Detail")
+    no_grass = [LineString(l).buffer(7.0) for l in road_lines] + [field, corridor]
+    ground_detail.build(colls["Ground_Detail"], terrain, path, unary_union(no_grass),
+                        lambda x, y: cover.lookup(x, y)[0] == vegetation.WOODS, record)
+    (out / "permit_paths.json").write_text(json.dumps({
+        "schema": "lrh.permit-paths/1",
+        "crs_note": "LRH local metres (origin.json); add origin to recover EPSG:6344",
+        "path_width_ft": 6,
+        "paths": [{"parcel": p["name"], "line": [list(map(float, q)) for q in p["path_line"]],
+                   "length_m": round(LineString(p["path_line"]).length, 1),
+                   "dock": {"base": list(map(float, p["base"])), "end": list(map(float, p["end"])),
+                            "length_ft": round(float(p["length"]) / lotplan.FT),
+                            "end_depth_m": round(float(p["end_depth_m"]), 2),
+                            "cove_width_m": round(float(p["cove_width_m"]), 1), "aim": p["aim"]},
+                   "lidar_trees_removed": removed[p["name"]]} for p in paths],
+        "hay": {"field_acres": round(field.area / SQM_PER_ACRE, 2), "yield": yields,
+                "bales_shown": len(bales), "bales_xy": [[round(float(x), 1), round(float(y), 1)]
+                                                         for x, y in bales[:, :2]],
+                "field": mapping(field)},
+        "parcels": mapping(parcels)}, indent=1) + "\n")
+
+
+def parse_scene():
+    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    if not argv:
+        return "baseline"
+    if argv[:1] != ["--scene"] or len(argv) != 2 or argv[1] not in ("baseline", "permit"):
+        lrh.fail("usage: build_baseline.py [-- --scene baseline|permit]")
+    return argv[1]
+
+
 def main():
+    scene_name = parse_scene()
+    permit = scene_name == "permit"
     out = lrh.out_dir()
     shots = yaml.safe_load((lrh.ROOT / "shots.yaml").read_text())["shots"]
     clear_scene()
@@ -944,98 +1085,30 @@ def main():
                                                         "basis": "owner-provided, derived"},
                       "geometry": mapping(zone)}]}))
     colls["Masks"].hide_render = True
-    # Phase 2b lot plan: redlines, driveways, docks and paths (switchable per shot).
-    for name in ("Redline", "Driveways", "Shoreline", "Docks"):
-        colls[name] = collection(name)
-    lotplan.build_redline(context, sampler, colls["Redline"])
-    drives = lotplan.driveway_lines(context, road_lines[:-1])
-    drive_area, drive_lines = lotplan.build_driveways(drives, sampler, colls["Driveways"], context)
-    # Owner, 15 Oct 2026: a mown shoreline path at 551 ft and, per lot, an access path and a
-    # cleared circle at a possible dock site. Dock positions are undecided, so the paired
-    # dock layout stays an optional layer that clears no trees.
-    shore_path, shore_access = lotplan.shoreline_layout(context, pooled)
-    shore_area, shore_open = lotplan.build_shoreline(shore_path, shore_access, sampler,
-                                                     colls["Shoreline"])
-    docks = lotplan.dock_layout(context, pooled, grid, sampler, record)
-    boat_clear, boat_lanes = lotplan.boat_channels(docks, pooled, timber_zone)
-    record("boat_channels", len(boat_lanes) > 0, docks=len(docks), lanes=len(boat_lanes),
-           lane_lengths_m=[round(l.length) for l in boat_lanes], lane_width_ft=40,
-           basis="UTRWD one-time clearing event (owner, 21 Oct 2026)")
-    dock_area, dock_paths = lotplan.build_docks(docks, sampler, colls["Docks"])
-    # Owner, 20 Oct 2026: sand beaches at the shoreline circles; dock riprap and boats.
-    colls["Beach"] = collection("Beach")
-    beach.build(colls["Beach"], colls["Docks"], shore_access, docks, pooled, sampler, record)
     parcels = unary_union([Polygon(np.array(b["lines_local_m"][0])[:, :2])
                            for b in context["boundaries"] if b["kind"] == "owner_parcel_boundary"])
-    # Phase 2d: trees on each lot's pad, patio and drive are set aside per lot, so a shot
-    # that shows that lot's cabin (cabins.py) can remove them.
-    sites = cabins.build_sites()
-    set_aside = {label: cabins.clearing(site, label) for label, site in sites.items()}
-    works_clear = site_works.clearing()            # the pond and its dam (drainage plan)
-    if works_clear is not None:
-        set_aside["Site Works"] = works_clear
-    vegetation.scatter(colls["Vegetation"], grid, sampler, road_lines, zone, timber_zone, record,
-                       clear=unary_union([drive_area, shore_area, dock_area, boat_clear]),
-                       open_sky=(shapely.GeometryCollection([shore_open, drive_lines]),
-                                 lotplan.MOWN_CORRIDOR_M / 2), scrub_zone=parcels,
-                       build_sites=set_aside, boat_clear=boat_clear)
-    colls["Cabins"] = collection("Cabins")
-    cabins.build(colls["Cabins"], sampler, ribbon, HeightSampler, terrain, record)
-    # CR 3635 frontage: the existing barbed-wire fence, a gate per drive, culverts, aprons.
     cr3635 = LineString(np.array(json.loads((lrh.INPUTS / "geometry/txdot-fannin-cr-3635-epsg6344.geojson")
                                             .read_text())["features"][0]["geometry"]["coordinates"])[:, :2]
                         - [lrh.ORIGIN_E, lrh.ORIGIN_N])
     cr3640_line = LineString(np.array(json.loads((lrh.INPUTS / "geometry/cr3640-composite-context-route-epsg6344.geojson")
                                                  .read_text())["features"][0]["geometry"]["coordinates"])[:, :2]
                              - [lrh.ORIGIN_E, lrh.ORIGIN_N])
-    access_line = [shapely.geometry.shape(f["geometry"]) for f in json.loads(
-        (lrh.ROOT / "out/derived/build_sites.geojson").read_text())["features"]
-        if f["properties"]["kind"] == "access_road"]
-    frontage.build(colls["Roads"], {c.name.removeprefix("Cabin_").replace("_", " "): c
-                                    for c in colls["Cabins"].children},
-                   parcels, {"CR3635": cr3635, "CR3640": cr3640_line},
-                   {k: v["drive_front"][1] for k, v in sites.items() if "drive_front" in v},
-                   sampler, record, gate_lines=access_line)
-    # Phase 3a R2: grass tufts along the low flight path (switchable: Ground_Detail).
-    colls["Ground_Detail"] = collection("Ground_Detail")
     flight = lrh.ROOT / "out/derived/flight_low.json"
     path = LineString([p[0][:2] for p in json.loads(flight.read_text())["poses"][::15]]) \
         if flight.is_file() else None
-    no_grass = [LineString(l).buffer(7.0) for l in road_lines]
-    no_grass += [shore_path.buffer(lotplan.PATH_WIDTH_M / 2 + 1.0)]
-    no_grass += [LineString(a["path"]).buffer(lotplan.PATH_WIDTH_M / 2 + 1.0) for a in shore_access.values()]
-    # Each cabin lot's lawn apron, carport, drive and walk get their own scatter, hidden
-    # only when that lot's cabin is shown.
-    aprons = {}
-    for label, site in sites.items():
-        _, pad = site["pad"]
-        parts = [cabins.graded_area(pad, site["pad"][0].get("terraces")).buffer(cabins.LAWN),
-                 box(*cabins.grading.layout(pad.bounds)["carport"]).buffer(1.0)]
-        if "drive_front" in site:
-            parts.append(site["drive_front"][1].buffer(3.0))
-        walk = cabins.walk_line(label, pad, site["pad"][0].get("terraces"), site["pad"][0].get("house"))
-        if walk is not None:
-            parts.append(walk.buffer(1.5))
-        if cabins.turn_area(site) is not None:
-            parts.append(cabins.turn_area(site).buffer(1.0))
-        aprons[label] = unary_union(parts)
     cover = vegetation.Raster(derived / "cover_site_drone.tif")
-    ground_detail.build(colls["Ground_Detail"], terrain, path, unary_union(no_grass),
-                        lambda x, y: cover.lookup(x, y)[0] == vegetation.WOODS, record,
-                        aprons=aprons)
-    # Drainage works (pond, creek, swales) and the planting plan, both switchable.
-    colls["Site_Works"] = collection("Site_Works")
-    site_works.build(colls["Site_Works"], terrain, record)
-    colls["Planting"] = collection("Planting")
-    planting3d.build(colls["Planting"], sampler, record)
-    (out / "lot_sites.json").write_text(json.dumps(
-        {label: {**site, "shore_circle": shore_access[label]["circle"]}
-         for label, site in lotplan.house_sites(context).items()}, indent=1) + "\n")
+    if permit:
+        build_permit(colls, context, grid, sampler, pooled, road_lines, zone, timber_zone,
+                     parcels, cr3635, cr3640_line, terrain, path, cover, out)
+    else:
+        build_lot_plan(colls, context, grid, sampler, pooled, road_lines, zone, timber_zone,
+                       parcels, cr3635, cr3640_line, terrain, path, cover, out)
     scene_life.build(record)
     build_cameras(shots, colls["Cameras"])
     default_world(scene)
 
-    blend = out / "lrh_baseline.blend"
+    scene["lrh_scene"] = scene_name
+    blend = out / f"lrh_{scene_name}.blend"
     bpy.ops.wm.save_as_mainfile(filepath=str(blend))
     passed = all(c["passed"] for c in checks.values())
     report = {
@@ -1047,7 +1120,7 @@ def main():
         "passed": passed,
         "checks": checks,
     }
-    (out / "baseline_checks.json").write_text(json.dumps(report, indent=2) + "\n")
+    (out / ("baseline_checks.json" if not permit else "permit_checks.json")).write_text(json.dumps(report, indent=2) + "\n")
     print(f"BASELINE {'PASSED' if passed else 'FAILED'}: {blend}")
     if not passed:
         sys.exit(1)

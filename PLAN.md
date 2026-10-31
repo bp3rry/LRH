@@ -707,6 +707,97 @@ matter.
 **Still open:** whether the access road and utility corridor appear in
 marketing images or stay planning-only.
 
+### Phase 2e — Dock-path permit views and hay fields (in progress; owner direction, 31 Oct 2026)
+
+**Owner field update (reported 31 Oct 2026).** The owner's lot numbers run from the
+south, so the owner's Lots 1-2 (and 3) are the model's Lots 10-9 (and 8). Read that way:
+- **Corner at CR 3635 x relocated CR 3640** (model Lot 10, the survey's point of
+  beginning fence line):
+  - many invasive honey locusts were removed;
+  - about 12-15 ft of fence line was cleared starting at the new CR 3640, so a truck can
+    drive onto the corner lot again (the access had been lost since the new road and its
+    roadside drainage ditch were built).
+- **Drainage line to the main creek** (model Lot 10): the tree line along it was cleared
+  and thinned, and the pond site is coming into view.
+- **Existing entry:** widened for a trailer.
+- **Brush and trash:** trash cleaned up; one brush pile burned on the owner's Lot 2 or 3
+  (model Lot 9 or 8).
+- **UTRWD land below the model Lot 10 tree line:** a clearing of about 1/3 acre.
+- **Permits:** clearing any path to a dock location needs a permit design submitted to
+  UTRWD.
+
+The model does not show these field changes yet: their locations are not mapped (see
+§9). The brush piles were already shown burned and levelled (20 Oct 2026).
+
+**Permit scene.** A separate build, `build_baseline.py -- --scene permit`, writes
+`out/<date>/lrh_permit.blend`. It shows the property as it stands:
+- **No structures:** no driveways, cabins, docks, beaches, pond works or planting, and no
+  trees cleared for any of them. The woods, the creek preservation zone and the flooded
+  timber stand as measured; no boat lanes are cut.
+- **Two 6 ft walking paths** to proposed dock sites, one near each parcel's north corner
+  (`lotplan.permit_layout`). Each is a straight path from its parcel to the 551 ft
+  shoreline, dry until the shore and outside the parcels.
+  - **North parcel:** starts at the protrusion, the parcel's westernmost point
+    (-126.5, 201.8), not at the corner north of old CR 3640 (owner).
+  - **South parcel:** starts at its north-west corner (-81.5, -20.7).
+  - **Dock sites:** each site meets the draft LSMP rules (120 ft maximum, at most 1/3 of
+    the cove, at least 1 m deep at the end, 300 ft between docks). The best site is the
+    deepest dock end less 0.01 m per metre of path. The docks themselves are not shown.
+  - **Trees:** only trees whose trunks stand in the path or within 0.6 m of its edge come
+    out, each listed in `permit_paths.json`. Crowns may close over the path.
+- **Hay fields** (`hay.py`): the open ground is cut and baled. The ground is pale
+  stubble in 12 ft swath stripes, with 5 x 6 ft round bales left along north-south
+  windrows.
+
+**Result (31 Oct 2026 build):**
+
+| Parcel | Path start | Path | Dock site | Dock | Depth at end (full pool) | Trees removed |
+| --- | --- | --- | --- | --- | --- | --- |
+| North (116505) | protrusion | 47 m (155 ft), due west | (-170.8, 218.2) | 120 ft, aimed west | 2.2 m | 1 |
+| South (135089) | north-west corner | 65 m (215 ft), north-west | (-136.8, 14.2) | 120 ft, aimed 320° | 2.5 m | 3 |
+
+The two dock sites are 546 ft apart (`permit_paths_lsmp` in `permit_checks.json`). Both
+paths cross mostly open grass on UTRWD land; the South site is next to the earlier
+Lots 5-6 dock site.
+
+**Hay estimate (per cutting).**
+- **Hayable ground: 13.8 ac** of the 19.9 ac. That is the open ground inside the parcels
+  (pasture or cleared in the drone cover mask), less:
+  - the standing lidar trees, with 1.5 m beyond each crown;
+  - roads;
+  - a 3 m strip inside the fence;
+  - slivers under 0.25 ac.
+- **By lot:** Lots 3-9 hold 1.5-1.9 ac each; Lots 1, 2 and 10 hold 0.5, 1.0 and 0.8 ac.
+- **Yield cases:**
+
+| Case | Yield | Tons | 5 x 6 ft round bales (~1,000 lb) |
+| --- | --- | --- | --- |
+| Low: late or dry cutting | 1,500 lb/ac | 10.3 | 21 |
+| Mid: unfertilised pasture (shown) | 2,500 lb/ac | 17.2 | 34 |
+| High: fertilised improved bermudagrass | 4,000 lb/ac | 27.6 | 55 |
+
+- **Per year:** two cuttings of unfertilised pasture give about 70 bales; three to four
+  fertilised cuttings give 150-200.
+- **Not counted:**
+  - the owner's new 1/3 ac clearing, which is on UTRWD land;
+  - the recent thinning, until it is mapped.
+
+**Review frames (draft, 1080p):** in `out/2026-10-31/`:
+- `permit_path_plan.png`: the north-up plan sheet, made by `scripts/plot_permit_paths.py`;
+- `P1_permit_overview`: high oblique;
+- `P2_north_path`: from the north, down the path;
+- `P3_south_path`: from the water at its dock site;
+- `P4_hay_bales`: along the fields in low sun.
+
+All four obliques carry the caption.
+
+**Next:**
+1. Owner review of the path routes and dock sites.
+2. Map the field clearing (GPS points or a marked-up plan) and show it.
+3. A permit drawing set from `permit_paths.json`: plan with dimensions, tree list,
+   path section.
+4. Close-range stubble: short straw tufts in the fields instead of bare stubble shading.
+
 ### Phase 2c — Owner drone capture (planned)
 
 After mowing and dock-corridor clearing, the owner flies a mapping grid, oblique and
@@ -1569,3 +1660,6 @@ interior, rust fringe), and moss is on about an eighth of the dead trees.
 | **LSMP Water Quality Protection Criteria vs Lake Zoning OSSF exception:** would ten ~2 ac lots on septic still qualify for individual Shoreline Use Permits (docks, paths, shoreline clearing)? | Owner, UTRWD, attorney | **Before platting** |
 | Drone capture: Part 107 or a contracted pilot for marketing imagery; UTRWD permission to fly over its land and water (docs/DRONE-CAPTURE-PLAN.md §3) | Owner | Before Phase 2c flights |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |
+| Phase 2e: confirm the owner's lot numbers run from the south (owner Lot 1 = model Lot 10), as read from the 31 Oct field update | Owner | Phase 2e review |
+| Phase 2e: approve the two permit path routes and dock sites (`permit_path_plan.png`) | Owner | Before the UTRWD permit design |
+| Phase 2e: locations of the field clearing (fence-line opening at CR 3640, thinned drainage line, widened entry, 1/3 ac UTRWD clearing): GPS points or a marked-up plan | Owner | To show them in the model |

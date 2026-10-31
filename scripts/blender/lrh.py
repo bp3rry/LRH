@@ -77,6 +77,37 @@ def out_dir(day=None):
     return path
 
 
+def camera_from_spec(name, spec, coll=None):
+    """Create or update CAM_<name> from a shots.yaml camera spec."""
+    import bpy
+    from mathutils import Vector
+    cam = bpy.data.objects.get(f"CAM_{name}")
+    if cam is None:
+        cam = bpy.data.objects.new(f"CAM_{name}", bpy.data.cameras.new(f"CAM_{name}"))
+        (coll or bpy.context.scene.collection).objects.link(cam)
+    cam_data = cam.data
+    cam_data.clip_start = spec.get("clip_start", 1.0)
+    cam_data.clip_end = spec.get("clip_end", 60000.0)  # default 1000 m clips the scene
+    cam_data.sensor_width = spec.get("sensor_width_mm", 36.0)
+    if spec.get("type") == "ortho":
+        cam_data.type = "ORTHO"
+        cam_data.ortho_scale = spec["ortho_scale_m"]
+        cx, cy = spec["center"]
+        cam.location = (cx, cy, 2000.0)
+        cam.rotation_euler = (0.0, 0.0, math.radians(spec.get("rotation_deg", 0.0)))
+    else:
+        cam_data.type = "PERSP"
+        cam_data.lens = spec["lens_mm"]
+        cam.location = spec["position"]
+        direction = Vector(spec["target"]) - cam.location
+        cam.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
+        if "roll_deg" in spec:
+            cam.rotation_euler.rotate_axis("Z", math.radians(spec["roll_deg"]))
+    if "shift" in spec:
+        cam_data.shift_x, cam_data.shift_y = spec["shift"]
+    return cam
+
+
 def load_context():
     return json.loads((INPUTS / "context/site-review-context-regional.json").read_text())
 

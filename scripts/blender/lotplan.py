@@ -687,3 +687,117 @@ def build_docks(docks, sampler, coll):
         paths.append(LineString(line))
     # Paths are also returned so the scatter can keep crowns from closing over them.
     return unary_union(footprints), unary_union(paths)
+
+
+# --------------------------------------------------------------------------- permit paths
+
+# Owner, 31 Oct 2026: clearing any path to a dock needs a UTRWD permit, so the permit
+# scene shows no structures, only one 6 ft walking path per parcel to a proposed dock site.
+PERMIT_PATH_WIDTH_M = 6 * FT
+PERMIT_TRUNK_MARGIN_M = 0.6    # trunks this far beyond the path edge come out too
+PERMIT_MAX_PATH_M = 150.0
+PERMIT_PATH_COST_PER_M = 0.01  # score: dock-end depth (m) less this per metre of path
+
+
+def permit_starts(context):
+    """Where each path leaves its parcel, near the parcel's north corner. North parcel
+    (CAD 116505): its protrusion, the westernmost vertex - not the corner north of old CR
+    3640 (owner). South parcel (CAD 135089): its north-west corner."""
+    parcels = {b["name"]: np.array(b["lines_local_m"][0])[:, :2]
+               for b in context["boundaries"] if b["kind"] == "owner_parcel_boundary"}
+    north, south = parcels["Owner parcel CAD 116505"], parcels["Owner parcel CAD 135089"]
+    return {"North": tuple(north[north[:, 0].argmin()]),
+            "South": tuple(south[(south[:, 1] - south[:, 0]).argmax()])}
+
+
+def deepest_within(pt, arm, grid, sampler, radii=(40, 80, 120, 150)):
+    best, depth = None, -1.0
+    for a in np.linspace(0, 2 * math.pi, 36, endpoint=False):
+        for r in radii:
+            q = (pt[0] + math.cos(a) * r, pt[1] + math.sin(a) * r)
+            if arm.contains(Point(q)):
+                d = water_depth(grid, sampler, *q)
+                if d > depth:
+                    best, depth = q, d
+    return best
+
+
+def permit_layout(context, water, grid, sampler, record):
+    """A straight path from each start to the 551 ft shoreline, outside the parcels and
+    dry until the shore, and a dock site there that meets the draft LSMP rules (dock at
+    most 120 ft and 1/3 of the cove, >= 1 m deep at the end, 300 ft between the two
+    docks). Each dock points straight out or at the deepest water within 150 m; best =
+    deepest end less PERMIT_PATH_COST_PER_M per metre of path."""
+    parcels = unary_union([Polygon(np.array(b["lines_local_m"][0])[:, :2])
+                           for b in context["boundaries"] if b["kind"] == "owner_parcel_boundary"])
+    inner = parcels.buffer(-0.5)
+    arm = max(water.geoms, key=lambda g: g.area) if water.geom_type == "MultiPolygon" else water
+    real_shore = grid.rect.buffer(-4.0)
+    shore = arm.exterior
+    shore_pts = [p for p in (shore.interpolate(d).coords[0] for d in np.arange(0, shore.length, 2.0))
+                 if real_shore.contains(Point(p))]
+    options = {}
+    for name, start in permit_starts(context).items():
+        found = []
+        for sx, sy in shore_pts:
+            line = LineString([start, (sx, sy)])
+            if line.length > PERMIT_MAX_PATH_M or line.intersection(inner).length > 0.5:
+                continue
+            if any(arm.contains(line.interpolate(d)) for d in np.arange(0.0, line.length - 2.0, 1.0)):
+                continue
+            for prefer in (None, deepest_within((sx, sy), arm, grid, sampler)):
+                c = dock_candidate((sx, sy), arm, grid, sampler, prefer=prefer)
+                if c is None or c["end_depth_m"] < MIN_END_DEPTH_M or \
+                        c["cove_width_m"] < MIN_COVE_WIDTH_M:
+                    continue
+                c.update(name=name, path_from=start, path_line=[start, (sx, sy)],
+                         aim="deepest" if prefer else "square to shore",
+                         score=float(c["end_depth_m"]) - PERMIT_PATH_COST_PER_M * line.length)
+                found.append(c)
+        if not found:
+            lrh.fail(f"no permit path and dock site found for the {name} parcel")
+        options[name] = sorted(found, key=lambda c: -c["score"])[:60]
+    north, south = options["North"], options["South"]
+    best = max(((a, b) for a in north for b in south
+                if LineString([a["base"], a["end"]]).buffer(5.0).distance(
+                    LineString([b["base"], b["end"]]).buffer(5.0)) >= DOCK_SEPARATION_M),
+               key=lambda ab: ab[0]["score"] + ab[1]["score"], default=None)
+    if best is None:
+        lrh.fail("no pair of permit dock sites 300 ft apart")
+    spacing = LineString([best[0]["base"], best[0]["end"]]).buffer(5.0).distance(
+        LineString([best[1]["base"], best[1]["end"]]).buffer(5.0))
+    rows = []
+    for c in best:
+        az = (90.0 - math.degrees(math.atan2(c["dir"][1], c["dir"][0]))) % 360.0
+        rows.append({"parcel": c["name"], "path_start": [round(float(v), 1) for v in c["path_from"]],
+                     "dock_base": [round(float(v), 1) for v in c["base"]],
+                     "path_length_m": round(LineString(c["path_line"]).length, 1),
+                     "path_length_ft": round(LineString(c["path_line"]).length / FT),
+                     "dock_length_ft": round(float(c["length"]) / FT),
+                     "dock_azimuth_deg": round(az), "dock_aim": c["aim"],
+                     "cove_width_m": round(float(c["cove_width_m"]), 1),
+                     "end_depth_m": round(float(c["end_depth_m"]), 2)})
+    record("permit_paths_lsmp", spacing >= DOCK_SEPARATION_M, paths=rows,
+           dock_spacing_m=round(float(spacing), 1), dock_spacing_ft=round(float(spacing) / FT),
+           path_width_ft=6, rule_source="UTRWD LSMP comment draft 2025-10-16, sections 4.1.1, 6.2, 6.3")
+    return list(best)
+
+
+def build_permit_paths(paths, sampler, coll):
+    """6 ft trail of packed earth and leaf litter along each path. Returns the corridor
+    where trees come out (trunks within the path or PERMIT_TRUNK_MARGIN_M of its edge) and
+    a per-path list of the lidar trees removed, for the permit."""
+    trail = material("Path_Trail_Earth", (0.15, 0.115, 0.075), 0.95)
+    lidar = np.load(lrh.ROOT / "out/derived/lidar_trees.npz")["trees"]
+    corridors, removed = [], {}
+    for p in paths:
+        line = LineString(p["path_line"])
+        strip(f"Permit_Path_{p['name']}", p["path_line"], PERMIT_PATH_WIDTH_M, sampler, 0.06,
+              trail, coll, step=1.0)
+        area = line.buffer(PERMIT_PATH_WIDTH_M / 2 + PERMIT_TRUNK_MARGIN_M)
+        corridors.append(area)
+        hit = shapely.contains_xy(area, lidar[:, 0], lidar[:, 1])
+        removed[p["name"]] = [{"xy": [round(float(t[0]), 1), round(float(t[1]), 1)],
+                               "height_m": round(float(t[3]), 1),
+                               "crown_radius_m": round(float(t[4]), 1)} for t in lidar[hit]]
+    return unary_union(corridors), removed

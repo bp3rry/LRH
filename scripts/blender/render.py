@@ -8,7 +8,8 @@ Marketing frames are refused if they include review overlays, and are captioned
 Usage:
   Blender -b --python scripts/blender/render.py -- --shot check_lake_oblique [--res draft]
   Blender -b --python scripts/blender/render.py -- --shot all --kind check
-Options: --blend PATH (default: newest out/*/lrh_baseline.blend), --samples N.
+Options: --blend PATH (default: newest out/*/lrh_<scene>.blend, where a shot's `scene` is
+baseline or permit), --scene (filter for --shot all; default baseline), --samples N.
 """
 
 import argparse
@@ -36,6 +37,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--shot", required=True, help="shot name, or 'all'")
     parser.add_argument("--kind", choices=["check", "marketing"], help="filter for --shot all")
+    parser.add_argument("--scene", choices=["baseline", "permit"], default="baseline",
+                        help="filter for --shot all")
     parser.add_argument("--res", choices=["draft", "4k", "final"], default="draft")
     parser.add_argument("--blend", type=Path)
     parser.add_argument("--samples", type=int)
@@ -48,10 +51,11 @@ def parse_args():
     return parser.parse_args(argv)
 
 
-def newest_blend():
-    builds = sorted(lrh.OUT_ROOT.glob("*/lrh_baseline.blend"))
+def newest_blend(scene="baseline"):
+    builds = sorted(lrh.OUT_ROOT.glob(f"*/lrh_{scene}.blend"))
     if not builds:
-        lrh.fail("no out/*/lrh_baseline.blend; run build_baseline.py first")
+        lrh.fail(f"no out/*/lrh_{scene}.blend; run build_baseline.py"
+                 + (f" -- --scene {scene}" if scene != "baseline" else "") + " first")
     return builds[-1]
 
 
@@ -324,6 +328,11 @@ def render_shot(name, shot, config, args, out):
         wanted.add("Planting")
     if shot.get("beach", config.get("beach", False)):
         wanted.add("Beach")
+    if shot.get("permit_paths", config.get("permit_paths", False)):
+        wanted.add("Permit_Paths")
+    hay = bool(shot.get("hay", config.get("hay", False)))
+    if hay:
+        wanted.add("Hay")
     clouds = shot.get("clouds", kind == "marketing")    # R4 sky clouds, marketing by default
     # Phase 2d cabins (cabins.py): `cabins: [Lot 5]` or `cabins: all`.
     cabin_lots, pad_lots = layout_lots(shot, config)
@@ -332,6 +341,11 @@ def render_shot(name, shot, config, args, out):
     cleared = args.cleared_ground or shot.get("cleared_ground", config.get("cleared_ground", "soil"))
     node = bpy.data.materials["Ground_Site"].node_tree.nodes["LRH_Cleared_Grassed"]
     node.outputs[0].default_value = 1.0 if cleared == "grassed" else 0.0
+    hay_node = bpy.data.materials["Ground_Site"].node_tree.nodes.get("LRH_Hay")
+    if hay_node is not None:
+        hay_node.outputs[0].default_value = 1.0 if hay else 0.0
+    elif hay:
+        lrh.fail(f"{name}: hay needs a .blend built with the hay fields (--scene permit)")
     if kind == "marketing" and wanted & MARKETING_FORBIDDEN:
         lrh.fail(f"{name}: marketing shots may not show {sorted(wanted & MARKETING_FORBIDDEN)}")
     res = config[args.res]
@@ -345,9 +359,9 @@ def render_shot(name, shot, config, args, out):
         scene.cycles.tile_size = res["tile_size"]
     scene.view_settings.exposure = shot.get("exposure", config.get("exposure", 0.0))
 
-    camera = bpy.data.objects.get(f"CAM_{name}")
-    if camera is None:
-        lrh.fail(f"{name}: no camera CAM_{name} in the .blend; rebuild the baseline")
+    # From shots.yaml, so a camera edit needs no rebuild.
+    cams = bpy.data.collections.get("Cameras")
+    camera = lrh.camera_from_spec(name, shot["camera"], cams)
     scene.camera = camera
     place_life(shot)
     # Flat lot numbers read upright from this camera: text +Y along the view heading.
@@ -422,6 +436,7 @@ def render_shot(name, shot, config, args, out):
         "spanish_moss": moss,
         "cleared_ground": cleared,
         "cabins": cabin_lots,
+        "hay": hay,
         "luminance": stats,
     }
     (out / f"{stem}.json").write_text(json.dumps(sidecar, indent=2) + "\n")
@@ -430,15 +445,19 @@ def render_shot(name, shot, config, args, out):
 
 def main():
     args = parse_args()
-    args.blend = args.blend or newest_blend()
     config_all = yaml.safe_load((lrh.ROOT / "shots.yaml").read_text())
     shots, config = config_all["shots"], config_all["render"]
     if args.shot == "all":
-        names = [n for n, s in shots.items() if not args.kind or s["kind"] == args.kind]
+        names = [n for n, s in shots.items() if (not args.kind or s["kind"] == args.kind)
+                 and s.get("scene", "baseline") == args.scene]
     elif args.shot in shots:
         names = [args.shot]
     else:
         lrh.fail(f"unknown shot {args.shot}; known: {', '.join(shots)}")
+    scenes = {shots[n].get("scene", "baseline") for n in names}
+    if len(scenes) > 1:
+        lrh.fail(f"shots from more than one scene: {sorted(scenes)}")
+    args.blend = args.blend or newest_blend(scenes.pop() if scenes else args.scene)
     bpy.ops.wm.open_mainfile(filepath=str(args.blend))
     configure_device(bpy.context.scene)
     out = lrh.out_dir()

@@ -50,6 +50,10 @@ python3 scripts/fetch_assets.py island_tree_01 jacaranda_tree tree_small_02 shru
 $B -b --python-exit-code 1 --python scripts/blender/gen_trees.py           # -> assets/generated/sapling_trees.blend
 $B -b --python-exit-code 1 --python scripts/blender/build_baseline.py          # -> out/<date>/lrh_baseline.blend
 $B -b --python-exit-code 1 --python scripts/blender/render.py -- --shot all --kind check
+# permit scene (PLAN.md Phase 2e): no structures, two 6 ft dock paths, baled hay fields
+$B -b --python-exit-code 1 --python scripts/blender/build_baseline.py -- --scene permit   # -> out/<date>/lrh_permit.blend
+$B -b --python-exit-code 1 --python scripts/blender/render.py -- --shot all --scene permit
+$BPY scripts/plot_permit_paths.py             # -> out/<date>/permit_path_plan.png
 ```
 
 `build_baseline.py` writes `baseline_checks.json` and exits non-zero if any automated
