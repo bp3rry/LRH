@@ -451,6 +451,20 @@ shots:
     beach: true
     collections: [Terrain, Water, Roads, Vegetation]
 
+  check_south_docks_plan:
+    kind: check
+    description: North-up view of the south parcel (CAD 135089, Lots 6-10) and its shore - lot lines, the docks and paths, beaches and boat lanes - for siting docks with room for more at 300 ft spacing.
+    camera: {type: ortho, center: [-110.0, -105.0], ortho_scale_m: 300.0}
+    haze_visibility_km: 0
+    resolution: [1400, 1400]
+    sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
+    cleared_ground: grassed
+    redline: true
+    shoreline: true
+    docks: true
+    beach: true
+    collections: [Terrain, Water, Roads, Vegetation]
+
   D_dock_channel:
     kind: marketing
     description: Low drone view north along the cleared boat channel past the Lot 5-6 dock, beaches and cabins on the right, flooded timber on the left, golden hour.

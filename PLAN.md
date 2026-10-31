@@ -1287,6 +1287,26 @@ short-lived POB opening):**
   `flyover_low_pairs_4k_v1.mp4`.
 - **Next 4K run:** about 45-50 L40S GPU-hours, ~$50.
 
+**South-parcel dock re-sited (owner, 31 Oct 2026):**
+- **Aim:** the south parcel's dock and path run straight west, keeping its frontage
+  open for more shared docks if the parcel's 2 ac lots are sold separately (pairs of 2 ac
+  lots sharing a dock).
+- **Depth survey:** straight west at the 551 ft pool, only the water in front of Lot 6
+  meets the 3 ft slip rule (4-7 ft).
+  - Lot 7's apparent gap is a ~1 m lidar crack, with raised ground 10-14 m out.
+  - Lot 8 has 2.1-2.6 ft; Lots 9-10 front a flat under 2 ft.
+  - So depth, not spacing, limits extra docks on the south shore.
+- **Layout (`lotplan.SHARED_SOUTH_DOCK`):**
+  - one shared dock straight west of Lot 6 at y = -20 (7.5 ft at the slip, 120 ft long,
+    80 m straight path), for Lots 5-10;
+  - it replaces the angled Lots 5-6 and 7-8 docks;
+  - Lots 1-2 and 3-4 are unchanged;
+  - all docks are at least 355 ft apart (south dock 439 ft); LSMP checks pass;
+  - reclamation trees re-planned around the docks.
+- **Scene:** `out/2026-10-31/lrh_baseline.blend`. Plan check shot:
+  `check_south_docks_plan`.
+- **Video:** the 25 Oct preview shows the old docks; the next render uses the new scene.
+
 **Planned for the next cloud run (owner, 25 Oct 2026): multi-pod rendering for bigger jobs**
 (for example a whole-lakeshore flyover):
 - **Shared work list:** each Blender process repeatedly claims the next unrendered frame on

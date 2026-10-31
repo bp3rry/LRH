@@ -38,6 +38,12 @@ MIN_END_DEPTH_M = 1.0  # at full pool; shallow-draft boats
 MIN_COVE_WIDTH_M = 60.0  # so the 1/3-width rule still allows a 20 m dock
 PAIRS = [("Lot 1", "Lot 2"), ("Lot 3", "Lot 4"), ("Lot 5", "Lot 6"), ("Lot 7", "Lot 8"),
          ("Lot 9", "Lot 10")]
+# Owner, 31 Oct 2026: the south parcel's lots share one dock straight west of Lot 6, its
+# path straight west through the Lot 6 beach. Straight out, that is the only south-shore
+# water meeting the slip-depth rule (4-7 ft); Lot 7 faces raised ground 10-14 m out and
+# Lots 8-10 a flat under 3 ft. It replaces the Lots 5-6 and 7-8 docks, and Lot 5 shares it.
+SHARED_SOUTH_DOCK = {"lots": ("Lot 5", "Lot 6", "Lot 7", "Lot 8", "Lot 9", "Lot 10"),
+                     "site_lot": "Lot 6", "y_range": (-46.0, -14.0)}
 
 
 def material(name, rgb, roughness=0.8, emission=0.0):
@@ -432,7 +438,8 @@ def dock_layout(context, water, grid, sampler, record):
 
     # Pairs on the creek arm: candidates on the shoreline between the pair's projected
     # side lines (its north and south extent, projected west), within 120 m of the pair.
-    arm_pairs = PAIRS[1:]
+    shared = set(SHARED_SOUTH_DOCK["lots"])
+    arm_pairs = [p for p in PAIRS[1:] if not shared & set(p)]
     cands, infeasible = [], []
     for pair in arm_pairs:
         poly = unary_union([lots[p] for p in pair])
@@ -457,6 +464,31 @@ def dock_layout(context, water, grid, sampler, record):
                 "deepest_end_m": round(max((float(c["end_depth_m"]) for c in seen), default=0.0), 2)})
             continue
         cands.append(options)
+    # The shared south-parcel dock: straight west from the shoreline in front of Lot 6;
+    # best = deepest slip, then shortest straight path from the lot's west line.
+    site_lot = lots[SHARED_SOUTH_DOCK["site_lot"]]
+    south = []
+    for y in np.arange(*SHARED_SOUTH_DOCK["y_range"], 2.0):
+        across = LineString([(-1e4, y), (1e4, y)])
+        west = across.intersection(site_lot)
+        if west.is_empty:
+            continue
+        wx = west.bounds[0]
+        hit = across.intersection(arm)
+        xs = [g.bounds[2] for g in getattr(hit, "geoms", [hit]) if not g.is_empty and g.bounds[2] < wx]
+        if not xs:
+            continue
+        sx = max(xs)
+        c = dock_candidate((sx, float(y)), arm, grid, sampler, prefer=(sx - 200.0, float(y)))
+        if c and c["end_depth_m"] >= MIN_END_DEPTH_M and c["cove_width_m"] >= MIN_COVE_WIDTH_M:
+            c["pair"] = SHARED_SOUTH_DOCK["lots"]
+            c["path_from"] = (wx, float(y))
+            c["score"] = float(c["end_depth_m"]) - 0.004 * (wx - sx)
+            south.append(c)
+    if not south:
+        lrh.fail("no straight-west site for the shared south-parcel dock in front of "
+                 f"{SHARED_SOUTH_DOCK['site_lot']}")
+    cands.append(sorted(south, key=lambda c: -c["score"]))
     # Lots 1-2 (owner, 14 Oct 2026, second revision): the path may start anywhere east of
     # the middle of Lot 1's north-west-facing edge on its north-facing boundary, leaves
     # square to the boundary and curves (quadratic Bezier) to the shore; the dock aims at
@@ -584,7 +616,9 @@ def dock_layout(context, water, grid, sampler, record):
                                           (not d["cove_width_m"] or
                                            d["length"] <= d["cove_width_m"] / 3 + 0.01))})
     record("docks_lsmp", all(r["meets_300ft"] and r["meets_length"] for r in rows),
-           docks=rows, pairs_without_boat_dock=infeasible, rule_source="UTRWD LSMP comment draft 2025-10-16, sections 4.1.1, 6.2, 6.3",
+           docks=rows, pairs_without_boat_dock=infeasible,
+           shared_south_dock="Lots " + ", ".join(p.split()[-1] for p in SHARED_SOUTH_DOCK["lots"])
+           + f" share the dock straight west of {SHARED_SOUTH_DOCK['site_lot']} (owner, 31 Oct 2026)", rule_source="UTRWD LSMP comment draft 2025-10-16, sections 4.1.1, 6.2, 6.3",
            not_checked="Shoreline Management Zone classification at each site (draft map "
                        "shows the arm's east shore and the north shore as SMZ); occupied-"
                        "residence requirement; UTRWD permit")
