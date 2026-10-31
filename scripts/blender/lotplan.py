@@ -693,8 +693,11 @@ def build_docks(docks, sampler, coll):
 
 # Owner, 31 Oct 2026: clearing any path to a dock needs a UTRWD permit, so the permit
 # scene shows no structures, only one 6 ft walking path per parcel to a proposed dock site.
+# Revised the same day after walking the UTRWD land: no tree may be removed, so each path
+# meanders between the trees; mown, with a light brown decomposed granite surface.
 PERMIT_PATH_WIDTH_M = 6 * FT
-PERMIT_TRUNK_MARGIN_M = 0.6    # trunks this far beyond the path edge come out too
+PERMIT_TRUNK_CLEAR_M = 0.4     # least gap from the path edge to a measured trunk
+PERMIT_MEANDER_M = (1.2, 24.0)  # slight meander: amplitude, wavelength
 PERMIT_MAX_PATH_M = 150.0
 PERMIT_PATH_COST_PER_M = 0.01  # score: dock-end depth (m) less this per metre of path
 
@@ -783,21 +786,140 @@ def permit_layout(context, water, grid, sampler, record):
     return list(best)
 
 
-def build_permit_paths(paths, sampler, coll):
-    """6 ft trail of packed earth and leaf litter along each path. Returns the corridor
-    where trees come out (trunks within the path or PERMIT_TRUNK_MARGIN_M of its edge) and
-    a per-path list of the lidar trees removed, for the permit."""
-    trail = material("Path_Trail_Earth", (0.15, 0.115, 0.075), 0.95)
+def lidar_trunks():
+    """(x, y) of every measured lidar tree standing above pool."""
     lidar = np.load(lrh.ROOT / "out/derived/lidar_trees.npz")["trees"]
-    corridors, removed = [], {}
-    for p in paths:
-        line = LineString(p["path_line"])
+    return lidar[lidar[:, 2] > lrh.POOL_M + 0.3, :2]
+
+
+def meander_path(start, end, trunks, blocked, seed=0):
+    """Path from `start` to `end` that removes no tree: A* on a 0.5 m grid, blocked where
+    the path edge would come within PERMIT_TRUNK_CLEAR_M of a trunk or inside `blocked`
+    (parcels, water) away from the two ends, and dearer near trunks so it takes the
+    gaps; then smoothed and given a slight meander where the clearance allows."""
+    import heapq
+    hard = PERMIT_PATH_WIDTH_M / 2 + PERMIT_TRUNK_CLEAR_M
+    step = 0.5
+    x0, y0 = min(start[0], end[0]) - 30, min(start[1], end[1]) - 30
+    nx = int((max(start[0], end[0]) + 30 - x0) / step) + 1
+    ny = int((max(start[1], end[1]) + 30 - y0) / step) + 1
+    gx, gy = np.meshgrid(x0 + np.arange(nx) * step, y0 + np.arange(ny) * step)
+    near = trunks[(trunks[:, 0] > x0 - 5) & (trunks[:, 0] < x0 + nx * step + 5) &
+                  (trunks[:, 1] > y0 - 5) & (trunks[:, 1] < y0 + ny * step + 5)]
+    dist = np.full(gx.shape, 99.0)
+    for tx, ty in near:
+        dist = np.minimum(dist, np.hypot(gx - tx, gy - ty))
+    ends = (np.hypot(gx - start[0], gy - start[1]) < 2.0) | (np.hypot(gx - end[0], gy - end[1]) < 2.0)
+    free = (dist >= hard) & (ends | ~shapely.contains_xy(blocked, gx, gy))
+    weight = 1.0 + 3.0 * np.exp(-(dist - hard) / 1.5)
+    idx = lambda p: (int(round((p[1] - y0) / step)), int(round((p[0] - x0) / step)))
+    s, g = idx(start), idx(end)
+    free[s] = free[g] = True
+    best = {s: 0.0}
+    came = {}
+    heap = [(0.0, s)]
+    moves = [(dr, dc, math.hypot(dr, dc) * step) for dr in (-1, 0, 1) for dc in (-1, 0, 1) if dr or dc]
+    while heap:
+        _, node = heapq.heappop(heap)
+        if node == g:
+            break
+        r, c = node
+        for dr, dc, ln in moves:
+            nr, nc = r + dr, c + dc
+            if not (0 <= nr < ny and 0 <= nc < nx) or not free[nr, nc]:
+                continue
+            cost = best[node] + ln * weight[nr, nc]
+            if cost < best.get((nr, nc), float("inf")):
+                best[(nr, nc)] = cost
+                came[(nr, nc)] = node
+                h = math.hypot(nr - g[0], nc - g[1]) * step
+                heapq.heappush(heap, (cost + h, (nr, nc)))
+    if g not in came:
+        lrh.fail(f"no path between the trees from {start} to {end}")
+    cells = [g]
+    while cells[-1] != s:
+        cells.append(came[cells[-1]])
+    pts = np.array([(x0 + c * step, y0 + r * step) for r, c in reversed(cells)])
+    pts[0], pts[-1] = start, end
+    trunk_pts = shapely.MultiPoint(near) if len(near) else None
+
+    def ok(line):
+        if trunk_pts is not None and line.distance(trunk_pts) < hard - 0.05:
+            return False
+        inner = LineString(line.coords).difference(Point(start).buffer(2.0)).difference(Point(end).buffer(2.0))
+        return inner.intersection(blocked).length < 0.3
+
+    base = LineString(pts).simplify(0.4)
+    for _ in range(3):                         # Chaikin corner cutting, ends kept
+        c = np.array(base.coords)
+        cut = [p for a, b in zip(c[:-1], c[1:]) for p in (0.75 * a + 0.25 * b, 0.25 * a + 0.75 * b)]
+        cand = LineString([c[0], *cut, c[-1]])
+        if not ok(cand):
+            break
+        base = cand
+    amp, wave = PERMIT_MEANDER_M
+    phase = np.random.default_rng(seed).uniform(0, 2 * math.pi)
+    L = base.length
+    s_vals = np.linspace(0, L, max(3, int(L / 0.5)))
+    on = np.array([base.interpolate(v).coords[0] for v in s_vals])
+    tan = np.gradient(on, axis=0)
+    tan /= np.linalg.norm(tan, axis=1, keepdims=True)
+    nrm = np.column_stack([-tan[:, 1], tan[:, 0]])
+    taper = np.sin(np.pi * s_vals / L) ** 0.5
+    for a in (amp, 0.75 * amp, 0.5 * amp, 0.25 * amp):
+        off = a * taper * np.sin(2 * math.pi * s_vals / wave + phase)
+        cand = LineString(on + nrm * off[:, None])
+        if ok(cand):
+            return cand, a
+    return base, 0.0
+
+
+def build_permit_paths(paths, sampler, coll, blocked):
+    """Each path re-routed between the measured trees (meander_path) with a light brown
+    decomposed granite surface. Returns the corridor kept free of added understory and
+    per-path clearance figures."""
+    import cabins
+    dg = cabins._speckled("Path_DG_Light", (0.27, 0.19, 0.11), (0.44, 0.33, 0.20), 90.0, 0.004)
+    trunks = lidar_trunks()
+    tp = shapely.MultiPoint(trunks)
+    corridors, info = [], {}
+    for i, p in enumerate(paths):
+        line, amp = meander_path(p["path_from"], p["base"], trunks, blocked, seed=i + 1)
+        p["path_line"] = [tuple(map(float, q)) for q in line.coords]
         strip(f"Permit_Path_{p['name']}", p["path_line"], PERMIT_PATH_WIDTH_M, sampler, 0.06,
-              trail, coll, step=1.0)
-        area = line.buffer(PERMIT_PATH_WIDTH_M / 2 + PERMIT_TRUNK_MARGIN_M)
-        corridors.append(area)
-        hit = shapely.contains_xy(area, lidar[:, 0], lidar[:, 1])
-        removed[p["name"]] = [{"xy": [round(float(t[0]), 1), round(float(t[1]), 1)],
-                               "height_m": round(float(t[3]), 1),
-                               "crown_radius_m": round(float(t[4]), 1)} for t in lidar[hit]]
-    return unary_union(corridors), removed
+              dg, coll, step=0.75)
+        corridors.append(line.buffer(PERMIT_PATH_WIDTH_M / 2 + 1.2))
+        straight = math.dist(p["path_from"], p["base"])
+        info[p["name"]] = {"length_m": round(line.length, 1), "length_ft": round(line.length / FT),
+                           "straight_m": round(straight, 1), "meander_amplitude_m": amp,
+                           "edge_to_nearest_trunk_m": round(line.distance(tp) - PERMIT_PATH_WIDTH_M / 2, 2),
+                           "trees_removed": 0}
+    return unary_union(corridors), info
+
+
+OWNER_CLEARING_ACRES = 1 / 3
+
+
+def owner_clearing(parcels, land):
+    """Owner, 31 Oct 2026: about 1/3 ac cleared on UTRWD land at the bottom of the tree
+    line below the model's Lot 10 (the owner's Lot 1), kept mown. Location approximate:
+    centred on the first 45 m of the Lot 10 drainage line (out/derived/drainage.json)
+    below the parcel, widened until it covers 1/3 ac of dry land."""
+    creek = LineString(json.loads((lrh.ROOT / "out/derived/drainage.json").read_text())["creek"])
+    below = creek.difference(parcels.buffer(1.0))
+    parts = [g for g in getattr(below, "geoms", [below]) if g.length > 10]
+    exit_pt = parcels.exterior.intersection(creek)
+    exit_pt = min(getattr(exit_pt, "geoms", [exit_pt]), key=lambda q: q.x)   # the lake-side crossing
+    run = min(parts, key=lambda g: g.distance(exit_pt))
+    if run.coords[0] != min(run.coords, key=lambda q: Point(q).distance(exit_pt)):
+        run = LineString(list(run.coords)[::-1])
+    run = shapely.ops.substring(run, 0.0, min(45.0, run.length))
+    target = OWNER_CLEARING_ACRES * 4046.8564224
+    lo, hi = 2.0, 40.0
+    for _ in range(30):
+        r = (lo + hi) / 2
+        if run.buffer(r).intersection(land).difference(parcels).area < target:
+            lo = r
+        else:
+            hi = r
+    return run.buffer(hi).intersection(land).difference(parcels)

@@ -302,6 +302,19 @@ def imagery_ground_material(name, product, image_path, cleared_mask=None):
         links.new(colour, cut.inputs["A"])
         links.new(multiply(stubble.outputs["Color"], factor(noise(1.6), 0.85, 1.12)), cut.inputs["B"])
         colour = cut.outputs["Result"]
+        # The owner's mown clearing on UTRWD land (permit scene): terrain weight `mown`.
+        mown_w = nodes.new("ShaderNodeAttribute")
+        mown_w.attribute_name = "mown"
+        mown = nodes.new("ShaderNodeMix")
+        mown.data_type = "RGBA"
+        links.new(mown_w.outputs["Fac"], mown.inputs["Factor"])
+        links.new(colour, mown.inputs["A"])
+        mown_ramp = nodes.new("ShaderNodeValToRGB")
+        mown_ramp.color_ramp.elements[0].color = (0.06, 0.10, 0.028, 1)
+        mown_ramp.color_ramp.elements[1].color = (0.12, 0.15, 0.05, 1)
+        links.new(noise(0.3, 4.0), mown_ramp.inputs["Fac"])
+        links.new(mown_ramp.outputs["Color"], mown.inputs["B"])
+        colour = mown.outputs["Result"]
         # Where grass tufts stand (ground_detail.py), the ground between blades is the
         # shaded base of the sward, not the bright imagery colour.
         sward = nodes.new("ShaderNodeAttribute")
@@ -964,38 +977,68 @@ def build_lot_plan(colls, context, grid, sampler, pooled, road_lines, zone, timb
 def build_permit(colls, context, grid, sampler, pooled, road_lines, zone, timber_zone,
                  parcels, cr3635, cr3640_line, terrain, path, cover, out):
     """Owner, 31 Oct 2026: the property as it stands with no structures, the two 6 ft
-    permit paths to the proposed dock sites, and the open ground baled for hay."""
+    permit paths to the proposed dock sites, and the open ground baled for hay. Revised
+    the same day: no tree removed for the paths, which meander between the trees; the
+    UTRWD land thicker than the lidar shows, except the owner's mown clearing."""
     colls["Redline"] = collection("Redline")
     lotplan.build_redline(context, sampler, colls["Redline"])
     colls["Permit_Paths"] = collection("Permit_Paths")
     paths = lotplan.permit_layout(context, pooled, grid, sampler, record)
-    corridor, removed = lotplan.build_permit_paths(paths, sampler, colls["Permit_Paths"])
-    record("permit_path_trees", True, lidar_trees_removed={k: len(v) for k, v in removed.items()},
-           trunk_margin_m=lotplan.PERMIT_TRUNK_MARGIN_M)
-    # Only the permit paths are cleared: woods, creek preservation zone and flooded timber
-    # otherwise stay as they stand (scrub under 4 m in the parcels is cleared, owner).
+    corridor, route = lotplan.build_permit_paths(paths, sampler, colls["Permit_Paths"],
+                                                 unary_union([parcels.buffer(-0.5), pooled]))
+    record("permit_path_routes", all(r["edge_to_nearest_trunk_m"] >= lotplan.PERMIT_TRUNK_CLEAR_M - 0.05
+                                     for r in route.values()),
+           routes=route, trunk_clearance_m=lotplan.PERMIT_TRUNK_CLEAR_M)
+    clearing = lotplan.owner_clearing(parcels, zone)
+    record("owner_clearing", abs(clearing.area / SQM_PER_ACRE - lotplan.OWNER_CLEARING_ACRES) < 0.03,
+           acres=round(clearing.area / SQM_PER_ACRE, 2), centroid=[round(clearing.centroid.x, 1),
+                                                                   round(clearing.centroid.y, 1)],
+           location="approximate (owner to mark)")
+    # Nothing is cleared for the paths; the owner's clearing is open. Woods, creek
+    # preservation zone and flooded timber otherwise stand as measured, with understory
+    # added on the UTRWD land (scrub under 4 m in the parcels is cleared, owner).
     vegetation.scatter(colls["Vegetation"], grid, sampler, road_lines, zone, timber_zone, record,
-                       clear=corridor, scrub_zone=parcels)
+                       clear=clearing, scrub_zone=parcels,
+                       understory=(zone, unary_union([corridor, clearing.buffer(2.0)]), 4.5))
+    co = np.empty(len(terrain.data.vertices) * 3)
+    terrain.data.vertices.foreach_get("co", co)
+    co = co.reshape(-1, 3)
+    inside = shapely.contains_xy(clearing, co[:, 0], co[:, 1])
+    weight = np.zeros(len(co))
+    weight[inside] = np.clip(shapely.distance(clearing.boundary, shapely.points(co[inside, :2])) / 2.0, 0, 1)
+    terrain.data.attributes.new("mown", "FLOAT", "POINT").data.foreach_set("value", weight.astype(np.float32))
     frontage.build(colls["Roads"], {}, parcels, {"CR3635": cr3635, "CR3640": cr3640_line}, {},
                    sampler, record)
     colls["Hay"] = collection("Hay")
     field, _ = hay.fields(context, road_lines)
     bales, yields = hay.build(colls["Hay"], terrain, sampler, field, record)
     colls["Ground_Detail"] = collection("Ground_Detail")
-    no_grass = [LineString(l).buffer(7.0) for l in road_lines] + [field, corridor]
+    no_grass = [LineString(l).buffer(7.0) for l in road_lines] + \
+        [field, unary_union([LineString(p["path_line"]) for p in paths]).buffer(lotplan.PERMIT_PATH_WIDTH_M / 2 + 0.3)]
     ground_detail.build(colls["Ground_Detail"], terrain, path, unary_union(no_grass),
                         lambda x, y: cover.lookup(x, y)[0] == vegetation.WOODS, record)
+
+    def where(xy):
+        (lat, lon), = lrh.lat_lon([xy])
+        return {"local_m": [round(float(xy[0]), 1), round(float(xy[1]), 1)],
+                "lat": round(lat, 6), "lon": round(lon, 6),
+                "utm15n_nad83_2011": [round(float(xy[0]) + lrh.ORIGIN_E, 1),
+                                      round(float(xy[1]) + lrh.ORIGIN_N, 1)]}
     (out / "permit_paths.json").write_text(json.dumps({
-        "schema": "lrh.permit-paths/1",
-        "crs_note": "LRH local metres (origin.json); add origin to recover EPSG:6344",
-        "path_width_ft": 6,
-        "paths": [{"parcel": p["name"], "line": [list(map(float, q)) for q in p["path_line"]],
-                   "length_m": round(LineString(p["path_line"]).length, 1),
-                   "dock": {"base": list(map(float, p["base"])), "end": list(map(float, p["end"])),
+        "schema": "lrh.permit-paths/2",
+        "crs_note": "local_m: LRH local metres (origin.json); lat/lon WGS 84 via GDAL from EPSG:6344",
+        "path_width_ft": 6, "path_surface": "decomposed granite, light brown; mown",
+        "paths": [{"parcel": p["name"], "line": [[round(x, 2), round(y, 2)] for x, y in p["path_line"]],
+                   **route[p["name"]],
+                   "start": where(p["path_from"]),
+                   "dock": {"base": where(p["base"]), "end": where(p["end"]),
                             "length_ft": round(float(p["length"]) / lotplan.FT),
+                            "azimuth_deg": round((90.0 - math.degrees(math.atan2(p["dir"][1], p["dir"][0]))) % 360.0),
                             "end_depth_m": round(float(p["end_depth_m"]), 2),
-                            "cove_width_m": round(float(p["cove_width_m"]), 1), "aim": p["aim"]},
-                   "lidar_trees_removed": removed[p["name"]]} for p in paths],
+                            "cove_width_m": round(float(p["cove_width_m"]), 1), "aim": p["aim"]}}
+                  for p in paths],
+        "owner_clearing": {"acres": round(clearing.area / SQM_PER_ACRE, 2), "centre": where(clearing.centroid.coords[0]),
+                           "location": "approximate (owner to mark)", "area": mapping(clearing)},
         "hay": {"field_acres": round(field.area / SQM_PER_ACRE, 2), "yield": yields,
                 "bales_shown": len(bales), "bales_xy": [[round(float(x), 1), round(float(y), 1)]
                                                          for x, y in bales[:, :2]],

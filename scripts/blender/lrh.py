@@ -77,6 +77,14 @@ def out_dir(day=None):
     return path
 
 
+def lat_lon(points):
+    """[(lat, lon)] in degrees (WGS 84, through GDAL from EPSG:6344) for local (x, y) metres."""
+    text = "".join(f"{x + ORIGIN_E:.3f} {y + ORIGIN_N:.3f}\n" for x, y in points)
+    out = subprocess.run(["gdaltransform", "-s_srs", "EPSG:6344", "-t_srs", "EPSG:4326"],
+                         input=text, capture_output=True, text=True, check=True).stdout
+    return [(float(r.split()[1]), float(r.split()[0])) for r in out.strip().splitlines()]
+
+
 def camera_from_spec(name, spec, coll=None):
     """Create or update CAM_<name> from a shots.yaml camera spec."""
     import bpy

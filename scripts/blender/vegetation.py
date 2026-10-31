@@ -128,6 +128,34 @@ def candidates(rng, extent):
     return out
 
 
+def add_understory(placed, spec, lidar, site_grid, sampler, seed=20261101):
+    """Jittered grid of 3-9 m trees (edge mix) on spec's area; rows appended to `placed`
+    as measured trees (explicit height and crown). Own rng, so the rest is unchanged."""
+    import shapely
+    area, keep_out, spacing = spec
+    rng = np.random.default_rng(seed)
+    x0, y0, x1, y1 = area.bounds
+    gx, gy = np.meshgrid(np.arange(x0, x1, spacing), np.arange(y0, y1, spacing))
+    pts = np.column_stack([gx.ravel(), gy.ravel()]) + rng.uniform(-0.45, 0.45, (gx.size, 2)) * spacing
+    keep = shapely.contains_xy(area, pts[:, 0], pts[:, 1]) & (rng.random(len(pts)) < 0.85)
+    if keep_out is not None and not keep_out.is_empty:
+        keep &= ~shapely.contains_xy(keep_out, pts[:, 0], pts[:, 1])
+    pts = pts[keep]
+    trunks = shapely.MultiPoint(lidar[:, :2])
+    pts = pts[shapely.distance(shapely.points(pts), trunks) >= 2.5]
+    z = site_grid.heights(pts[:, 0], pts[:, 1])
+    far = np.isnan(z)
+    z[far] = [sampler(a, b) or np.nan for a, b in zip(pts[far, 0], pts[far, 1])]
+    dry = ~np.isnan(z) & (z > lrh.POOL_M + 0.3)
+    pts, z = pts[dry], z[dry]
+    heights = rng.uniform(3.0, 9.0, len(pts))
+    crowns = 0.3 * heights + rng.uniform(0.3, 0.9, len(pts))
+    species = rng.choice(list(EDGE_MIX), p=list(EDGE_MIX.values()), size=len(pts))
+    for (x, y), zz, h, c, sp in zip(pts, z, heights, crowns, species):
+        placed[sp].append((x, y, zz, h, c, 1.0))
+    return len(pts)
+
+
 def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record, cleared=None):
     """Lidar trees below pool inside the Fish and Wildlife Habitat zone stay standing in
     the water. Three stages are built as separate top-level collections so shots can
@@ -217,12 +245,16 @@ def flooded_timber(rng, lidar_rows, prototypes, snags, proto_coll, record, clear
 
 
 def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, clear=None,
-            open_sky=None, scrub_zone=None, scrub_max_height=4.0, build_sites=None, boat_clear=None):
+            open_sky=None, scrub_zone=None, scrub_max_height=4.0, build_sites=None, boat_clear=None,
+            understory=None):
     """`clear`: footprints (driveways, dock paths and docks) where no tree may stand.
     `open_sky`: (lines, half width): no crown may overhang these corridors, so cleared
     dock paths read from the air (owner, 14 Oct 2026).
     `build_sites`: {lot label: footprint}. Trees there go into a child collection
-    `Vegetation_BuildSite_<lot>`, so render.py can remove them when that lot's cabin is shown."""
+    `Vegetation_BuildSite_<lot>`, so render.py can remove them when that lot's cabin is shown.
+    `understory`: (area, keep_out, spacing m): small and medium trees added on `area`, which
+    the lidar under-counts beneath the canopy (owner, 31 Oct 2026: the UTRWD land is much
+    thicker than measured), none in `keep_out` or within 2.5 m of a measured trunk."""
     """Place trees; returns counts by species and records the vegetation checks."""
     import shapely  # from .blender-site via lrh
 
@@ -304,6 +336,8 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
             species = rng.choice(list(DECIDUOUS_MIX), p=list(DECIDUOUS_MIX.values()))
         placed[species].append((x[i], y[i], z[i], height[i], crown[i], 1.0))
     lstats["lidar_placed"] = int(dry.sum())
+    if understory is not None:
+        lstats["understory_added"] = add_understory(placed, understory, lidar, site_grid, sampler)
 
     stats = {"candidates": 0, "woods": 0, "pasture_cedars": 0, "underwater": 0, "on_road": 0,
              "no_terrain": 0}

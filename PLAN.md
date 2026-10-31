@@ -734,7 +734,7 @@ The model does not show these field changes yet: their locations are not mapped 
 - **No structures:** no driveways, cabins, docks, beaches, pond works or planting, and no
   trees cleared for any of them. The woods, the creek preservation zone and the flooded
   timber stand as measured; no boat lanes are cut.
-- **Two 6 ft walking paths** to proposed dock sites, one near each parcel's north corner
+- **Two 6 ft walking paths** (meandering since the revision below) to proposed dock sites, one near each parcel's north corner
   (`lotplan.permit_layout`). Each is a straight path from its parcel to the 551 ft
   shoreline, dry until the shore and outside the parcels.
   - **North parcel:** starts at the protrusion, the parcel's westernmost point
@@ -743,18 +743,43 @@ The model does not show these field changes yet: their locations are not mapped 
   - **Dock sites:** each site meets the draft LSMP rules (120 ft maximum, at most 1/3 of
     the cove, at least 1 m deep at the end, 300 ft between docks). The best site is the
     deepest dock end less 0.01 m per metre of path. The docks themselves are not shown.
-  - **Trees:** only trees whose trunks stand in the path or within 0.6 m of its edge come
-    out, each listed in `permit_paths.json`. Crowns may close over the path.
+  - **Trees:** in the first build, trees whose trunks stood in the path came out. The
+    revision removes none (below). Crowns may close over the path.
 - **Hay fields** (`hay.py`): the open ground is cut and baled. The ground is pale
   stubble in 12 ft swath stripes, with 5 x 6 ft round bales left along north-south
   windrows.
 
-**Result (31 Oct 2026 build):**
+**Revision after the owner walked the UTRWD land (31 Oct 2026):**
+- **Trees on UTRWD land:** much thicker than the lidar shows, with small and medium
+  branches across any walking line. The scene adds understory there
+  (`vegetation.add_understory`): about 1,900 trees, 3-9 m tall, on a jittered 4.5 m
+  grid, at least 2.5 m from any measured trunk, and none on the paths or the clearing.
+  The lidar alone finds about 37 trees per acre there.
+- **No tree may be removed for the paths.** Each path now meanders between the measured
+  trees (`lotplan.meander_path`: grid search, smoothing, a 1.2 m meander), at least 0.4 m
+  from path edge to trunk. It may be mown regularly.
+- **Path surface:** light brown decomposed granite.
+- **Owner-cleared area:** about 1/3 ac at the bottom of the tree line below model Lot 10,
+  kept mown (grass and emerging saplings). It is shown as mown grass with no trees and
+  no added understory, placed approximately: along the Lot 10 drainage line just below
+  the parcel, centred at 33.442766, -95.918163. The owner is to mark it.
 
-| Parcel | Path start | Path | Dock site | Dock | Depth at end (full pool) | Trees removed |
+**Approximate coordinates** (WGS 84; the plan sheet and `permit_paths.json` also give
+UTM 15N and local metres):
+
+| | North parcel | South parcel |
+| --- | --- | --- |
+| Path start (parcel line) | 33.446159, -95.918647 | 33.444166, -95.918096 |
+| Dock base (551 ft shoreline) | 33.446296, -95.919128 | 33.444466, -95.918701 |
+| Dock end (120 ft out) | 33.446286, -95.919521 (bearing 270°) | 33.444713, -95.918962 (bearing 320°) |
+| Path length (meandering) | 50 m (163 ft) | 69 m (225 ft) |
+
+**First build (31 Oct 2026), straight paths:**
+
+| Parcel | Path start | Path | Dock site | Dock | Depth at end (full pool) | Trees removed (first build) |
 | --- | --- | --- | --- | --- | --- | --- |
-| North (116505) | protrusion | 47 m (155 ft), due west | (-170.8, 218.2) | 120 ft, aimed west | 2.2 m | 1 |
-| South (135089) | north-west corner | 65 m (215 ft), north-west | (-136.8, 14.2) | 120 ft, aimed 320° | 2.5 m | 3 |
+| North (116505) | protrusion | 47 m (155 ft), due west | (-170.8, 218.2) | 120 ft, aimed west | 2.2 m | 1 (now 0) |
+| South (135089) | north-west corner | 65 m (215 ft), north-west | (-136.8, 14.2) | 120 ft, aimed 320° | 2.5 m | 3 (now 0) |
 
 The two dock sites are 546 ft apart (`permit_paths_lsmp` in `permit_checks.json`). Both
 paths cross mostly open grass on UTRWD land; the South site is next to the earlier
@@ -1662,4 +1687,4 @@ interior, rust fringe), and moss is on about an eighth of the dead trees.
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |
 | Phase 2e: confirm the owner's lot numbers run from the south (owner Lot 1 = model Lot 10), as read from the 31 Oct field update | Owner | Phase 2e review |
 | Phase 2e: approve the two permit path routes and dock sites (`permit_path_plan.png`) | Owner | Before the UTRWD permit design |
-| Phase 2e: locations of the field clearing (fence-line opening at CR 3640, thinned drainage line, widened entry, 1/3 ac UTRWD clearing): GPS points or a marked-up plan | Owner | To show them in the model |
+| Phase 2e: locations of the field clearing (fence-line opening at CR 3640, thinned drainage line, widened entry); confirm or mark the 1/3 ac UTRWD clearing, now shown at an approximate location | Owner | To show them in the model |
