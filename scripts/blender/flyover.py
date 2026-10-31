@@ -8,7 +8,7 @@ Blender's built-in FFmpeg encoder. Interrupted runs resume: existing frames are 
 Usage:
   Blender -b out/<date>/lrh_baseline.blend --python scripts/blender/flyover.py -- \
       [--variant test|full|oval|low] [--frames 0,120,240,359] [--encode-only] [--preview]
-      [--4k] [--shard i/n] [--partial] [--profile]
+      [--4k] [--shard i/n] [--partial] [--profile] [--scene permit]
 
 Variant "low" (Phase 3a) reads its per-frame poses from out/derived/flight_low.json
 (scripts/flight_path.py), shows the Lot 5 cabin and the walking path, at golden hour.
@@ -261,6 +261,14 @@ def main():
         exposure, cabins = LOW["exposure"], LOW["cabins"]
     total = len(POSES) if POSES is not None else FPS * SECONDS
     suffix = "_pairs" if "--layout" in argv and argv[argv.index("--layout") + 1] == "pairs" else ""
+    # --scene permit (owner, 31 Oct 2026): fly the permit scene (lrh_permit.blend) - the
+    # property as it stands, no structures; baled hay fields, the two meandering permit
+    # paths and the denser UTRWD woods. Its frames get their own folder.
+    permit = "--scene" in argv and argv[argv.index("--scene") + 1] == "permit"
+    if permit:
+        if not bpy.data.filepath.endswith("lrh_permit.blend"):
+            lrh.fail("--scene permit renders out/<date>/lrh_permit.blend (build_baseline.py -- --scene permit)")
+        suffix = "_permit"
     if "--preview" in argv:
         RES, SAMPLES, step, fps = (960, 540), 8, 3, FPS // 3
         variant_dir = f"{variant}{suffix}_preview"
@@ -309,6 +317,14 @@ def main():
         if variant == "oval":
             render.apply_collections(scene, set(COLLECTIONS + LIFE_COLLECTIONS))
             life = Life(total)
+        elif variant == "low" and permit:
+            render.apply_collections(scene, set(COLLECTIONS) - {"Site_Works", "Planting", "Beach", "Docks", "Shoreline"}
+                                     | {"Landmarks", "Permit_Paths", "Hay"})
+            hay = bpy.data.materials["Ground_Site"].node_tree.nodes.get("LRH_Hay")
+            if hay is None:
+                lrh.fail("the permit .blend has no hay fields; rebuild it with --scene permit")
+            hay.outputs[0].default_value = 1.0
+            life = BoatOnly(total, LENS_MM)
         elif variant == "low":
             render.apply_collections(scene, set(COLLECTIONS + ["Cabins"]))
             pads = []

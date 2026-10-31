@@ -1307,6 +1307,18 @@ short-lived POB opening):**
   `check_south_docks_plan`.
 - **Video:** the 25 Oct preview shows the old docks; the next render uses the new scene.
 
+**Flyover of the permit scene (owner, 31 Oct 2026):**
+- **Scene:** the flyover follows the owner's description, so it renders the permit scene
+  (`lrh_permit.blend`), not the build-out:
+  - no cabins, pond works, docks or beaches;
+  - baled hay fields;
+  - the two thin meandering DG paths;
+  - the denser understory on UTRWD land.
+- **Command:** `flyover.py -- --variant low --scene permit [--preview|--4k]`, run on
+  `out/<date>/lrh_permit.blend`. Frames go to `video/low_permit*`.
+- **Stale preview:** the 31 Oct build-out preview (215 frames, `video/low_pairs_preview`)
+  was stopped.
+
 **Planned for the next cloud run (owner, 25 Oct 2026): multi-pod rendering for bigger jobs**
 (for example a whole-lakeshore flyover):
 - **Shared work list:** each Blender process repeatedly claims the next unrendered frame on
