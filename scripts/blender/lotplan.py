@@ -865,6 +865,41 @@ def build_redline_five(five, context, sampler, coll):
             coll.objects.link(obj)
 
 
+def lot_line_material():
+    """Red emissive lot lines that fade: a Mix of Transparent and Emission whose factor is
+    the Value node LRH_LotLine_Alpha (0 hidden .. 1 shown), set per frame by flyover.py."""
+    mat = bpy.data.materials.get("Lot_Line_Red")
+    if mat:
+        return mat
+    mat = bpy.data.materials.new("Lot_Line_Red")
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    clear = nt.nodes.new("ShaderNodeBsdfTransparent")
+    glow = nt.nodes.new("ShaderNodeEmission")
+    glow.inputs["Color"].default_value = (0.95, 0.04, 0.02, 1.0)
+    glow.inputs["Strength"].default_value = 4.0
+    alpha = nt.nodes.new("ShaderNodeValue")
+    alpha.name = alpha.label = "LRH_LotLine_Alpha"
+    alpha.outputs[0].default_value = 1.0
+    nt.links.new(alpha.outputs[0], mix.inputs["Fac"])
+    nt.links.new(clear.outputs[0], mix.inputs[1])
+    nt.links.new(glow.outputs[0], mix.inputs[2])
+    nt.links.new(mix.outputs[0], out.inputs["Surface"])
+    return mat
+
+
+def build_lot_lines_red(five, sampler, coll, width=2.2):
+    """The proposed 5 ac lot lines in red (owner, 1 Nov 2026), each edge drawn once."""
+    mat = lot_line_material()
+    rings = [Polygon(v["polygon"]).exterior for v in five["lots"].values()]
+    merged = shapely.ops.linemerge(unary_union(rings))
+    for i, line in enumerate(getattr(merged, "geoms", [merged])):
+        strip(f"Lot_Line_Red_{i:02d}", list(line.coords), width, sampler, 0.6, mat, coll, step=1.0)
+
+
 def fishing_dock_mesh(name, rec, coll, sampler):
     """A fixed-pole fishing/patio dock (pedestrian only): a 10 x 20 ft deck about 3 ft
     above the pool on galvanized poles, 42 in rails on three sides and a short ramp from

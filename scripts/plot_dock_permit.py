@@ -546,161 +546,329 @@ def main():
 FISH_C = (90, 230, 230)
 
 
-def five_acre_sheets(day):
-    """DP7 (the 5 ac lot plan) and DP8 (each lot's dock in plan) for owner review."""
+def permit_set_five(day):
+    """The dock permit set for the approved four 5 ac lots (owner, 1 Nov 2026): DP1 site
+    plan, DP2 one detail sheet per lot, DP3 depth profiles, DP4 lot table, DP5 the
+    neighbour across the cove, DP6 views. Each lot applies for its own permit."""
     import yaml
     pdir = day / "dock permit"
     data = json.loads((pdir / "dock_permit.json").read_text())
     five = data["five_acre"]
+    L, D = five["lots"], five["docks"]
     paths = {p["parcel"]: p for p in json.loads((day / "permit5_paths.json").read_text())["paths"]}
     shots = yaml.safe_load((ROOT / "shots.yaml").read_text())["shots"]
     site = dp.Site(pdir)
     shore = site.water.exterior
     nb = data["proposed"]["neighbour_85552_potential"]
-    out = pdir / "5 ac lots"
-    out.mkdir(exist_ok=True)
-    kind = lambda r: "fishing/patio" if r.get("type") == "fishing/patio" else "boat"
+    P = data["properties"]
+    boat = lambda r: r.get("type") != "fishing/patio"
+    labels = ["Lot A", "Lot B", "Lot C", "Lot D"]
+    feet = {k: unary_union(sum(dock_parts(D[k]), [])) for k in labels}
+    sub = ("Owner property CAD 116505 + 135089 (to be replatted as four 5 ac lots), CR 3635, Fannin County "
+           "TX. Lake Ralph Hall (UTRWD). Rules: Lake & Shoreline Management Plan, comment draft 16 Oct 2025.")
+    global SUB
+    SUB = sub
 
-    # ---------------------------------------------------------------- DP7 plan
+    # ---------------------------------------------------------------- DP1 site plan
     cam = shots["check_permit5_overview"]["camera"]
     s = Sheet(day / "check_permit5_overview_draft.png", tuple(cam["center"]), cam["ortho_scale_m"])
     s.line(list(shore.coords), (*SHORE_C, 255), 2)
-    for label, lot in five["lots"].items():
-        poly = Polygon(lot["polygon"])
-        for a, b in lot["admin_lines"]:
-            s.poly(LineString([a, b]).buffer(dp.ADMIN_FT * FT), fill=(*ADMIN_C, 28))
-            s.line([a, b], (*ADMIN_C, 255), 3)
-        s.poly(poly, outline=(255, 255, 255, 255), width=3)
-    for label, r in five["docks"].items():
-        draw_dock(s, r, DOCK_C if kind(r) == "boat" else FISH_C)
+    for k in labels:
+        for a_, b_ in L[k]["admin_lines"]:
+            s.poly(LineString([a_, b_]).buffer(dp.ADMIN_FT * FT), fill=(*ADMIN_C, 26))
+            s.line([a_, b_], (*ADMIN_C, 255), 3)
+    for k in labels:
+        s.poly(Polygon(L[k]["polygon"]), outline=(235, 30, 30, 255), width=4)
     for p in paths.values():
         s.line(p["line"], (60, 30, 0, 255), 7)
         s.line(p["line"], (235, 180, 110, 255), 4)
+    for k in ("Lot A", "Lot B"):
+        rt = D[k]["boat_route"]
+        if rt and rt.get("fewest_removal_route"):
+            s.line(rt["fewest_removal_route"], (*ROUTE_C, 255), 3, dash=12)
+    for k in labels:
+        draw_dock(s, D[k], DOCK_C if boat(D[k]) else FISH_C)
     draw_dock(s, nb, NEIGH_C)
-    for label, lot in five["lots"].items():
-        poly = Polygon(lot["polygon"])
-        ac = lot["acres_record"]
+    for k in labels:
+        poly = Polygon(L[k]["polygon"])
         c = poly.representative_point()
-        s.label((c.x + 20, c.y), f"{label}  {ac:.2f} ac", font="h2", anchor="mm", box=(0, 0, 0, 150))
-        r = five["docks"].get(label)
-        if r:
-            depth = f"slip {r['slip_min_depth_ft']} ft deep" if kind(r) == "boat" else f"{r['end_depth_ft']} ft of water at the end"
-            s.label(tuple(r["end"]), f"{label}: {kind(r)} dock\n{r['length_ft']:.0f} ft, {depth}",
-                    font="xs", offset=(-16, 0), anchor="rm")
-        else:
-            s.label(tuple(five["access_only"][label]["path_to"]), f"{label}: path to the shore,\nno dock site",
-                    font="xs", offset=(-16, 0), anchor="rm", fill=(255, 190, 190, 255))
+        s.label((c.x + 25, c.y), f"{k}  {L[k]['acres_record']:.2f} ac", font="h2", anchor="mm", box=(0, 0, 0, 150))
+        r = D[k]
+        txt = (f"{k}: boat dock {r['length_ft']:.0f} ft\nslip {r['slip_min_depth_ft']} ft deep" if boat(r)
+               else f"{k}: fishing/patio dock\n10 x 20 ft")
+        s.label(tuple(r["end"]), txt, font="xs", offset=(-16, 0), anchor="rm")
     s.label(tuple(nb["end"]), "Neighbour CAD 85552:\nbest potential dock", font="xs", offset=(-16, 0), anchor="rm",
             fill=(*NEIGH_C, 255))
     s.scale_bar(400)
-    L = five["lots"]
+    spacing = min(D[a_]["nearest_dock_ft"] for a_ in labels)
     lines = [
-        ("h", "Four 5 ac lots: a dock and path where the rules allow"),
-        ("key", "Lot lines (each lot 5.10 ac or more by the record acreage)", (140, 140, 140, 255)),
-        ("key", "Boat dock (floating, gangway at 554 ft) and its 300 ft ring (white)", (170, 170, 170, 255)),
-        ("key", "Fishing/patio dock (fixed, pedestrian, 10 x 20 ft) and its 300 ft ring", (*FISH_C, 255)),
-        ("key", "Administrative property lines and the 150 ft band", (*ADMIN_C, 255)),
-        ("key", "6 ft decomposed granite path, no tree removed", (235, 180, 110, 255)),
+        ("h", "Site plan: four 5 ac lots, one dock each"),
+        ("key", "Proposed lot lines (replat of CAD 116505 + 135089)", (235, 30, 30, 255)),
+        ("key", "Existing CAD parcel line between 116505 and 135089 (pale)", (240, 130, 120, 255)),
+        ("key", "Boat dock (floating, gangway at 554 ft) and its 300 ft ring", (170, 170, 170, 255)),
+        ("key", "Fishing/patio dock (fixed, pedestrian) and its 300 ft ring", (*FISH_C, 255)),
+        ("key", "Administrative property lines (lot lines through UTRWD land) and 150 ft band", (*ADMIN_C, 255)),
+        ("key", "6 ft decomposed granite access path, no tree removed", (235, 180, 110, 255)),
+        ("key", "Boat lane to the deep channel, 20 ft (fewest trunks removed)", (*ROUTE_C, 255)),
         ("key", "Neighbour's best potential dock (CAD 85552)", (*NEIGH_C, 255)),
-        ("h", "Lots and docks"),
+        ("h", "Summary"),
+        ("t", f"Record acreage {five['layout']['record_total_acres']:.2f} ac (CAD 135089 by the signed CBG survey of "
+              f"12 Aug 2022, 10.36 ac including the corner at the point of beginning; CAD 116505 by its 10.221 ac "
+              f"declaration). Lots: " + ", ".join(f"{k[-1]} {L[k]['acres_record']:.2f} ac" for k in labels)
+              + ". Every lot is 5 ac or more, so each meets the Water Quality Protection Criteria with its own "
+                "septic system (LSMP 4.1.1, Section 8), and each fronts CR 3635 and the UTRWD shoreline."),
+        ("t", "One dock per lot under one owner (4.1.1 A). Lots A and B: floating boat docks. Lots C and D: no "
+              "boat dock site meets the rules (cove under 320 ft wide or slips under 3 ft), so each has a "
+              "fixed fishing/patio dock (6.1.2)."),
+        ("t", f"Every dock clears its lot's administrative lines by 150 ft or more and is at least {spacing} ft "
+              f"from any other dock, including the neighbour's best potential site across the cove."),
+        ("t", "Boat lanes: the cove is standing timber left as habitat (no-wake). A 20 ft lane from each boat "
+              "slip to the deep channel needs " + " and ".join(
+                  f"{D[k]['boat_route']['trunks_to_remove_for_lane']} trunk(s) removed for {k}" for k in ("Lot A", "Lot B"))
+              + "; removal is requested case by case (4.1.1)."),
     ]
-    for label in L:
-        lot = L[label]
-        if label not in five["docks"]:
-            a = five["access_only"][label]
-            p = paths[label.replace(" ", "_")]
-            lines.append(("t", f"{label} ({lot['acres_cad']:.2f} ac by CAD; {lot['frontage_ft']} ft on UTRWD land): no dock. "
-                               f"A 6 ft path ({p['length_ft']} ft) reaches its mainland shoreline, {a['shore_depth_ft_10ft_out']} ft "
-                               f"deep 10 ft out. Why: {a['why_no_dock']}."))
-            continue
-        r = five["docks"][label]
-        ac = (f"{lot['acres_record']:.2f} ac by record ("
-              + " + ".join(f"{v:.2f} ac of {k}" for k, v in lot["acres_by_parcel"].items())
-              + f"); {lot['road_frontage_ft']} ft on CR 3635")
-        p = paths[label.replace(" ", "_")]
-        if kind(r) == "boat":
-            what = (f"boat dock, {r['design_label']}, {r['length_ft']:.0f} ft (cove {r['cove_width_ft']} ft, Table 7 max "
-                    f"{r['max_length_ft']:.0f} ft); slip {r['slip_min_depth_ft']} ft deep; gangway {r['gangway_ft']:.0f} ft"
-                    + (f"; {r['trees_in_footprint']} measured trunk under it" if r["trees_in_footprint"] else "; no trunk under it"))
-        else:
-            what = (f"fishing/patio dock 10 x 20 ft (cove {r['cove_width_ft']} ft); {r['end_depth_ft']} ft of water at "
-                    f"its end; no boat dock site meets the rules on this lot")
-        lines.append(("t", f"{label} ({ac}; {lot['frontage_ft']} ft on UTRWD land): {what}. {r['admin_line_ft']} ft from "
-                           f"its administrative lines; {r['nearest_dock_ft']} ft to the nearest other dock; path "
-                           f"{p['length_ft']} ft. Dock base {ll(r['wgs84']['base'])}."))
-    lines += [
-        ("h", "Notes"),
-        ("t", "Why 5 ac: the Water Quality Protection Criteria (LSMP 4.1.1, Section 8) bar septic systems in "
-              "subdivisions with lots under 5 acres; at 5 ac or more each lot can have its own OSSF and is eligible "
-              "for a dock permit."),
-        ("t", f"Acreage: record total {five['layout']['record_total_acres']:.2f} ac - CAD 135089 by the signed CBG survey "
-              "(12 Aug 2022, 10.36 ac including the corner at the point of beginning) and CAD 116505 by its 10.221 ac "
-              "declaration; lot areas are the CAD outlines scaled to those. Every lot is at least 5.10 ac (0.1 ac margin)."),
-        ("t", "Lot lines: three straight lines from the lake-side boundary, crossing the old parcel line where needed "
-              "(Lots B and C each take about 0.26 ac across it). Each line's extension through the UTRWD land is an "
-              "administrative line that both neighbouring docks clear by 150 ft. Angles: "
-              + ", ".join(f"{l['between'][0][-1]}/{l['between'][1][-1]} {l['angle_deg']:+d} deg" for l in five["layout"]["dividing_lines"])
-              + " from east-west."),
-        ("t", "Fishing/patio docks are pedestrian only (fixed poles, 10 x 20 ft, App. D). No boat dock site meets the "
-              "rules on the south lots: the cove there is under 320 ft wide or the slips are under 3 ft."),
-        ("t", f"Spacing: all four docks are at least {min(r['nearest_dock_ft'] for r in five['docks'].values())} ft "
-              f"from each other or the neighbour's best site. Lot C's dock is "
-              f"{five['docks']['Lot C']['nearest_dock_ft']} ft from that site, so if Lot C builds first the neighbour "
-              f"would use another of its compliant sites." if not five["neighbour_kept_300ft"] else
-              "Spacing: every dock is at least 300 ft from the others and from the neighbour's best site."),
-    ]
-    s.save(out / "DP7_5ac_lot_plan.png", lines, title="5 ac lots: docks and paths (for review)")
+    s.save(pdir / "DP1_site_plan.png", lines, title="Proposed docks - four 5 ac lots (draft exhibit)")
 
-    # ---------------------------------------------------------------- DP8 docks in plan
-    tiles = []
-    for label in five["lots"]:
-        r = five["docks"].get(label)
-        cam = shots[f"check_permit5_detail_{label[-1].lower()}"]["camera"]
-        t = Sheet(day / f"check_permit5_detail_{label[-1].lower()}_draft.png", tuple(cam["center"]), cam["ortho_scale_m"])
-        cx, cy = cam["center"]
+    # ---------------------------------------------------------------- DP2 per-lot detail
+    for k in labels:
+        r = D[k]
+        cam = shots[f"check_permit5_detail_{k[-1].lower()}"]["camera"]
+        c = tuple(cam["center"])
+        t = Sheet(day / f"check_permit5_detail_{k[-1].lower()}_draft.png", c, cam["ortho_scale_m"])
         gx, gy = np.meshgrid(np.arange(t.w), np.arange(t.h))
-        X, Y = cx + (gx - t.w / 2) * t.mpp, cy - (gy - t.h / 2) * t.mpp
+        X, Y = c[0] + (gx - t.w / 2) * t.mpp, c[1] - (gy - t.h / 2) * t.mpp
         depth = site.depth_ft(X.ravel(), Y.ravel()).reshape(X.shape)
         rgba = np.zeros((t.h, t.w, 4), np.uint8)
-        for level, col in ((0, (*SHORE_C, 255)), (1, (255, 255, 255, 160)), (2, (255, 255, 255, 160)),
-                           (3, (255, 230, 0, 255)), (4, (255, 255, 255, 160)), (-3, (255, 120, 40, 255))):
-            a = depth >= level
-            e = np.zeros_like(a)
-            e[:, :-1] |= a[:, :-1] != a[:, 1:]
-            e[:-1, :] |= a[:-1, :] != a[1:, :]
+        pal = {0: (200, 235, 255), 1: (150, 210, 250), 2: (90, 170, 240), 3: (50, 130, 220), 4: (30, 90, 200)}
+        band = np.floor(np.clip(depth, -4, 12)).astype(int)
+        for lv, col in pal.items():
+            m = (band == lv) if lv < 4 else (band >= 4)
+            rgba[m & (depth > 0)] = (*col, 90)
+        for level, col in ((0, (*SHORE_C, 255)), (1, (255, 255, 255, 150)), (2, (255, 255, 255, 150)),
+                           (3, (255, 230, 0, 255)), (4, (255, 255, 255, 150)), (-3, (255, 120, 40, 255))):
+            a2 = depth >= level
+            e = np.zeros_like(a2)
+            e[:, :-1] |= a2[:, :-1] != a2[:, 1:]
+            e[:-1, :] |= a2[:-1, :] != a2[1:, :]
             rgba[e] = col
         t.layer = Image.alpha_composite(t.layer, Image.fromarray(rgba))
         t.d = ImageDraw.Draw(t.layer)
-        p = paths[label.replace(" ", "_")]
-        t.line(p["line"], (235, 180, 110, 255), 3, dash=6)
-        if r:
-            draw_dock(t, r, DOCK_C if kind(r) == "boat" else FISH_C, ring=False)
-            info = (f"{label}: {kind(r)} dock, {r['length_ft']:.0f} ft, bearing {r['azimuth_deg']} deg\n"
-                    + (f"slip {r['slip_min_depth_ft']} ft deep at 551 ft; gangway {r['gangway_ft']:.0f} ft"
-                       if kind(r) == "boat" else f"10 x 20 ft deck; {r['end_depth_ft']} ft of water at the end")
-                    + f"\nbase {ll(r['wgs84']['base'])}")
-        else:
-            info = (f"{label}: no dock site meets the rules\n6 ft path to the mainland shore (slough);\n"
-                    f"the strip beyond is cut off at full pool")
-        t.label((14, 14), info, font="s", box=(0, 0, 0, 190))
+        draw_dock(t, r, DOCK_C if boat(r) else FISH_C, ring=False)
+        b, n = np.array(r["base"]), np.array(r["dir"])
+        tt = np.array([-n[1], n[0]])
+        half = (2 * FT) if boat(r) else r["width_ft"] / 2 * FT
+        for sg in (1, -1):
+            t.poly(LineString([b + tt * sg * half, b + tt * sg * (half + 10 * FT)]).buffer(0.6),
+                   fill=(140, 120, 100, 255), outline=BLACK, width=1)
+        t.line(paths[k.replace(" ", "_")]["line"], (235, 180, 110, 255), 4, dash=8)
+
+        def dim(p0, p1, text, off):
+            p0, p1 = np.array(p0), np.array(p1)
+            u = (p1 - p0) / (np.linalg.norm(p1 - p0) or 1)
+            o = np.array([-u[1], u[0]]) * off
+            t.line([p0 + o, p1 + o], WHITE, 2)
+            for q in (p0, p1):
+                t.line([q + o * 0.4, q + o * 1.6], WHITE, 2)
+            t.label(tuple((p0 + p1) / 2 + o * 2.0), text, font="xs", anchor="mm")
+        Lm = r["length_ft"] * FT
+        dim(b, b + n * Lm, f"{r['length_ft']:.0f} ft from the 551 ft shoreline", 5.0 if boat(r) else 3.0)
+        if boat(r):
+            dim(np.array(r["gangway_top"]), b + n * dp.GANGWAY_LAP_FT * FT, f"gangway {r['gangway_ft']:.0f} ft", -2.6)
+            a0, a1, c0, c1 = r["slips_ft"][0]
+            t.label(tuple(b + n * (a0 + a1) / 2 * FT), "slip\n12 x 30 ft", font="xs", anchor="mm", box=(0, 60, 0, 170))
         t.scale_bar(40)
-        tiles.append(Image.alpha_composite(t.base, t.layer).convert("RGB"))
-    W = tiles[0].size[0]
-    sheet = Image.new("RGB", (2 * W + 30, 2 * W + 120), (250, 250, 247))
-    d = ImageDraw.Draw(sheet)
-    d.text((10, 14), "5 ac lots: each dock in plan (north up). Contours: 551 ft shoreline (blue), 1 / 2 / 4 ft (white), "
-                     "3 ft (yellow), 554 ft (orange).", fill=(20, 20, 20), font=F["h2"])
-    for i, tile in enumerate(tiles):
-        sheet.paste(tile, (10 + (i % 2) * (W + 10), 60 + (i // 2) * (W + 10)))
-    d.text((10, 2 * W + 84), NOTE, fill=(110, 110, 110), font=F["xs"])
-    sheet.save(out / "DP8_5ac_docks.png")
-    print(f"WROTE {out / 'DP8_5ac_docks.png'}")
-    for name in ("check_permit5_oblique", "check_permit5_dock_b", "check_permit5_dock_c", "check_permit5_dock_d"):
-        Image.open(day / f"{name}_draft.png").convert("RGB").save(out / f"{name.replace('check_', '')}.png")
+        rows = [("row", ("Shoreline zone (4.1.1)", "Shoreline Mgmt Zone", "SMZ on App. A map", None)),
+                ("row", ("Lot size (Section 8)", ">= 5 ac with OSSF", f"{L[k]['acres_record']:.2f} ac", True)),
+                ("row", ("Admin. lines (6.2)", ">= 150 ft", f"{r['admin_line_ft']} ft", r["admin_line_ft"] >= 150)),
+                ("row", ("Spacing (6.2)", ">= 300 ft any dock", f"{r['nearest_dock_ft']} ft", r["nearest_dock_ft"] >= 300)),
+                ("row", ("Cove (6.3)", "dock <= 1/3 width", f"{r['cove_width_ft']} ft", True))]
+        if boat(r):
+            rows += [("row", ("Table 7 (6.3)", f"<= {r['max_length_ft']:.0f} ft", f"{r['length_ft']:.0f} ft", True)),
+                     ("row", ("Length (6.3, App. D)", "10-120 ft", f"{r['length_ft']:.0f} ft", True)),
+                     ("row", ("Slip depth (6.3)", ">= 3 ft at 551 ft", f"{r['slip_min_depth_ft']} ft min", r["slip_min_depth_ft"] >= 3)),
+                     ("row", ("Gangway (6.1.1, App. D)", "20-60 ft, at 554 ft", f"{r['gangway_ft']:.0f} ft", r["gangway_ft"] <= 60)),
+                     ("row", ("Walkway / deck (App. D)", "3-6 ft / 200-1,000 sf", f"6 ft / {r['deck_sqft']} sf", True)),
+                     ("row", ("Slips (App. D)", "<= 2, 12 x 30 ft", f"{r['slips']}, 12 x 30 ft", True)),
+                     ("row", ("Timber (4.1.1)", "removal discouraged", f"{r['trees_in_footprint']} trunk(s) under", r["trees_in_footprint"] == 0 or None)),
+                     ("row", ("Boat lane", "20 ft to channel", f"{r['boat_route']['trunks_to_remove_for_lane']} trunk(s) to remove", None))]
+            desc = (f"Floating boat dock, {r['design_label']}: 6 ft walkway square to the shore (bearing "
+                    f"{r['azimuth_deg']} deg), {r['length_ft']:.0f} ft from the 551 ft shoreline, {r['deck_sqft']} sq ft of "
+                    f"deck; hinged {r['gangway_ft']:.0f} ft gangway from the 554 ft landing; galvanized guide poles; "
+                    f"composite decking in a muted colour; no roof walls or mooring cables; 10 ft riprap each side.")
+        else:
+            rows += [("row", ("Size (6.3, App. D)", "<= 200 sf, >= 3 ft wide", "10 x 20 ft, 200 sf", True)),
+                     ("row", ("Use (6.1.2)", "pedestrian only", "no mooring", True)),
+                     ("row", ("Structure (6.1.2)", "fixed-pole", "galvanized poles", True)),
+                     ("row", ("Timber (4.1.1)", "removal discouraged", f"{r['trees_in_footprint']} under", True))]
+            desc = (f"Fixed fishing/patio dock, 10 x 20 ft (200 sq ft), on galvanized poles about 3 ft above the "
+                    f"pool, 42 in rails, bearing {r['azimuth_deg']} deg; pedestrian only. {r['end_depth_ft']} ft of "
+                    f"water at its end at 551 ft. 10 ft riprap each side.")
+        keys = ["base", "end"] + (["gangway_top"] if boat(r) else [])
+        names = {"base": "Dock base (551 ft shoreline)", "end": "Dock end", "gangway_top": "Gangway landing (554 ft)"}
+        lines = [("h", f"{k}: {L[k]['acres_record']:.2f} ac"), ("t", desc),
+                 ("key", "Water 0-1 / 1-2 / 2-3 / 3-4 / 4+ ft deep at 551 ft", (90, 170, 240, 255)),
+                 ("key", "3 ft depth contour", (255, 230, 0, 255)), ("key", "554 ft contour", (255, 120, 40, 255)),
+                 ("key", "551 ft shoreline", (*SHORE_C, 255)), ("key", "Riprap 10 ft each side", (140, 120, 100, 255)),
+                 ("h", "Coordinates (WGS 84)")]
+        lines += [("t", f"{names[x]}: {ll(r['wgs84'][x])}") for x in keys]
+        lines += [("t", f"Access path: 6 ft decomposed granite, {paths[k.replace(' ', '_')]['length_ft']} ft, no tree removed.")]
+        lines += [("h", "Rule check (LSMP comment draft 16 Oct 2025)")] + rows
+        t.save(pdir / f"DP2_{k.replace(' ', '_')}_dock_detail.png", lines,
+               title=f"{k} - proposed {'boat' if boat(r) else 'fishing/patio'} dock (draft exhibit)")
+
+    # ---------------------------------------------------------------- DP3 depth profiles
+    W, Hh = 2400, 620
+    sheet = Image.new("RGB", (W, Hh * 4 + 120), (250, 250, 247))
+    dd = ImageDraw.Draw(sheet)
+    dd.text((40, 20), "Depth profiles along each dock axis (ft MSL; 551 ft pool, 548 ft = 3 ft slip depth, 554 ft gangway "
+                      "landing)", fill=(20, 20, 20), font=F["h2"])
+    for i, k in enumerate(labels):
+        r = D[k]
+        b, n = np.array(r["base"]), np.array(r["dir"])
+        xs = np.arange(-60.0, 110.0, 0.5)
+        pts_ = b[None, :] + n[None, :] * (xs[:, None] * FT)
+        elev = site.ground(pts_[:, 0], pts_[:, 1]) / FT - site.pool / FT + 551.0
+        y0 = 70 + i * Hh
+        X0, X1, Y0, Y1 = 140, W - 80, y0 + 40, y0 + Hh - 70
+        e_lo, e_hi = 542.0, 558.0
+        fx = lambda v: X0 + (v - xs[0]) / (xs[-1] - xs[0]) * (X1 - X0)
+        fy = lambda e: Y1 - (np.clip(e, e_lo, e_hi) - e_lo) / (e_hi - e_lo) * (Y1 - Y0)
+        dd.text((40, y0), f"{k}: {'boat' if boat(r) else 'fishing/patio'} dock, bearing {r['azimuth_deg']} deg",
+                fill=(20, 20, 20), font=F["b"])
+        dd.polygon([(fx(xs[0]), fy(e_lo))] + [(fx(v), fy(e)) for v, e in zip(xs, elev)] + [(fx(xs[-1]), fy(e_lo))],
+                   fill=(176, 150, 112))
+        for v, e in zip(xs, elev):
+            if e < 551.0:
+                dd.line([(fx(v), fy(e)), (fx(v), fy(551.0))], fill=(120, 185, 235), width=3)
+        for e, col in ((551.0, (30, 110, 200)), (548.0, (230, 170, 0)), (554.0, (230, 100, 30))):
+            dd.line([(X0, fy(e)), (X1, fy(e))], fill=col, width=2)
+        for e in range(544, 559, 4):
+            dd.text((X0 - 12, fy(e)), f"{e}", fill=(60, 60, 60), font=F["xs"], anchor="rm")
+        for v in range(-60, 111, 10):
+            dd.text((fx(v), Y1 + 8), f"{v}", fill=(60, 60, 60), font=F["xs"], anchor="ma")
+        top = 551.0 + (1.5 if boat(r) else 3.1)
+        for a0, a1, c0, c1 in r["deck_ft"]:
+            dd.rectangle([fx(a0), fy(top), fx(a1), fy(top - 0.8)], fill=(90, 80, 70), outline=(0, 0, 0))
+        if boat(r):
+            sa0, sa1 = r["slips_ft"][0][:2]
+            dd.rectangle([fx(sa0), fy(551.0), fx(sa1), fy(548.0)], outline=(230, 170, 0), width=3)
+            land = -r["shore_to_554ft_ft"]
+            ge = float(np.interp(land, xs, elev))
+            dd.line([(fx(land), fy(ge + 0.5)), (fx(dp.GANGWAY_LAP_FT), fy(top))], fill=(120, 120, 120), width=6)
+            note = f"slip {r['slip_min_depth_ft']} ft min; gangway {r['gangway_ft']:.0f} ft"
+        else:
+            note = f"{r['end_depth_ft']} ft of water at the end"
+        dd.text((X1, y0), note, fill=(60, 60, 60), font=F["s"], anchor="ra")
+    dd.text((40, Hh * 4 + 80), "Feet from the 551 ft shoreline along the dock axis (negative = landward). " + NOTE,
+            fill=(110, 110, 110), font=F["xs"])
+    sheet.save(pdir / "DP3_depth_profiles.png")
+
+    # ---------------------------------------------------------------- DP4 lot table
+    W, Hh = 2400, 900
+    img = Image.new("RGB", (W, Hh), (250, 250, 247))
+    dd = ImageDraw.Draw(img)
+    dd.text((40, 24), "Four 5 ac lots: acreage, sewer eligibility and docks", fill=(20, 20, 20), font=F["h2"])
+    cols = [("Lot", 40), ("Acres (record)", 150), ("CR 3635", 360), ("UTRWD frontage", 500), ("Septic (>= 5 ac)", 700),
+            ("Dock", 900), ("Length", 1180), ("Depth", 1300), ("Admin. lines", 1520), ("Nearest dock", 1700),
+            ("Path", 1880), ("Trunks under", 2010)]
+    y = 90
+    for nme, x in cols:
+        dd.text((x, y), nme, fill=(20, 20, 20), font=F["b"])
+    y += 40
+    for k in labels:
+        r = D[k]
+        vals = [k, f"{L[k]['acres_record']:.2f}", f"{L[k]['road_frontage_ft']} ft", f"{L[k]['frontage_ft']} ft",
+                "yes" if L[k]["acres_record"] >= 5 else "no", "boat (floating)" if boat(r) else "fishing/patio (fixed)",
+                f"{r['length_ft']:.0f} ft", f"slip {r['slip_min_depth_ft']} ft" if boat(r) else f"{r['end_depth_ft']} ft at end",
+                f"{r['admin_line_ft']} ft", f"{r['nearest_dock_ft']} ft", f"{paths[k.replace(' ', '_')]['length_ft']} ft",
+                str(r["trees_in_footprint"])]
+        for (nme, x), v in zip(cols, vals):
+            dd.text((x, y), v, fill=(30, 30, 30), font=F["s"])
+        y += 40
+    y += 20
+    notes = [f"Record acreage total {five['layout']['record_total_acres']:.2f} ac; lot areas are the CAD outlines scaled per "
+             "parcel to the record acreage (135089: signed CBG survey 10.36 ac; 116505: 10.221 ac). Lots B and C cross the "
+             "old parcel line (" + "; ".join(f"{k}: " + " + ".join(f"{v:.2f} ac of {p2}" for p2, v in L[k]['acres_by_parcel'].items())
+                                             for k in ("Lot B", "Lot C")) + "), so the plat combines the two parcels.",
+             "Dividing lines: " + ", ".join(f"{x['between'][0]}/{x['between'][1]} {x['angle_deg']:+d} deg from east-west"
+                                            for x in five["layout"]["dividing_lines"]) + "; each starts on the lake-side line.",
+             "Docks are limited by the draft LSMP: 300 ft spacing, 150 ft from administrative lines, Table 7 cove limits, "
+             "3 ft slip depth at 551 ft, gangway 20-60 ft from 554 ft, and dry-ground access to the shore. Depths are lidar "
+             "values; both boat slips are at the 3.0 ft minimum and Lot B's gangway is at the 60 ft maximum."]
+    for tx in notes:
+        for line in wrap(tx, 200):
+            dd.text((40, y), line, fill=(40, 40, 40), font=F["s"])
+            y += 24
+        y += 10
+    dd.text((40, Hh - 44), NOTE, fill=(110, 110, 110), font=F["xs"])
+    img.save(pdir / "DP4_lot_table.png")
+
+    # ---------------------------------------------------------------- DP5 neighbour
+    cam = shots["check_dock_permit_overview"]["camera"]
+    s = Sheet(day / "check_dock_permit_overview_draft.png", tuple(cam["center"]), cam["ortho_scale_m"])
+    props, _ = dp.load_properties(json.loads((ROOT / "inputs/context/site-review-context-regional.json").read_text()))
+    s.poly(props["85552"]["poly"], outline=(255, 170, 60, 255), width=4)
+    s.line(list(shore.coords), (*SHORE_C, 255), 2)
+    for a_, b_ in P["85552"]["admin_lines"]:
+        s.poly(LineString([a_, b_]).buffer(dp.ADMIN_FT * FT), fill=(*NEIGH_C, 40))
+        s.line([a_, b_], (*NEIGH_C, 255), 4)
+    for k in labels:
+        s.poly(Polygon(L[k]["polygon"]), outline=(235, 30, 30, 255), width=3)
+    allf = unary_union(list(feet.values()))
+    lost = 0
+    for r2 in P["85552"]["sites"]:
+        x, y_ = s.px(*r2["base"])
+        bad = Polygon(r2["footprint"]).distance(allf) / FT < dp.SEPARATION_FT
+        lost += bad
+        s.d.ellipse([x - 5, y_ - 5, x + 5, y_ + 5], fill=(230, 40, 40, 255) if bad else (*NEIGH_C, 255), outline=BLACK)
+    for k in labels:
+        draw_dock(s, D[k], DOCK_C if boat(D[k]) else FISH_C)
+    draw_dock(s, nb, NEIGH_C)
+    near_k = min(labels, key=lambda k: feet[k].distance(Polygon(nb["footprint"])))
+    dn = feet[near_k].distance(Polygon(nb["footprint"])) / FT
+    s.line([nb["end"], D[near_k]["end"]], WHITE, 2, dash=8)
+    s.label(((nb["end"][0] + D[near_k]["end"][0]) / 2, (nb["end"][1] + D[near_k]["end"][1]) / 2), f"{dn:.0f} ft",
+            font="b", anchor="mm")
+    s.scale_bar(400)
+    pn = P["85552"]
+    lines = [
+        ("h", "Across the cove: CAD 85552"),
+        ("key", "Neighbour's compliant shore points", (*NEIGH_C, 255)),
+        ("key", "... ruled out by the four proposed docks (within 300 ft)", (230, 40, 40, 255)),
+        ("key", "Neighbour's administrative lines and 150 ft bands", (*NEIGH_C, 255)),
+        ("key", "Proposed docks and their 300 ft rings", (170, 170, 170, 255)),
+        ("t", f"CAD 85552 (5.562 ac by CAD declaration) fronts the west shore of the cove for {pn['frontage_ft']} ft. "
+              f"{pn['compliant']} of its {pn['shore_points']} shore points can take a dock meeting every rule tested. "
+              f"The four proposed docks rule out {lost} of them; its best site (a {nb['length_ft']:.0f} ft "
+              f"{nb['design_label']}, {nb['slip_min_depth_ft']} ft slips) stays available, {dn:.0f} ft from the "
+              f"nearest proposed dock ({near_k}), so either owner can build first."),
+        ("t", "Table 7 keeps a 300 ft open channel between docks on opposite shores: each dock is limited to "
+              "(cove width - 300 ft) / 2. Lots C and D have fixed fishing/patio docks of 20 ft only."),
+        ("t", "CAD 128327 and 132120 (south of CR 3640) have no compliant site; CAD 79383's frontage is outside the "
+              "lidar coverage."),
+    ]
+    s.save(pdir / "DP5_neighbour_across_cove.png", lines, title="Potential docks across the cove and conflicts")
+
+    # ---------------------------------------------------------------- DP6 views
+    names = [("check_permit5_oblique", "The four lots from over CR 3635"), ("P2_north_path", "Lot A boat dock and path"),
+             ("check_permit5_dock_b", "Lot B boat dock"), ("check_permit5_dock_d", "Lot D fishing/patio dock")]
+    tiles = [Image.open(day / f"{n_}_draft.png").convert("RGB").resize((1200, 675)) for n_, _ in names]
+    sheet = Image.new("RGB", (2410, 1460), (250, 250, 247))
+    dd = ImageDraw.Draw(sheet)
+    dd.text((10, 12), "Conceptual views (lake at 551 ft). Lot C's dock is hidden by the timber in every view; see DP2.",
+            fill=(20, 20, 20), font=F["h2"])
+    for i, (tile, (_, cap)) in enumerate(zip(tiles, names)):
+        x, y = 5 + (i % 2) * 1205, 60 + (i // 2) * 700
+        sheet.paste(tile, (x, y))
+        dd.rectangle([x, y + 675 - 34, x + 1200, y + 675], fill=(0, 0, 0))
+        dd.text((x + 12, y + 675 - 28), cap, fill=(255, 255, 255), font=F["s"])
+    sheet.save(pdir / "DP6_views.png")
+    print(f"WROTE dock permit set in {pdir}")
 
 
 if __name__ == "__main__":
-    main()
     day = Path(sys.argv[1]) if len(sys.argv) > 1 else sorted(ROOT.glob("out/*/dock permit/dock_permit.json"))[-1].parent.parent
-    if (day / "permit5_paths.json").is_file():
-        five_acre_sheets(day)
+    if "--single" in sys.argv:          # the superseded single-dock set (owner, 1 Nov 2026 morning)
+        main()
+    else:
+        permit_set_five(day)

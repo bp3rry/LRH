@@ -613,8 +613,8 @@ shots:
 
   P1_permit_overview:
     kind: marketing
-    scene: permit
-    description: High oblique from over CR 3635 east of the lots, looking west across the baled hay fields to both permit paths and the creek arm, mid-morning (sun behind).
+    scene: permit5
+    description: High oblique from over CR 3635 east of the lots, looking west across the baled hay fields of the four 5 ac lots to their docks, paths and the creek arm, mid-morning (sun behind).
     camera: {position: [230.0, 60.0, 300.0], target: [-130.0, 100.0, 168.0], lens_mm: 26.0}
     sun: {datetime: "2026-10-14T10:30", utc_offset_h: -5}
     haze_visibility_km: 30
@@ -625,8 +625,8 @@ shots:
 
   P2_north_path:
     kind: marketing
-    scene: permit
-    description: Drone view from the north, looking down the 6 ft path from the protrusion west to the north parcel's own compliant dock site (no dock - the owner's one dock is the proposed dock by the parcel line).
+    scene: permit5
+    description: Drone view from the north, looking down Lot A's 6 ft path from the protrusion to its boat dock.
     camera: {position: [-140.0, 300.0, 225.0], target: [-150.0, 205.0, 169.0], lens_mm: 28.0}
     sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
     haze_visibility_km: 25
@@ -638,9 +638,9 @@ shots:
 
   P3_south_path:
     kind: marketing
-    scene: permit
-    description: Low drone view from the water west of the proposed dock (dock permit, 1 Nov 2026), looking east-south-east over the float and gangway up the 6 ft path to the south parcel's north-west corner.
-    camera: {position: [-212.0, 22.0, 196.0], target: [-110.0, -14.0, 171.0], lens_mm: 30.0}
+    scene: permit5
+    description: Low drone view from the water west of Lot B's boat dock, looking east over the float and gangway up its 6 ft path.
+    camera: {position: [-205.0, 92.0, 196.0], target: [-112.0, 52.0, 171.0], lens_mm: 30.0}
     sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
     haze_visibility_km: 25
     cleared_ground: grassed
@@ -651,7 +651,7 @@ shots:
 
   P4_hay_bales:
     kind: marketing
-    scene: permit
+    scene: permit5
     description: Low oblique north along the hay fields from over the south lots, fresh-cut stubble and round bales in the low afternoon sun, the lake beyond on the left.
     camera: {position: [40.0, -170.0, 205.0], target: [-10.0, 90.0, 176.0], lens_mm: 28.0}
     sun: {datetime: "2026-10-14T17:15", utc_offset_h: -5}
@@ -668,7 +668,7 @@ shots:
   # dock across the cove (CAD 85552) is shown where Neighbour_Dock is listed.
   check_dock_permit_overview:
     kind: check
-    scene: permit
+    scene: permit5
     description: North-up base for the dock permit site plan - both parcels, the creek arm, the proposed dock and the neighbour's potential dock.
     camera: {type: ortho, center: [-150.0, -15.0], ortho_scale_m: 520.0}
     haze_visibility_km: 0

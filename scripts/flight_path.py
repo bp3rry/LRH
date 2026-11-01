@@ -39,18 +39,22 @@ CABIN = (47.3, 12.9, 182.0)        # Lot 5 cabin (grading.layout), look-at heigh
 POB = (114.5, -46.7)
 SE_CORNER = (140.0, -210.0)        # CR 3635 x relocated CR 3640, ground 184.7 m
 # Owner, 25 Oct 2026 (replaces the POB start and the cabin close-ups): take off at the SE
-# corner and climb while heading west along the CR 3640 side; cross the pond; at the SW
-# corner pan north to the cleared shoreline and run up it (beaches, docks and riprap
-# ahead, lots and cabins on the right); out the boat channel past the flooded timber to
-# the open lake; a left-hand turn over the western open water ending in a hover that looks back at the property
-# in golden light. (name, camera, look-at, ground speed m/s)
+# corner; at the SW corner pan north to the cleared shoreline and run up it (docks and
+# riprap ahead, lots on the right); out past the flooded timber to the open lake; a
+# left-hand turn over the western open water ending in a hover that looks back at the
+# property in golden light. Owner, 1 Nov 2026: the drone climbs facing north and backs
+# away south along CR 3635 until the whole property fills the frame (N2-N3: the proposed
+# lot lines fade in, in red), then turns west to the shoreline. (name, camera, look-at,
+# ground speed m/s)
 KEYS = [
-    ("T0", (SE_CORNER[0], SE_CORNER[1], 187.0), (-40.0, -60.0, 176.0), 2.5),   # takeoff, 2 m up, facing the lots
-    ("", (134.0, -208.0, 206.0), (-70.0, -130.0, 174.0), 4.0),        # climbing, turning west
-    ("", (100.0, -205.0, 226.0), (-100.0, -195.0, 171.0), 7.0),
-    ("B1", (30.0, -198.0, 236.0), (-110.0, -192.0, 171.0), 8.0),      # pond ahead, Lot 10 right
-    ("B2", (-46.0, -192.0, 236.0), (-170.0, -222.0, 168.0), 7.0),     # over the pond
-    ("", (-130.0, -214.0, 226.0), (-195.0, -120.0, 168.0), 7.0),      # SW corner, pan north
+    ("T0", (SE_CORNER[0], SE_CORNER[1], 187.0), (60.0, 140.0, 182.0), 2.0),     # takeoff, facing north
+    ("", (142.0, -216.0, 212.0), (30.0, 110.0, 178.0), 5.5),          # climbing, facing north
+    ("N1", (152.0, -320.0, 262.0), (-20.0, 60.0, 175.0), 8.5),        # backing south along CR 3635
+    ("N2", (162.0, -410.0, 284.0), (-35.0, 45.0, 172.0), 2.0),        # whole property; lot lines in
+    ("N3", (158.0, -418.0, 285.0), (-35.0, 45.0, 172.0), 2.0),        # hold
+    ("", (120.0, -395.0, 270.0), (-160.0, -330.0, 170.0), 6.5),       # turning west
+    ("W1", (30.0, -320.0, 245.0), (-200.0, -230.0, 170.0), 12.0),     # west, south of the lots
+    ("", (-130.0, -244.0, 226.0), (-195.0, -120.0, 168.0), 9.0),      # SW corner, pan north
     ("B3", (-178.0, -185.0, 216.0), (-160.0, -50.0, 168.0), 7.5),     # lined up on the shore
     ("", (-182.0, -120.0, 210.0), (-140.0, 20.0, 172.0), 8.5),        # shoreline run: lots right
     ("B4", (-178.0, -20.0, 208.0), (-130.0, 110.0, 172.0), 8.5),      # beach and Lot 5-6 dock

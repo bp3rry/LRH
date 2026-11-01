@@ -950,6 +950,33 @@ parcel line and to angle.**
   - both boat slips are exactly 3.0 ft deep;
   - Lot B's gangway is exactly 60 ft.
 
+**Approved (owner, 1 Nov 2026).** Follow-up the same day:
+- **Marketing stills:** P1-P4 now use the `permit5` scene. P2 looks down Lot A's path to
+  its dock; P3 looks from the water at Lot B's dock.
+- **Dock permit set:** rebuilt for the four lots (`plot_dock_permit.permit_set_five`) in
+  `out/<date>/dock permit/`:
+  - DP1 site plan;
+  - DP2 one detail sheet per lot, with depth contours, dimensions, WGS 84 coordinates and
+    the rule check;
+  - DP3 depth profiles;
+  - DP4 lot table (acreage, septic eligibility, docks);
+  - DP5 the neighbour across the cove;
+  - DP6 views.
+
+  The single-dock set and the first 5 ac draft are in `superseded single dock/`
+  (`plot_dock_permit.py --single` rebuilds the former).
+- **Flight opening:**
+  - The drone climbs at the SE corner facing north, then backs away south along
+    CR 3635 to (162, -410), about 100 m up, where the whole property fills the frame.
+  - The proposed lot lines (`Lot_Lines` collection, `Lot_Line_Red` material, Value node
+    `LRH_LotLine_Alpha`) fade in from midway between N1 and N2 and hold to N3.
+  - They fade out over the first 4 s of the turn west (`flyover.LotLineFade`).
+  - The drone then turns west south of the lots, to the SW corner and the shoreline run.
+  - The B1/B2 pond keys are removed.
+  - The flight is 219.7 s and passes every clearance check (`flight_low.json`).
+- **Test video:** `flyover.py -- --variant low --scene permit5 --preview` writes
+  `video/low_permit5_preview/`.
+
 ### Phase 2c — Owner drone capture (planned)
 
 After mowing and dock-corridor clearing, the owner flies a mapping grid, oblique and

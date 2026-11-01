@@ -988,6 +988,8 @@ def build_permit(colls, context, grid, sampler, pooled, road_lines, zone, timber
     if five:
         paths, five_data = lotplan.permit_layout_five(record)
         lotplan.build_redline_five(five_data, context, sampler, colls["Redline"])
+        colls["Lot_Lines"] = collection("Lot_Lines")       # red, faded in by flyover.py
+        lotplan.build_lot_lines_red(five_data, sampler, colls["Lot_Lines"])
     else:
         lotplan.build_redline(context, sampler, colls["Redline"])
         paths = lotplan.permit_layout(context, pooled, grid, sampler, record)

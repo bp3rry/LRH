@@ -244,6 +244,29 @@ class BoatOnly:
         self.placed = True
 
 
+class LotLineFade:
+    """Wraps the per-frame scene life: the red lot lines (Lot_Line_Red) fade in from
+    midway between N1 and N2 to N2 (the whole property, facing north), hold to N3, and
+    fade out over the first 4 s of the turn west."""
+
+    def __init__(self, inner, bench):
+        self.inner = inner
+        self.node = bpy.data.materials["Lot_Line_Red"].node_tree.nodes["LRH_LotLine_Alpha"]
+        n1, n2, n3 = bench["N1"], bench["N2"], bench["N3"]
+        self.a0, self.a1, self.b0, self.b1 = (n1 + n2) / 2, n2, n3, n3 + 4 * FPS
+
+    def alpha(self, f):
+        s = lambda x: min(max(x, 0.0), 1.0) ** 2 * (3 - 2 * min(max(x, 0.0), 1.0))
+        return s((f - self.a0) / (self.a1 - self.a0)) * (1 - s((f - self.b0) / (self.b1 - self.b0)))
+
+    def __call__(self, f):
+        if self.inner is not None:
+            self.inner(f)
+        a = round(self.alpha(f), 3)
+        if self.node.outputs[0].default_value != a:
+            self.node.outputs[0].default_value = a
+
+
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     global KEYS, SECONDS, SAMPLES, POSES, SUN, HAZE_KM, COLLECTIONS, RES
@@ -264,11 +287,15 @@ def main():
     # --scene permit (owner, 31 Oct 2026): fly the permit scene (lrh_permit.blend) - the
     # property as it stands, no structures; baled hay fields, the two meandering permit
     # paths and the denser UTRWD woods. Its frames get their own folder.
-    permit = "--scene" in argv and argv[argv.index("--scene") + 1] == "permit"
+    # --scene permit5 (owner, 1 Nov 2026): the approved four 5 ac lots, their docks and
+    # paths (lrh_permit5.blend); the red lot lines fade in while the drone faces north.
+    scene_arg = argv[argv.index("--scene") + 1] if "--scene" in argv else None
+    permit = scene_arg in ("permit", "permit5")
     if permit:
-        if not bpy.data.filepath.endswith("lrh_permit.blend"):
-            lrh.fail("--scene permit renders out/<date>/lrh_permit.blend (build_baseline.py -- --scene permit)")
-        suffix = "_permit"
+        if not bpy.data.filepath.endswith(f"lrh_{scene_arg}.blend"):
+            lrh.fail(f"--scene {scene_arg} renders out/<date>/lrh_{scene_arg}.blend "
+                     f"(build_baseline.py -- --scene {scene_arg})")
+        suffix = f"_{scene_arg}"
     if "--preview" in argv:
         RES, SAMPLES, step, fps = (960, 540), 8, 3, FPS // 3
         variant_dir = f"{variant}{suffix}_preview"
@@ -319,12 +346,15 @@ def main():
             life = Life(total)
         elif variant == "low" and permit:
             render.apply_collections(scene, set(COLLECTIONS) - {"Site_Works", "Planting", "Beach", "Docks", "Shoreline"}
-                                     | {"Landmarks", "Permit_Paths", "Hay"})
+                                     | {"Landmarks", "Permit_Paths", "Hay"}
+                                     | ({"Lot_Lines"} if scene_arg == "permit5" else set()))
             hay = bpy.data.materials["Ground_Site"].node_tree.nodes.get("LRH_Hay")
             if hay is None:
                 lrh.fail("the permit .blend has no hay fields; rebuild it with --scene permit")
             hay.outputs[0].default_value = 1.0
             life = BoatOnly(total, LENS_MM)
+            if scene_arg == "permit5":
+                life = LotLineFade(life, flight["benchmarks"])
         elif variant == "low":
             render.apply_collections(scene, set(COLLECTIONS + ["Cabins"]))
             pads = []
