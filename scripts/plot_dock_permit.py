@@ -579,7 +579,7 @@ def five_acre_sheets(day):
     draw_dock(s, nb, NEIGH_C)
     for label, lot in five["lots"].items():
         poly = Polygon(lot["polygon"])
-        ac = lot["acres_survey_scaled"] or lot["acres_cad"]
+        ac = lot["acres_record"]
         c = poly.representative_point()
         s.label((c.x + 20, c.y), f"{label}  {ac:.2f} ac", font="h2", anchor="mm", box=(0, 0, 0, 150))
         r = five["docks"].get(label)
@@ -596,8 +596,8 @@ def five_acre_sheets(day):
     L = five["lots"]
     lines = [
         ("h", "Four 5 ac lots: a dock and path where the rules allow"),
-        ("key", "5 ac lot lines (equal halves of each parcel, east-west)", WHITE),
-        ("key", "Boat dock (floating, gangway at 554 ft) and its 300 ft ring", (*DOCK_C, 255)),
+        ("key", "Lot lines (each lot 5.10 ac or more by the record acreage)", (140, 140, 140, 255)),
+        ("key", "Boat dock (floating, gangway at 554 ft) and its 300 ft ring (white)", (170, 170, 170, 255)),
         ("key", "Fishing/patio dock (fixed, pedestrian, 10 x 20 ft) and its 300 ft ring", (*FISH_C, 255)),
         ("key", "Administrative property lines and the 150 ft band", (*ADMIN_C, 255)),
         ("key", "6 ft decomposed granite path, no tree removed", (235, 180, 110, 255)),
@@ -614,8 +614,9 @@ def five_acre_sheets(day):
                                f"deep 10 ft out. Why: {a['why_no_dock']}."))
             continue
         r = five["docks"][label]
-        ac = (f"{lot['acres_cad']:.2f} ac by CAD, {lot['acres_survey_scaled']:.2f} ac by the survey"
-              if lot["acres_survey_scaled"] else f"{lot['acres_cad']:.2f} ac by CAD")
+        ac = (f"{lot['acres_record']:.2f} ac by record ("
+              + " + ".join(f"{v:.2f} ac of {k}" for k, v in lot["acres_by_parcel"].items())
+              + f"); {lot['road_frontage_ft']} ft on CR 3635")
         p = paths[label.replace(" ", "_")]
         if kind(r) == "boat":
             what = (f"boat dock, {r['design_label']}, {r['length_ft']:.0f} ft (cove {r['cove_width_ft']} ft, Table 7 max "
@@ -623,25 +624,25 @@ def five_acre_sheets(day):
                     + (f"; {r['trees_in_footprint']} measured trunk under it" if r["trees_in_footprint"] else "; no trunk under it"))
         else:
             what = (f"fishing/patio dock 10 x 20 ft (cove {r['cove_width_ft']} ft); {r['end_depth_ft']} ft of water at "
-                    f"its end; no boat dock site meets the rules on this lot ({lot['boat_sites']} boat sites)")
+                    f"its end; no boat dock site meets the rules on this lot")
         lines.append(("t", f"{label} ({ac}; {lot['frontage_ft']} ft on UTRWD land): {what}. {r['admin_line_ft']} ft from "
                            f"its administrative lines; {r['nearest_dock_ft']} ft to the nearest other dock; path "
                            f"{p['length_ft']} ft. Dock base {ll(r['wgs84']['base'])}."))
     lines += [
         ("h", "Notes"),
         ("t", "Why 5 ac: the Water Quality Protection Criteria (LSMP 4.1.1, Section 8) bar septic systems in "
-              "subdivisions with lots under 5 acres. The north parcel's halves are 4.92 ac on the CAD outline, which "
-              "is 0.39 ac smaller than the 10.221 ac survey; by the survey each is 5.11 ac. The plat should confirm "
-              "both north lots at 5.00 ac or more."),
-        ("t", "Lot lines: each dock must be 150 ft from its lot's lines drawn through the UTRWD land to the water. "
-              "The dividing lines were searched along the lake-side line and at angles up to 40 deg for the most "
-              f"docks; the best are east-west ({L['Lot A']['lot_line_angle_deg']:.1f} and "
-              f"{L['Lot C']['lot_line_angle_deg']:.1f} deg)."),
-        ("t", "South parcel: the only shore reachable over dry ground is in front of old Lots 9-10 (about 256 ft); "
-              "two docks need 300 ft between them, so only one south lot can have a dock. Lot D takes it: a fishing/patio "
-              "dock (pedestrian only, fixed poles, 200 sq ft, App. D) in front of old Lot 10; no boat dock site meets the "
-              "rules on either south lot. In front of old Lots 6-8 a low swale in the lidar becomes a slough at full "
-              "pool (1-4 ft deep, up to about 45 ft wide), cutting the shoreline strip off from the land."),
+              "subdivisions with lots under 5 acres; at 5 ac or more each lot can have its own OSSF and is eligible "
+              "for a dock permit."),
+        ("t", f"Acreage: record total {five['layout']['record_total_acres']:.2f} ac - CAD 135089 by the signed CBG survey "
+              "(12 Aug 2022, 10.36 ac including the corner at the point of beginning) and CAD 116505 by its 10.221 ac "
+              "declaration; lot areas are the CAD outlines scaled to those. Every lot is at least 5.10 ac (0.1 ac margin)."),
+        ("t", "Lot lines: three straight lines from the lake-side boundary, crossing the old parcel line where needed "
+              "(Lots B and C each take about 0.26 ac across it). Each line's extension through the UTRWD land is an "
+              "administrative line that both neighbouring docks clear by 150 ft. Angles: "
+              + ", ".join(f"{l['between'][0][-1]}/{l['between'][1][-1]} {l['angle_deg']:+d} deg" for l in five["layout"]["dividing_lines"])
+              + " from east-west."),
+        ("t", "Fishing/patio docks are pedestrian only (fixed poles, 10 x 20 ft, App. D). No boat dock site meets the "
+              "rules on the south lots: the cove there is under 320 ft wide or the slips are under 3 ft."),
         ("t", f"Spacing: all four docks are at least {min(r['nearest_dock_ft'] for r in five['docks'].values())} ft "
               f"from each other or the neighbour's best site. Lot C's dock is "
               f"{five['docks']['Lot C']['nearest_dock_ft']} ft from that site, so if Lot C builds first the neighbour "
@@ -694,7 +695,7 @@ def five_acre_sheets(day):
     d.text((10, 2 * W + 84), NOTE, fill=(110, 110, 110), font=F["xs"])
     sheet.save(out / "DP8_5ac_docks.png")
     print(f"WROTE {out / 'DP8_5ac_docks.png'}")
-    for name in ("check_permit5_oblique", "check_permit5_dock_b", "check_permit5_dock_d"):
+    for name in ("check_permit5_oblique", "check_permit5_dock_b", "check_permit5_dock_c", "check_permit5_dock_d"):
         Image.open(day / f"{name}_draft.png").convert("RGB").save(out / f"{name.replace('check_', '')}.png")
 
 

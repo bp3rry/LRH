@@ -918,24 +918,37 @@ Show a fishing/patio dock and a path at old Lot 10.
   pool, 1-4 ft deep. It cuts the shoreline strip off from the land, so a path there
   would have to wade.
 
-**Result:**
+**Revision, same day (owner): every lot 5 ac or more, with lot lines free to cross the old
+parcel line and to angle.**
+- **Record acreage:** the signed CBG survey (12 Aug 2022, 1145 CR 3635,
+  `../Ladonia/Survey`) gives CAD 135089 as 451,123 sq ft = 10.36 ac. That includes the
+  corner triangle at the point of beginning, which is already inside the CAD outline. With
+  116505's 10.221 ac, the record total is 20.58 ac. Lot areas are CAD areas scaled per
+  parcel to these figures.
+- **Search** (`dock_permit.plan_five_acre`):
+  - three straight dividing lines, each starting on the lake-side boundary (every 3 m)
+    at -40 to +40 deg;
+  - every lot at least 5.10 ac and reaching CR 3635;
+  - one dock per lot from every mainland boat or fishing/patio site, 300 ft apart and
+    300 ft from the neighbour's best site;
+  - each dividing line's extension clears both neighbouring docks by 150 ft;
+  - preference: most boat docks, then fewest trunks under them, then the deepest slips.
 
-| Lot | Dock | Notes |
-| --- | --- | --- |
-| A (5.11 ac by survey) | boat, 48 ft, parallel head, 1 slip | slip 3.0 ft; 1 measured trunk under it |
-| B (5.11 ac by survey) | boat, 52 ft, parallel head, 2 slips | slip 3.1 ft |
-| C (5.02 ac) | none | 6 ft path to its mainland shore only |
-| D (5.02 ac) | fishing/patio, in front of old Lot 10 | 0.6 ft of water at its end |
+| Lot | Acres (record) | Dock | Notes |
+| --- | --- | --- | --- |
+| A (north) | 5.10 | boat, 78 ft, parallel head, 1 slip | slip 3.0 ft; gangway 45 ft; 2 measured trunks under it |
+| B | 5.11 (4.85 of 116505 + 0.26 of 135089) | boat, 52 ft, parallel head, 1 slip | slip 3.0 ft; gangway 60 ft (the maximum) |
+| C | 5.21 (0.27 of 116505 + 4.94 of 135089) | fishing/patio 10 x 20 ft (old Lot 7) | 1.6 ft at its end; faces a slough with a low ridge about 30 ft out |
+| D (south) | 5.16 | fishing/patio 10 x 20 ft, at the north edge of old Lot 10 | 0.7 ft at its end |
 
-- The south parcel's mainland shore (old Lots 9-10) is about 256 ft long. Two docks need
-  300 ft between them, so only one south lot can have a dock.
-- Paths are 6 ft decomposed granite, meandering, and remove no trees.
-- **Scene:** `build_baseline.py -- --scene permit5` builds `lrh_permit5.blend` with the
-  5 ac redline, the docks (`lotplan.permit_dock_mesh`, `lotplan.fishing_dock_mesh`) and
-  the paths.
-- **Review sheets:** in `dock permit/5 ac lots/`, DP7 (the plan) and DP8 (each dock in
-  plan), plus oblique views.
-- **Next:** owner approval, then the marketing scenes and a test video.
+- **Dividing lines:** D/C east-west; C/B and B/A at -8 deg.
+- **Docks:** all at least 321 ft apart and from the neighbour's best site.
+- **Paths:** 106 / 165 / 267 / 266 ft (A, B, C, D), with no trees removed.
+- **Replat:** Lots B and C cross the old parcel line, so a replat must combine the two
+  parcels.
+- **Margins** (lidar depths, to be confirmed on site):
+  - both boat slips are exactly 3.0 ft deep;
+  - Lot B's gangway is exactly 60 ft.
 
 ### Phase 2c — Owner drone capture (planned)
 

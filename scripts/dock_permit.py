@@ -561,7 +561,12 @@ def boat_route(site, start, goal, timber, lane_ft=20.0):
 # Criteria bar OSSFs in subdivisions with lots under 5 acres, so each parcel is split into
 # two lots at equal area; each lot keeps lake-side (UTRWD) and CR 3635 frontage and gets
 # its own dock and path (plan_five_acre).
-SURVEY_ACRES = {"116505": 10.221}   # survey; the CAD polygon is 0.39 ac smaller (PLAN 7.5)
+# Record acreage: 116505 by its CAD declaration (survey per PLAN 7.5); 135089 by the signed
+# CBG survey of 12 Aug 2022 (1145 CR 3635, 451,123 sq ft, including the corner at the point
+# of beginning; Ladonia/Survey). Lot areas are CAD areas scaled per parcel to these.
+SURVEY_ACRES = {"116505": 10.221, "135089": 10.36}
+MIN_LOT_ACRES = 5.10            # 5 ac (Water Quality Protection Criteria) plus 0.1 ac margin
+CR3635 = ROOT / "inputs/geometry/txdot-fannin-cr-3635-epsg6344.geojson"
 FISHING_W_FT, FISHING_L_FT = 10.0, 20.0     # App. D: 200 sq ft, 10-20 ft each way, fixed poles
 OLD_LOT10_Y = (-228.5, -173.9)              # Lot D's dock is placed in front of old Lot 10 if it can be
 
@@ -635,121 +640,178 @@ def evaluate_fishing(site, b, n, trees, admin=()):
 
 
 def plan_five_acre(site, pts, own, utrwd, trees, neighbour):
-    """Two equal-area lots per parcel and one dock per lot. The dividing line starts on
-    the parcel's lake-side line and may be angled (up to 40 deg), because its extension
-    through the UTRWD land is the administrative line both lots' docks must clear by
-    150 ft; it is placed where both lots get a dock. A lot takes a boat dock where its
-    frontage allows one (fewest trunks under it, then deepest slips), else a fishing/patio
-    dock (in front of old Lot 10 for Lot D, if it can be). All docks are 300 ft apart and,
-    if possible, 300 ft from the neighbour's best potential site."""
-    from itertools import product
+    """Four lots of at least MIN_LOT_ACRES (by the record acreage) across the whole
+    property, each reaching CR 3635 and the UTRWD shoreline, each with its own dock.
+    Lot lines need not follow the old parcel line: each of the three dividing lines is a
+    straight line from a point on the lake-side boundary, at up to 40 deg from east-west.
+    Its extension through the UTRWD land to the 551 ft contour is the administrative line
+    both neighbouring docks must clear by 150 ft (6.2). Docks: every shore point where a
+    boat dock or, failing that, a fishing/patio dock meets the rules on its own; all four
+    docks 300 ft apart, and 300 ft from the neighbour's best potential site if possible.
+    Preference: most boat docks, fewest trunks under docks, deepest slips."""
+    whole = unary_union(list(own.values())).buffer(0.5, join_style="mitre").buffer(-0.5, join_style="mitre")
+    k = {pid: SURVEY_ACRES[pid] / (own[pid].area / 4046.8564) for pid in own}
+
+    def acres(piece):
+        return sum(piece.intersection(own[pid]).area / 4046.8564 * k[pid] for pid in own)
+    total = acres(whole)
+    f = frontage(site, {"poly": whole}, utrwd, Point(-200.0, 0.0))
+    contact = f["contact"]
+    if contact.coords[0][1] > contact.coords[-1][1]:
+        contact = LineString(list(contact.coords)[::-1])            # south to north
+    outer = sorted(f["admin"], key=lambda a: a.coords[0][1])       # south, north
+    o = json.loads((ROOT / "inputs/terrain/origin.json").read_text())["origin"]
+    road = translate(shape(json.loads(CR3635.read_text())["features"][0]["geometry"]), -o["easting"], -o["northing"])
+    road_side = whole.exterior.intersection(road.buffer(25.0))
     length = site.water.exterior.length
-    nb = Polygon(neighbour["footprint"])
-    # Every shore point once, without the administrative lines (they depend on the cut).
+    sa, sb = f["shore_range"]
+
+    # Candidate docks along the whole frontage (no administrative lines yet).
     cands = []
-    for b, n, s_ in pts:
+    for b, n, s_ in pts[::2]:
+        if not (sa <= s_ <= sb or sa <= s_ + length <= sb):
+            continue
         r, foot = evaluate(site, b, n, trees)
+        if r["ok"]:
+            cands.append(r)
+            continue
         fr = evaluate_fishing(site, b, n, trees)
-        cands.append((s_, r, foot, fr, Polygon(fr["footprint"])))
-    chosen, lots, counts = {}, {}, {}
-    names = {"116505": ("Lot A", "Lot B"), "135089": ("Lot C", "Lot D")}
+        if fr["ok"]:
+            cands.append(fr)
+    cands.sort(key=lambda r: r["base"][1])
+    feet = [Polygon(r["footprint"]) for r in cands]
+    nbf = Polygon(neighbour["footprint"])
+    print("CANDS", len(cands), sum(r.get("type") != "fishing/patio" for r in cands), "boat")
 
-    def options(lot_poly, label):
-        f = frontage(site, {"poly": lot_poly}, utrwd, Point(lot_poly.centroid.x - 150, lot_poly.centroid.y))
-        if f is None:
-            return None, None
-        sa, sb = f["shore_range"]
-        boat, fish = [], []
-        for s_, r, foot, fr, ffoot in cands:
-            if not (sa <= s_ <= sb or sa <= s_ + length <= sb):
+    # Candidate dividing lines: (west point, angle) -> south area, admin segment.
+    lines = []
+    for d in np.arange(4.0, contact.length - 4.0, 3.0):
+        w = np.array(contact.interpolate(d).coords[0])
+        for deg in range(-40, 41, 4):
+            th = math.radians(deg)
+            cut = split_parcel(whole, w, th)
+            if cut is None:
                 continue
-            if r["ok"] and min(foot.distance(a) for a in f["admin"]) / FT >= ADMIN_FT:
-                boat.append(r)
-            if fr["ok"] and min(ffoot.distance(a) for a in f["admin"]) / FT >= ADMIN_FT:
-                fish.append(fr)
-        boat.sort(key=lambda r: (r["trees_in_footprint"], -r["slip_min_depth_ft"]))
-        if label == "Lot D":
-            in10 = lambda r: OLD_LOT10_Y[0] <= r["base"][1] <= OLD_LOT10_Y[1]
-            fish.sort(key=lambda r: (not in10(r), -r["end_depth_ft"]))
-        else:
-            fish.sort(key=lambda r: -r["end_depth_ft"])
-        return f, (boat[:12] if boat else fish[:12], len(boat), len(fish))
+            north, south = cut
+            if north.intersection(road_side).length < 15 or south.intersection(road_side).length < 15:
+                continue
+            u = np.array([math.cos(th), math.sin(th)])
+            hit = None
+            for t in np.arange(1.0, 400.0, 1.0):
+                if site.wet(*(w - u * t))[0]:
+                    hit = w - u * t
+                    break
+            if hit is None:
+                continue
+            lines.append({"w": w, "deg": deg, "u": u, "south_ac": acres(south), "admin": LineString([w, hit])})
+    print("LINES", len(lines))
+    adm = [L["admin"] for L in lines]
+    dist = np.array([[ft.distance(a) / FT for a in adm] for ft in feet])          # dock x line
+    side = np.array([[np.sign(np.cross(L["u"], np.array(r["base"]) - L["w"])) for L in lines] for r in cands])
+    # north of a line: cross(u, p - w) > 0 (u points east)
+    ok_line = (dist >= ADMIN_FT)
+    out_ok = np.array([min(ft.distance(outer[0]), ft.distance(outer[1])) / FT >= ADMIN_FT for ft in feet])
+    sep = np.array([[a.distance(b) / FT for b in feet] for a in feet])
+    nb_ok = np.array([ft.distance(nbf) / FT >= SEPARATION_FT for ft in feet])
+    S = np.array([L["south_ac"] for L in lines])
 
-    for pid, (n_name, s_name) in names.items():
-        poly = own[pid]
-        f = frontage(site, {"poly": poly}, utrwd, Point(poly.centroid.x - 150, poly.centroid.y))
-        line = f["contact"]
-        best = None
-        for d in np.arange(line.length * 0.2, line.length * 0.8, 4.0):
-            w = line.interpolate(d).coords[0]
-            theta = equal_split(poly, w)
-            if theta is None:
+    def gap_lines(i, j):
+        """Lines with dock i south and dock j north, both 150 ft clear."""
+        return np.nonzero(ok_line[i] & ok_line[j] & (side[i] < 0) & (side[j] > 0))[0]
+
+    def place(quad):
+        """Greedy south-to-north choice of lines meeting the acreage, or None."""
+        chosen, floor = [], MIN_LOT_ACRES
+        for i, j in zip(quad[:-1], quad[1:]):
+            g = gap_lines(i, j)
+            g = g[S[g] >= floor - 1e-9]
+            # every dock must be on the right side of this line, not only the pair
+            g = [x for x in g if all(side[q, x] < 0 for q in quad[:quad.index(i) + 1])
+                 and all(side[q, x] > 0 for q in quad[quad.index(j):])]
+            if not g:
+                return None
+            x = min(g, key=lambda x: S[x])
+            chosen.append(x)
+            floor = S[x] + MIN_LOT_ACRES
+        if total - S[chosen[-1]] < MIN_LOT_ACRES:
+            return None
+        return chosen
+
+    n = len(cands)
+    order = range(n)
+    best = None
+    for keep_nb in (True, False):
+        for a in order:
+            if not out_ok[a] or (keep_nb and not nb_ok[a]):
                 continue
-            north, south = split_parcel(poly, w, theta)
-            fn, on = options(north, n_name)
-            fs, os_ = options(south, s_name)
-            if not on or not os_:
-                continue
-            # A lot may end up with no dock (None) when its frontage has no site at all.
-            ln, ls = on[0] or [None], os_[0] or [None]
-            foot = lambda r: Polygon(r["footprint"]) if r else None
-            pairs = [(i, j) for i in range(len(ln)) for j in range(len(ls))
-                     if ln[i] is None or ls[j] is None
-                     or foot(ln[i]).distance(foot(ls[j])) / FT >= SEPARATION_FT]
-            if not pairs:
-                continue
-            i, j = min(pairs, key=lambda ij: ij[0] + ij[1])
-            docks = (ln[i] is not None) + (ls[j] is not None)
-            boats = (on[1] > 0) + (os_[1] > 0)
-            trees_ = sum(r.get("trees_in_footprint", 0) for r in (ln[i], ls[j]) if r)
-            score = (docks, boats, -trees_, -abs(math.degrees(theta)), -(i + j))
-            if best is None or score > best[0]:
-                best = (score, w, theta, north, south, fn, fs, on, os_)
-        if best is None:
-            lrh.fail(f"no lot line through parcel {pid} gives both 5 ac lots a dock")
-        _, w, theta, north, south, fn, fs, on, os_ = best
-        for label, piece, fr_, op in ((n_name, north, fn, on), (s_name, south, fs, os_)):
-            lots[label] = piece
-            chosen[label] = op[0] or [None]
-            counts[label] = {
-                "parcel": pid, "boat_sites": op[1], "fishing_sites": op[2],
-                "frontage_ft": round(fr_["frontage_m"] / FT), "acres_cad": round(piece.area / 4046.8564, 2),
-                "acres_survey_scaled": round(SURVEY_ACRES[pid] / 2, 2) if pid in SURVEY_ACRES else None,
-                "admin_lines": [[[round(float(v), 1) for v in a.coords[0]], [round(float(v), 1) for v in a.coords[-1]]]
-                                for a in fr_["admin"]],
-                "polygon": [[round(x, 2), round(y, 2)] for x, y in piece.exterior.coords],
-                "lot_line_west": [round(float(w[0]), 2), round(float(w[1]), 2)],
-                "lot_line_angle_deg": round(math.degrees(theta), 1)}
-        print("SPLIT", pid, "at", np.round(w, 1), "angle", round(math.degrees(theta), 1), "score", best[0])
-    labels = list(chosen)
-    best, best_key = None, None
-    for keep_neighbour in (True, False):
-        for combo in product(*(range(len(chosen[k])) for k in labels)):
-            recs = [chosen[k][i] for k, i in zip(labels, combo)]
-            feet = [Polygon(r["footprint"]) for r in recs if r]
-            if any(feet[i].distance(feet[j]) / FT < SEPARATION_FT for i in range(len(feet)) for j in range(i)):
-                continue
-            if keep_neighbour and any(f_.distance(nb) / FT < SEPARATION_FT for f_ in feet):
-                continue
-            key = (sum(r is None for r in recs), sum(r.get("trees_in_footprint", 0) for r in recs if r), sum(combo))
-            if best_key is None or key < best_key:
-                best, best_key = recs, key
+            for b in range(a + 1, n):
+                if sep[a, b] < SEPARATION_FT or (keep_nb and not nb_ok[b]) or not len(gap_lines(a, b)):
+                    continue
+                for c in range(b + 1, n):
+                    if sep[a, c] < SEPARATION_FT or sep[b, c] < SEPARATION_FT or (keep_nb and not nb_ok[c]) \
+                            or not len(gap_lines(b, c)):
+                        continue
+                    for d in range(c + 1, n):
+                        if not out_ok[d] or min(sep[a, d], sep[b, d], sep[c, d]) < SEPARATION_FT \
+                                or (keep_nb and not nb_ok[d]) or not len(gap_lines(c, d)):
+                            continue
+                        quad = [a, b, c, d]
+                        recs = [cands[q] for q in quad]
+                        score = (sum(r.get("type") != "fishing/patio" for r in recs),
+                                 -sum(r.get("trees_in_footprint", 0) for r in recs),
+                                 min(r.get("slip_min_depth_ft", 0) for r in recs if r.get("type") != "fishing/patio")
+                                 if any(r.get("type") != "fishing/patio" for r in recs) else 0,
+                                 sum(r.get("slip_min_depth_ft", r["end_depth_ft"]) for r in recs))
+                        if best is not None and score <= best[0]:
+                            continue
+                        chosen = place(quad)
+                        if chosen is not None:
+                            best = (score, quad, chosen)
         if best:
             break
     if best is None:
-        lrh.fail("no 5 ac dock layout keeps every dock 300 ft apart")
-    for k, r in zip(labels, best):
-        counts[k]["dock"] = r is not None
-    plan = {k: dict(r) for k, r in zip(labels, best) if r}
-    for label, r in plan.items():
-        f = frontage(site, {"poly": lots[label]}, utrwd, Point(lots[label].centroid.x - 150, lots[label].centroid.y))
-        r["admin_line_ft"] = round(min(Polygon(r["footprint"]).distance(a) for a in f["admin"]) / FT)
-        feet = [Polygon(o["footprint"]) for k, o in plan.items() if k != label] + [nb]
-        r["nearest_dock_ft"] = round(min(Polygon(r["footprint"]).distance(f_) for f_ in feet) / FT)
+        lrh.fail("no layout gives four lots of 5 ac or more a legal dock each")
+    _, quad, chosen = best
+    labels = ("Lot D", "Lot C", "Lot B", "Lot A")                  # south to north
+    pieces, rest = [], whole
+    for x in chosen:
+        L = lines[x]
+        north, south = split_parcel(rest, L["w"], math.radians(L["deg"]))
+        pieces.append(south)
+        rest = north
+    pieces.append(rest)
+    bounds = [outer[0]] + [lines[x]["admin"] for x in chosen] + [outer[1]]
+    plan, counts = {}, {}
+    for i, label in enumerate(labels):
+        r = dict(cands[quad[i]])
+        piece = pieces[i]
+        if piece.geom_type != "Polygon":
+            lrh.fail(f"{label} is not one polygon")
+        adm_i = [bounds[i], bounds[i + 1]]
+        r["admin_line_ft"] = round(min(Polygon(r["footprint"]).distance(a) for a in adm_i) / FT)
+        others = [Polygon(cands[q]["footprint"]) for q in quad if q != quad[i]] + [nbf]
+        r["nearest_dock_ft"] = round(min(Polygon(r["footprint"]).distance(o2) for o2 in others) / FT)
         keys = ["base", "end"] + (["gangway_top"] if "gangway_top" in r else [])
-        latlon = lrh.lat_lon([r[k] for k in keys])
-        r["wgs84"] = {k: [round(a, 6), round(b, 6)] for k, (a, b) in zip(keys, latlon)}
-    return plan, counts, keep_neighbour
+        latlon = lrh.lat_lon([r[kk] for kk in keys])
+        r["wgs84"] = {kk: [round(a, 6), round(b, 6)] for kk, (a, b) in zip(keys, latlon)}
+        plan[label] = r
+        front = piece.exterior.intersection(utrwd.buffer(1.0)).length
+        counts[label] = {
+            "dock": True, "acres_record": round(acres(piece), 2), "acres_cad": round(piece.area / 4046.8564, 2),
+            "acres_by_parcel": {pid: round(piece.intersection(own[pid]).area / 4046.8564 * k[pid], 2) for pid in own
+                                if piece.intersection(own[pid]).area > 1.0},
+            "frontage_ft": round(front / FT), "road_frontage_ft": round(piece.intersection(road_side).length / FT),
+            "admin_lines": [[[round(float(v), 1) for v in a.coords[0]], [round(float(v), 1) for v in a.coords[-1]]]
+                            for a in adm_i],
+            "polygon": [[round(x, 2), round(y, 2)] for x, y in piece.exterior.coords]}
+    result_lines = [{"west": [round(float(v), 2) for v in lines[x]["w"]], "angle_deg": lines[x]["deg"],
+                     "between": [labels[i], labels[i + 1]]} for i, x in enumerate(chosen)]
+    for label in labels:
+        print("LOT", label, counts[label]["acres_record"], counts[label]["acres_by_parcel"], "road",
+              counts[label]["road_frontage_ft"], "ft")
+    keep = all(Polygon(cands[q]["footprint"]).distance(nbf) / FT >= SEPARATION_FT for q in quad)
+    return plan, counts, keep, {"record_total_acres": round(total, 3), "dividing_lines": result_lines,
+                                "min_lot_acres": MIN_LOT_ACRES, "candidates": len(cands), "lines_tested": len(lines)}
 
 
 def main():
@@ -871,7 +933,7 @@ def main():
     print("ROUTE", {k: v for k, v in result["lot10_route"].items() if not k.startswith("route_")},
           result["lot10_route"]["route_3ft_m"])
     own_polys = {pid: props[pid]["poly"] for pid in ("116505", "135089")}
-    plan5, counts5, kept = plan_five_acre(site, pts, own_polys, utrwd, trees, neighbour)
+    plan5, counts5, kept, layout5 = plan_five_acre(site, pts, own_polys, utrwd, trees, neighbour)
     for label, r in plan5.items():
         out = np.array(r["end"]) + np.array(r["dir"]) * 6.0
         r["boat_route"] = boat_route(site, out, OPEN_LAKE, tim) if r.get("type") != "fishing/patio" else None
@@ -898,6 +960,7 @@ def main():
                                                 "dock (1/3 of the cove)"}
                 break
     result["five_acre"] = {"lots": counts5, "docks": plan5, "access_only": access, "neighbour_kept_300ft": kept,
+                           "layout": layout5,
                            "fishing_dock": "fixed-pole fishing/patio dock, pedestrian only, 10 x 20 ft = 200 sq ft "
                                            "(App. D), at most 1/3 of the cove; no depth rule (no mooring)"}
     (day_dir / "dock_permit.json").write_text(json.dumps(result, indent=1))

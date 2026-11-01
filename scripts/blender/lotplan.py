@@ -820,13 +820,14 @@ def permit_layout_five(record):
                       "aim": "shoreline access only (no dock site meets the rules)", "dock": None})
     feet = [Polygon(r["footprint"]) for r in five["docks"].values()]
     spacing = min(feet[i].distance(feet[j]) for i in range(len(feet)) for j in range(i)) / FT
-    record("permit5_docks_lsmp", all(r["ok"] for r in five["docks"].values()) and spacing >= 300,
+    record("permit5_docks_lsmp", all(r["ok"] for r in five["docks"].values()) and spacing >= 300
+           and all(v["acres_record"] >= 5.0 for v in five["lots"].values()),
            source=str(src.relative_to(lrh.ROOT)), min_spacing_ft=round(spacing),
            docks={k: {"type": r.get("type", "boat"), "length_ft": r["length_ft"],
                       "depth_ft": r.get("slip_min_depth_ft", r["end_depth_ft"]),
                       "admin_line_ft": r["admin_line_ft"], "trees_in_footprint": r["trees_in_footprint"]}
                   for k, r in five["docks"].items()},
-           lots={k: {"acres_cad": v["acres_cad"], "acres_survey_scaled": v["acres_survey_scaled"]}
+           lots={k: {"acres_record": v["acres_record"], "acres_cad": v["acres_cad"]}
                  for k, v in five["lots"].items()})
     return paths, five
 
@@ -840,7 +841,7 @@ def build_redline_five(five, context, sampler, coll):
             strip(f"Redline_Parcel_{b['prop_id']}", np.array(b["lines_local_m"][0])[:, :2], 1.6,
                   sampler, 0.35, red, coll)
     lots = {k: Polygon(v["polygon"]) for k, v in five["lots"].items()}
-    for a, b in (("Lot A", "Lot B"), ("Lot C", "Lot D")):
+    for a, b in (("Lot A", "Lot B"), ("Lot B", "Lot C"), ("Lot C", "Lot D")):
         pa, pb = lots[a].exterior, lots[b].exterior
         common = [c for c in pa.coords if pb.distance(Point(c)) < 0.2]
         if len(common) >= 2:
@@ -851,7 +852,7 @@ def build_redline_five(five, context, sampler, coll):
         row = LineString([(-1e4, cy), (1e4, cy)]).intersection(poly)
         cx = row.bounds[0] + 30.0
         info = five["lots"][label]
-        acres = info["acres_survey_scaled"] or info["acres_cad"]
+        acres = info["acres_record"]
         for name, body, size, dy, op in (("Number", label.split()[-1], 16.0, 0.0, 0.45),
                                          ("Acres", f"{acres:.2f} ac", 4.5, -11.0, 0.8)):
             text = bpy.data.curves.new(f"Redline_{label}_{name}", "FONT")
