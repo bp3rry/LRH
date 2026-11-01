@@ -759,65 +759,100 @@ def deepest_within(pt, arm, grid, sampler, radii=(40, 80, 120, 150)):
     return best
 
 
+def dock_permit_data():
+    src = sorted(lrh.ROOT.glob("out/*/dock permit/dock_permit.json"))
+    if not src:
+        lrh.fail("no dock permit analysis; run scripts/blender/dock_permit_geom.py and scripts/dock_permit.py")
+    return src[-1], json.loads(src[-1].read_text())
+
+
 def permit_layout(context, water, grid, sampler, record):
-    """A straight path from each start to the 551 ft shoreline, outside the parcels and
-    dry until the shore, and a dock site there that meets the draft LSMP rules (dock at
-    most 120 ft and 1/3 of the cove, >= 1 m deep at the end, 300 ft between the two
-    docks). Each dock points straight out or at the deepest water within 150 m; best =
-    deepest end less PERMIT_PATH_COST_PER_M per metre of path."""
-    parcels = unary_union([Polygon(np.array(b["lines_local_m"][0])[:, :2])
-                           for b in context["boundaries"] if b["kind"] == "owner_parcel_boundary"])
-    inner = parcels.buffer(-0.5)
-    arm = max(water.geoms, key=lambda g: g.area) if water.geom_type == "MultiPolygon" else water
-    real_shore = grid.rect.buffer(-4.0)
-    shore = arm.exterior
-    shore_pts = [p for p in (shore.interpolate(d).coords[0] for d in np.arange(0, shore.length, 2.0))
-                 if real_shore.contains(Point(p))]
-    options = {}
-    for name, start in permit_starts(context).items():
-        found = []
-        for sx, sy in shore_pts:
-            line = LineString([start, (sx, sy)])
-            if line.length > PERMIT_MAX_PATH_M or line.intersection(inner).length > 0.5:
-                continue
-            if any(arm.contains(line.interpolate(d)) for d in np.arange(0.0, line.length - 2.0, 1.0)):
-                continue
-            for prefer in (None, deepest_within((sx, sy), arm, grid, sampler)):
-                c = dock_candidate((sx, sy), arm, grid, sampler, prefer=prefer)
-                if c is None or c["end_depth_m"] < MIN_END_DEPTH_M or \
-                        c["cove_width_m"] < MIN_COVE_WIDTH_M:
-                    continue
-                c.update(name=name, path_from=start, path_line=[start, (sx, sy)],
-                         aim="deepest" if prefer else "square to shore",
-                         score=float(c["end_depth_m"]) - PERMIT_PATH_COST_PER_M * line.length)
-                found.append(c)
-        if not found:
-            lrh.fail(f"no permit path and dock site found for the {name} parcel")
-        options[name] = sorted(found, key=lambda c: -c["score"])[:60]
-    north, south = options["North"], options["South"]
-    best = max(((a, b) for a in north for b in south
-                if LineString([a["base"], a["end"]]).buffer(5.0).distance(
-                    LineString([b["base"], b["end"]]).buffer(5.0)) >= DOCK_SEPARATION_M),
-               key=lambda ab: ab[0]["score"] + ab[1]["score"], default=None)
-    if best is None:
-        lrh.fail("no pair of permit dock sites 300 ft apart")
-    spacing = LineString([best[0]["base"], best[0]["end"]]).buffer(5.0).distance(
-        LineString([best[1]["base"], best[1]["end"]]).buffer(5.0))
-    rows = []
-    for c in best:
-        az = (90.0 - math.degrees(math.atan2(c["dir"][1], c["dir"][0]))) % 360.0
-        rows.append({"parcel": c["name"], "path_start": [round(float(v), 1) for v in c["path_from"]],
-                     "dock_base": [round(float(v), 1) for v in c["base"]],
-                     "path_length_m": round(LineString(c["path_line"]).length, 1),
-                     "path_length_ft": round(LineString(c["path_line"]).length / FT),
-                     "dock_length_ft": round(float(c["length"]) / FT),
-                     "dock_azimuth_deg": round(az), "dock_aim": c["aim"],
-                     "cove_width_m": round(float(c["cove_width_m"]), 1),
-                     "end_depth_m": round(float(c["end_depth_m"]), 2)})
-    record("permit_paths_lsmp", spacing >= DOCK_SEPARATION_M, paths=rows,
-           dock_spacing_m=round(float(spacing), 1), dock_spacing_ft=round(float(spacing) / FT),
-           path_width_ft=6, rule_source="UTRWD LSMP comment draft 2025-10-16, sections 4.1.1, 6.2, 6.3")
-    return list(best)
+    """The proposed dock and the two permit paths (owner, 1 Nov 2026), from
+    scripts/dock_permit.py, which checks every site against the draft LSMP: one dock for
+    the owner's property (both parcels) at the deepest compliant site by the parcel line,
+    reached by the south path; the north path ends at the north parcel's own compliant
+    site, with no dock (one dock per property under one owner). Each path ends at the
+    gangway landing on the 554 ft contour."""
+    src, data = dock_permit_data()
+    starts = permit_starts(context)
+    paths = []
+    for name, key, built in (("North", "north_alternative", False), ("South", "owner_dock", True)):
+        r = data["proposed"][key]
+        top = tuple(r.get("gangway_top") or r["base"])
+        paths.append({"name": name, "path_from": starts[name], "path_to": top, "path_line": [starts[name], top],
+                      "base": tuple(r["base"]), "end": tuple(r["end"]), "dir": tuple(r["dir"]),
+                      "length": r["length_ft"] * FT, "end_depth_m": r["slip_min_depth_ft"] * FT,
+                      "cove_width_m": r["cove_width_ft"] * FT, "aim": "square to shore",
+                      "dock": r if built else None})
+    own = data["proposed"]["owner_dock"]
+    record("permit_dock_lsmp", own["ok"] and data["proposed"]["north_alternative"]["ok"],
+           source=str(src.relative_to(lrh.ROOT)), design=own["design_label"],
+           length_ft=own["length_ft"], slip_depth_ft=own["slip_min_depth_ft"],
+           cove_width_ft=own["cove_width_ft"], gangway_ft=own["gangway_ft"],
+           admin_line_ft=own["admin_line_ft"], to_neighbour_potential_dock_ft=own["to_neighbour_dock_ft"],
+           rule_source=data["rules"])
+    return paths
+
+
+PERMIT_DOCK_FLOAT_M = (0.30, 0.55)   # deck at least 12 in above the water (LSMP 6.1.1)
+
+
+def permit_dock_mesh(name, rec, coll, sampler):
+    """The proposed floating dock from its dock_permit.json record: decking boxes, steel
+    guide poles at the head, and the hinged gangway from the 554 ft landing down onto
+    the float. Local frame as dock_mesh: +x out from the shoreline, z = 0 at the pool."""
+    deck_mat = material("Dock_Composite", (0.24, 0.21, 0.17), 0.8)    # muted, natural (LSMP)
+    metal = material("Dock_Galvanized", (0.55, 0.56, 0.55), 0.35)
+    bm = bmesh.new()
+
+    def box(x0, x1, y0, y1, z0, z1):
+        bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.Translation(
+            ((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)) @ Matrix.Diagonal(
+            Vector((x1 - x0, y1 - y0, z1 - z0, 1.0))))
+    z0, z1 = PERMIT_DOCK_FLOAT_M
+    for a0, a1, c0, c1 in rec["deck_ft"]:
+        box(a0 * FT, a1 * FT, c0 * FT, c1 * FT, z0, z1)
+    deck_faces = len(bm.faces)
+    head = [r for r in rec["deck_ft"] if r[0] > 0]
+    for a0, a1, c0, c1 in head:                                    # guide poles at the head
+        for x in (a0 * FT + 0.2, a1 * FT - 0.2):
+            for y in (c0 * FT + 0.2, c1 * FT - 0.2):
+                box(x - 0.09, x + 0.09, y - 0.09, y + 0.09, -2.0, 1.4)
+    # Gangway: 4 ft wide, hinged on the 554 ft landing, resting 4 ft onto the walkway.
+    g = rec["gangway_ft"] * FT
+    land = -rec["shore_to_554ft_ft"] * FT
+    b = np.array(rec["base"])
+    n = np.array(rec["dir"])
+    top_z = (sampler(*(b + n * land)) or lrh.POOL_M) - lrh.POOL_M + 0.15
+    foot_x, foot_z = land + g, z1 + 0.08
+    hw = 2 * FT
+    v = [bm.verts.new(p) for p in ((land, -hw, top_z), (foot_x, -hw, foot_z), (foot_x, hw, foot_z), (land, hw, top_z),
+                                   (land, -hw, top_z - 0.15), (foot_x, -hw, foot_z - 0.15),
+                                   (foot_x, hw, foot_z - 0.15), (land, hw, top_z - 0.15))]
+    for f in ((0, 1, 2, 3), (7, 6, 5, 4), (0, 4, 5, 1), (2, 6, 7, 3), (1, 5, 6, 2), (0, 3, 7, 4)):
+        bm.faces.new([v[i] for i in f])
+    for side in (-hw, hw):                                          # 42 in handrails
+        r = [bm.verts.new(p) for p in ((land, side - 0.03, top_z + 1.07), (foot_x, side - 0.03, foot_z + 1.07),
+                                       (foot_x, side + 0.03, foot_z + 1.07), (land, side + 0.03, top_z + 1.07),
+                                       (land, side - 0.03, top_z + 1.0), (foot_x, side - 0.03, foot_z + 1.0),
+                                       (foot_x, side + 0.03, foot_z + 1.0), (land, side + 0.03, top_z + 1.0))]
+        for f in ((0, 1, 2, 3), (7, 6, 5, 4), (0, 4, 5, 1), (2, 6, 7, 3)):
+            bm.faces.new([r[i] for i in f])
+        for t in np.linspace(0.05, 0.95, 6):
+            x, z = land + (foot_x - land) * t, top_z + (foot_z - top_z) * t
+            box(x - 0.03, x + 0.03, side - 0.03, side + 0.03, z, z + 1.0)
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.materials.append(deck_mat)
+    mesh.materials.append(metal)
+    for poly in mesh.polygons:
+        poly.material_index = 0 if poly.index < deck_faces else 1
+    obj = bpy.data.objects.new(name, mesh)
+    coll.objects.link(obj)
+    obj.location = (b[0], b[1], lrh.POOL_M)
+    obj.rotation_euler = (0, 0, math.atan2(n[1], n[0]))
+    return obj
 
 
 def lidar_trunks():
@@ -918,12 +953,13 @@ def build_permit_paths(paths, sampler, coll, blocked):
     tp = shapely.MultiPoint(trunks)
     corridors, info = [], {}
     for i, p in enumerate(paths):
-        line, amp = meander_path(p["path_from"], p["base"], trunks, blocked, seed=i + 1)
+        to = p.get("path_to", p["base"])
+        line, amp = meander_path(p["path_from"], to, trunks, blocked, seed=i + 1)
         p["path_line"] = [tuple(map(float, q)) for q in line.coords]
         strip(f"Permit_Path_{p['name']}", p["path_line"], PERMIT_PATH_WIDTH_M, sampler, 0.06,
               dg, coll, step=0.75)
         corridors.append(line.buffer(PERMIT_PATH_WIDTH_M / 2 + 1.2))
-        straight = math.dist(p["path_from"], p["base"])
+        straight = math.dist(p["path_from"], to)
         info[p["name"]] = {"length_m": round(line.length, 1), "length_ft": round(line.length / FT),
                            "straight_m": round(straight, 1), "meander_amplitude_m": amp,
                            "edge_to_nearest_trunk_m": round(line.distance(tp) - PERMIT_PATH_WIDTH_M / 2, 2),

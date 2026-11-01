@@ -823,6 +823,77 @@ All four obliques carry the caption.
    path section.
 4. Close-range stubble: short straw tufts in the fields instead of bare stubble shading.
 
+### Phase 2f — Dock permit exhibits (owner, 1 Nov 2026)
+
+Owner: list the south parcel's first five 2 ac lots (Lots 6-10); confirm where 3 ft of
+water is reachable; produce a "dock permit" set (depths, measurements) that answers
+concerns in advance; look at docks for the land across the creek and the conflicts.
+
+**Rules now checked** (`scripts/dock_permit.py`, draft LSMP 16 Oct 2025). The earlier
+checks used only 120 ft, 1/3 of the cove, 1 m depth and 300 ft spacing. Added:
+- **Table 7:** no boat dock in a cove under 300 ft wide; length at most (width - 300 ft) / 2.
+  Cove width is the narrowest water within 25 deg of square to the shore (conservative).
+- **150 ft from the administrative property lines:** each property boundary drawn
+  through the UTRWD land to the 551 ft contour (6.2).
+- **Slips:** a 12 x 30 ft slip at least 3 ft deep over its whole area.
+- **Gangway:** 20-60 ft, hinged at 554 ft or higher, square to the shore.
+- **Size limits:** 3-6 ft walkway; 200-1,000 sq ft of deck; 2 slips at most.
+- **Shapes tested:** a straight walkway, and the parallel-head designs the LSMP allows.
+- **Trees:** no measured trunk under the dock or the gangway.
+- **Boat lane:** a lane at least 3 ft deep through the habitat timber to the deep channel.
+
+**Findings:**
+- **Lots 6-10 individually:** no lot can have its own boat dock.
+  - Frontage is 114-342 ft, too narrow for the 150 ft rule.
+  - The cove is under 320 ft wide at Lots 9-10.
+  - Within the Table 7 lengths, the slips reach only 2.9 / 0.2 / 2.8 / 1.2 / 2.9 ft at
+    Lots 6-10.
+- **The south parcel on its own:** no compliant site.
+- **The owner's property (CAD 116505 + 135089, one owner):** 68 compliant shore points.
+- **Lot 10 creek channel:** 5-9 ft deep and connected to the main channel at 5.8 ft or
+  more, but under 300 ft wide, so Table 7 allows no boat dock there.
+- **The shared Lots 5-10 dock** (120 ft straight west of Lot 6) **fails Table 7.** The
+  cove is 387 ft wide, which caps the dock at 44 ft, and at that length the slips are
+  2.1 ft deep. The baseline scene's 120 ft docks were not re-checked against Table 7 or
+  the 150 ft rule.
+- **Shared docks for separate lot owners** are community association docks (4.1.1 B).
+  They need the Water Quality Protection Criteria: no OSSFs and central sewer where lots
+  are under 5 ac.
+
+**Proposed dock** (the owner's one dock, at the parcel line by the south parcel's
+north-west corner):
+- **Position:** base (-149.8, -5.5), 33.444286, -95.918834; bearing 293 deg.
+- **Shape:** 52 ft, parallel head with one 12 x 30 ft slip; 510 sq ft of deck.
+- **Slip depth:** 3.1 ft at the shallowest point.
+- **Cove:** 417 ft wide, so Table 7 allows up to 58 ft.
+- **Gangway:** 58 ft, from the 554 ft landing.
+- **Distances:** 724 ft from the administrative lines and 399 ft from the neighbour's best
+  site.
+- **Boat lane:** a 20 ft lane to the deep channel needs one trunk removed (607 m);
+  without removal the widest gap is about 7 ft.
+
+**Neighbour CAD 85552** (5.562 ac, west shore, 1,179 ft of frontage):
+- **Compliant shore points:** 42. The proposed dock rules out 2 of them, at the north end
+  of their frontage.
+- **Best site:** a 31 ft dock with two slips, 3.1 ft deep, 399 ft from ours, so either
+  dock can be built first.
+- **Boat lane:** a 20 ft lane needs two trunks removed.
+- CAD 128327 and 132120 (south of CR 3640) have no compliant site.
+- CAD 79383's frontage is outside the lidar.
+
+**Scenes and output:**
+- **Permit scene:**
+  - builds the proposed dock, gangway and riprap (`lotplan.permit_dock_mesh`);
+  - routes the south path to the 554 ft gangway landing;
+  - ends the north path at the north parcel's own compliant site, with no dock (one dock
+    per property under one owner);
+  - puts the neighbour's potential dock in the `Neighbour_Dock` collection, shown only
+    in the permit exhibit shots.
+- **Exhibit sheets:** `out/<date>/dock permit/` DP1-DP6, built by
+  `scripts/blender/dock_permit_geom.py`, then `scripts/dock_permit.py`, then the
+  `check_dock_permit_*` renders, then `scripts/plot_dock_permit.py`.
+- **Re-rendered:** P1-P3 and the permit flyover preview.
+
 ### Phase 2c — Owner drone capture (planned)
 
 After mowing and dock-corridor clearing, the owner flies a mapping grid, oblique and

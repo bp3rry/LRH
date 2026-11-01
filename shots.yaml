@@ -24,7 +24,7 @@ render:
   planting: false          # planting plan in 3D: bamboo screens, frontage trees, lowland trees
   beach: false             # sand beaches with umbrellas, tables, canoes at the shoreline circles
   hay: false               # open ground as freshly baled hay fields (scene: permit only)
-  permit_paths: false      # the two 6 ft permit paths to the proposed dock sites (scene: permit)
+  permit_paths: false      # the two 6 ft permit paths and the proposed dock (scene: permit)
   draft: {resolution: [1920, 1080], samples: 96}
   final: {resolution: [7680, 4320], samples: 1024, tile_size: 2048}
   4k: {resolution: [3840, 2160], samples: 256}
@@ -626,7 +626,7 @@ shots:
   P2_north_path:
     kind: marketing
     scene: permit
-    description: Drone view from the north, looking down the 6 ft path from the protrusion west to the north parcel's proposed dock site.
+    description: Drone view from the north, looking down the 6 ft path from the protrusion west to the north parcel's own compliant dock site (no dock - the owner's one dock is the proposed dock by the parcel line).
     camera: {position: [-140.0, 300.0, 225.0], target: [-150.0, 205.0, 169.0], lens_mm: 28.0}
     sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
     haze_visibility_km: 25
@@ -639,8 +639,8 @@ shots:
   P3_south_path:
     kind: marketing
     scene: permit
-    description: Low drone view from the water at the south parcel's proposed dock site, looking east-south-east up the 6 ft path to the parcel's north-west corner.
-    camera: {position: [-215.0, 30.0, 205.0], target: [-95.0, -12.0, 171.0], lens_mm: 30.0}
+    description: Low drone view from the water west of the proposed dock (dock permit, 1 Nov 2026), looking east-south-east over the float and gangway up the 6 ft path to the south parcel's north-west corner.
+    camera: {position: [-212.0, 22.0, 196.0], target: [-110.0, -14.0, 171.0], lens_mm: 30.0}
     sun: {datetime: "2026-10-14T16:30", utc_offset_h: -5}
     haze_visibility_km: 25
     cleared_ground: grassed
@@ -662,3 +662,59 @@ shots:
     hay: true
     permit_paths: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  # --- Dock permit exhibits (owner, 1 Nov 2026): bases for scripts/plot_dock_permit.py,
+  # which adds the dimensions, depths and rule checks. The neighbour's best potential
+  # dock across the cove (CAD 85552) is shown where Neighbour_Dock is listed.
+  check_dock_permit_overview:
+    kind: check
+    scene: permit
+    description: North-up base for the dock permit site plan - both parcels, the creek arm, the proposed dock and the neighbour's potential dock.
+    camera: {type: ortho, center: [-150.0, -15.0], ortho_scale_m: 520.0}
+    haze_visibility_km: 0
+    resolution: [1600, 1600]
+    sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
+    cleared_ground: grassed
+    hay: true
+    permit_paths: true
+    collections: [Terrain, Water, Roads, Vegetation, Neighbour_Dock]
+
+  check_dock_permit_detail:
+    kind: check
+    scene: permit
+    description: North-up base for the dock detail sheet - the proposed dock, gangway, riprap and path end at about 5 cm per pixel.
+    camera: {type: ortho, center: [-152.0, -3.0], ortho_scale_m: 80.0}
+    haze_visibility_km: 0
+    resolution: [1600, 1600]
+    sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
+    cleared_ground: grassed
+    hay: true
+    permit_paths: true
+    collections: [Terrain, Water, Roads, Vegetation]
+
+  check_dock_permit_from_water:
+    kind: check
+    scene: permit
+    description: Drone view from over the water north-west of the proposed dock, looking south-east at the float, slip, gangway and riprap with the path behind.
+    camera: {position: [-176.0, 28.0, 188.0], target: [-147.0, -7.0, 169.0], lens_mm: 35.0}
+    sun: {datetime: "2026-10-14T15:30", utc_offset_h: -5}
+    haze_visibility_km: 25
+    resolution: [1920, 1080]
+    cleared_ground: grassed
+    ground_detail: true
+    hay: true
+    permit_paths: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_dock_permit_cross_cove:
+    kind: check
+    scene: permit
+    description: High oblique from the south over the cove, looking north - the proposed dock on the east shore, the neighbour's potential dock on the west shore and the open water between.
+    camera: {position: [-205.0, -215.0, 245.0], target: [-205.0, -30.0, 168.0], lens_mm: 26.0}
+    sun: {datetime: "2026-10-14T15:30", utc_offset_h: -5}
+    haze_visibility_km: 25
+    resolution: [1920, 1080]
+    cleared_ground: grassed
+    hay: true
+    permit_paths: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation, Neighbour_Dock]

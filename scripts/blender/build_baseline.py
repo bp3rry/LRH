@@ -17,6 +17,7 @@ ground as freshly baled hay fields (hay.py).
 
 import json
 import math
+import random
 import sys
 import tempfile
 from pathlib import Path
@@ -989,6 +990,23 @@ def build_permit(colls, context, grid, sampler, pooled, road_lines, zone, timber
     record("permit_path_routes", all(r["edge_to_nearest_trunk_m"] >= lotplan.PERMIT_TRUNK_CLEAR_M - 0.05
                                      for r in route.values()),
            routes=route, trunk_clearance_m=lotplan.PERMIT_TRUNK_CLEAR_M)
+    # The proposed dock (owner, 1 Nov 2026), its gangway and 10 ft of riprap each side.
+    rng = random.Random(2011)
+    rip = cabins.Mesh()
+    for p in paths:
+        if p["dock"]:
+            lotplan.permit_dock_mesh(f"Permit_Dock_{p['name']}", p["dock"], colls["Permit_Paths"], sampler)
+            beach.riprap(rip, p["base"], p["dir"], sampler, rng, half_dock=2 * lotplan.FT)
+            corridor = unary_union([corridor, LineString([p["dock"]["gangway_top"], p["base"]]).buffer(2.5)])
+    rip.object("Permit_Dock_Riprap", colls["Permit_Paths"])
+    # The neighbour's best potential dock across the cove (CAD 85552), for the dock permit
+    # exhibits only: shown when a shot lists Neighbour_Dock.
+    colls["Neighbour_Dock"] = collection("Neighbour_Dock")
+    other = lotplan.dock_permit_data()[1]["proposed"]["neighbour_85552_potential"]
+    lotplan.permit_dock_mesh("Neighbour_Dock_85552", other, colls["Neighbour_Dock"], sampler)
+    rip = cabins.Mesh()
+    beach.riprap(rip, other["base"], other["dir"], sampler, rng, half_dock=2 * lotplan.FT)
+    rip.object("Neighbour_Dock_Riprap", colls["Neighbour_Dock"])
     clearing = lotplan.owner_clearing(parcels, zone)
     record("owner_clearing", abs(clearing.area / SQM_PER_ACRE - lotplan.OWNER_CLEARING_ACRES) < 0.03,
            acres=round(clearing.area / SQM_PER_ACRE, 2), centroid=[round(clearing.centroid.x, 1),
