@@ -894,6 +894,49 @@ north-west corner):
   `check_dock_permit_*` renders, then `scripts/plot_dock_permit.py`.
 - **Re-rendered:** P1-P3 and the permit flyover preview.
 
+### Phase 2g — 5 ac lots with their own docks (owner, 1 Nov 2026; for review)
+
+Owner: the Water Quality Protection Criteria bar septic systems where lots are under
+5 ac, so show two 5 ac lots per parcel, each with its own dock and path as the rules allow.
+Show a fishing/patio dock and a path at old Lot 10.
+
+**Analysis** (`dock_permit.plan_five_acre`, `five_acre` in `dock_permit.json`):
+- **Lot lines:** each parcel is cut into two equal-area lots. The dividing line was
+  searched along the lake-side line and at angles up to 40 deg, for the most docks, then
+  the most boat docks. Both best lines run east-west.
+- **Area:**
+  - north parcel halves: 4.92 ac on the CAD outline, 5.11 ac by the 10.221 ac survey;
+  - south parcel halves: 5.02 ac (CAD).
+- **Dock choice:** a boat dock where the lot's own frontage allows one, otherwise a
+  fishing/patio dock. Each fishing/patio dock is 10 x 20 ft, 200 sq ft, fixed-pole and
+  pedestrian (App. D). It must be at most 1/3 of the cove, 150 ft from the lot's
+  administrative lines, and have no trunk under it.
+- **Spacing:** all docks are 300 ft apart and 300 ft from the neighbour's best site.
+- **New rule for every dock:** the shore must be mainland. That means dry ground at
+  least 6 in above 551 ft, in an area of 0.5 ha or more, after thin threads of ground are
+  removed. In front of old Lots 6-8, a low swale in the lidar becomes a slough at full
+  pool, 1-4 ft deep. It cuts the shoreline strip off from the land, so a path there
+  would have to wade.
+
+**Result:**
+
+| Lot | Dock | Notes |
+| --- | --- | --- |
+| A (5.11 ac by survey) | boat, 48 ft, parallel head, 1 slip | slip 3.0 ft; 1 measured trunk under it |
+| B (5.11 ac by survey) | boat, 52 ft, parallel head, 2 slips | slip 3.1 ft |
+| C (5.02 ac) | none | 6 ft path to its mainland shore only |
+| D (5.02 ac) | fishing/patio, in front of old Lot 10 | 0.6 ft of water at its end |
+
+- The south parcel's mainland shore (old Lots 9-10) is about 256 ft long. Two docks need
+  300 ft between them, so only one south lot can have a dock.
+- Paths are 6 ft decomposed granite, meandering, and remove no trees.
+- **Scene:** `build_baseline.py -- --scene permit5` builds `lrh_permit5.blend` with the
+  5 ac redline, the docks (`lotplan.permit_dock_mesh`, `lotplan.fishing_dock_mesh`) and
+  the paths.
+- **Review sheets:** in `dock permit/5 ac lots/`, DP7 (the plan) and DP8 (each dock in
+  plan), plus oblique views.
+- **Next:** owner approval, then the marketing scenes and a test video.
+
 ### Phase 2c — Owner drone capture (planned)
 
 After mowing and dock-corridor clearing, the owner flies a mapping grid, oblique and

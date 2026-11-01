@@ -46,7 +46,7 @@ import vegetation  # noqa: E402
 
 import shapely  # noqa: E402  (from .blender-site, added to sys.path by lrh)
 import yaml  # noqa: E402
-from shapely.geometry import LineString, Polygon, box, mapping  # noqa: E402
+from shapely.geometry import LineString, Point, Polygon, box, mapping  # noqa: E402
 from shapely.ops import unary_union  # noqa: E402
 
 SQM_PER_ACRE = 4046.8564224
@@ -976,15 +976,21 @@ def build_lot_plan(colls, context, grid, sampler, pooled, road_lines, zone, timb
 
 
 def build_permit(colls, context, grid, sampler, pooled, road_lines, zone, timber_zone,
-                 parcels, cr3635, cr3640_line, terrain, path, cover, out):
+                 parcels, cr3635, cr3640_line, terrain, path, cover, out, five=False):
     """Owner, 31 Oct 2026: the property as it stands with no structures, the two 6 ft
     permit paths to the proposed dock sites, and the open ground baled for hay. Revised
     the same day: no tree removed for the paths, which meander between the trees; the
-    UTRWD land thicker than the lidar shows, except the owner's mown clearing."""
+    UTRWD land thicker than the lidar shows, except the owner's mown clearing.
+    five (scene permit5, owner 1 Nov 2026): two 5 ac lots per parcel, each with its own
+    dock (boat or fishing/patio) and path, instead of the one proposed dock."""
     colls["Redline"] = collection("Redline")
-    lotplan.build_redline(context, sampler, colls["Redline"])
     colls["Permit_Paths"] = collection("Permit_Paths")
-    paths = lotplan.permit_layout(context, pooled, grid, sampler, record)
+    if five:
+        paths, five_data = lotplan.permit_layout_five(record)
+        lotplan.build_redline_five(five_data, context, sampler, colls["Redline"])
+    else:
+        lotplan.build_redline(context, sampler, colls["Redline"])
+        paths = lotplan.permit_layout(context, pooled, grid, sampler, record)
     corridor, route = lotplan.build_permit_paths(paths, sampler, colls["Permit_Paths"],
                                                  unary_union([parcels.buffer(-0.5), pooled]))
     record("permit_path_routes", all(r["edge_to_nearest_trunk_m"] >= lotplan.PERMIT_TRUNK_CLEAR_M - 0.05
@@ -994,7 +1000,11 @@ def build_permit(colls, context, grid, sampler, pooled, road_lines, zone, timber
     rng = random.Random(2011)
     rip = cabins.Mesh()
     for p in paths:
-        if p["dock"]:
+        if p["dock"] and p["dock"].get("type") == "fishing/patio":
+            lotplan.fishing_dock_mesh(f"Permit_Dock_{p['name']}", p["dock"], colls["Permit_Paths"], sampler)
+            beach.riprap(rip, p["base"], p["dir"], sampler, rng, half_dock=p["dock"]["width_ft"] / 2 * lotplan.FT)
+            corridor = unary_union([corridor, Point(p["base"]).buffer(4.0)])
+        elif p["dock"]:
             lotplan.permit_dock_mesh(f"Permit_Dock_{p['name']}", p["dock"], colls["Permit_Paths"], sampler)
             beach.riprap(rip, p["base"], p["dir"], sampler, rng, half_dock=2 * lotplan.FT)
             corridor = unary_union([corridor, LineString([p["dock"]["gangway_top"], p["base"]]).buffer(2.5)])
@@ -1042,7 +1052,7 @@ def build_permit(colls, context, grid, sampler, pooled, road_lines, zone, timber
                 "lat": round(lat, 6), "lon": round(lon, 6),
                 "utm15n_nad83_2011": [round(float(xy[0]) + lrh.ORIGIN_E, 1),
                                       round(float(xy[1]) + lrh.ORIGIN_N, 1)]}
-    (out / "permit_paths.json").write_text(json.dumps({
+    (out / ("permit5_paths.json" if five else "permit_paths.json")).write_text(json.dumps({
         "schema": "lrh.permit-paths/2",
         "crs_note": "local_m: LRH local metres (origin.json); lat/lon WGS 84 via GDAL from EPSG:6344",
         "path_width_ft": 6, "path_surface": "decomposed granite, light brown; mown",
@@ -1068,14 +1078,14 @@ def parse_scene():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     if not argv:
         return "baseline"
-    if argv[:1] != ["--scene"] or len(argv) != 2 or argv[1] not in ("baseline", "permit"):
-        lrh.fail("usage: build_baseline.py [-- --scene baseline|permit]")
+    if argv[:1] != ["--scene"] or len(argv) != 2 or argv[1] not in ("baseline", "permit", "permit5"):
+        lrh.fail("usage: build_baseline.py [-- --scene baseline|permit|permit5]")
     return argv[1]
 
 
 def main():
     scene_name = parse_scene()
-    permit = scene_name == "permit"
+    permit = scene_name in ("permit", "permit5")
     out = lrh.out_dir()
     shots = yaml.safe_load((lrh.ROOT / "shots.yaml").read_text())["shots"]
     clear_scene()
@@ -1160,7 +1170,7 @@ def main():
     cover = vegetation.Raster(derived / "cover_site_drone.tif")
     if permit:
         build_permit(colls, context, grid, sampler, pooled, road_lines, zone, timber_zone,
-                     parcels, cr3635, cr3640_line, terrain, path, cover, out)
+                     parcels, cr3635, cr3640_line, terrain, path, cover, out, five=scene_name == "permit5")
     else:
         build_lot_plan(colls, context, grid, sampler, pooled, road_lines, zone, timber_zone,
                        parcels, cr3635, cr3640_line, terrain, path, cover, out)
@@ -1181,7 +1191,7 @@ def main():
         "passed": passed,
         "checks": checks,
     }
-    (out / ("baseline_checks.json" if not permit else "permit_checks.json")).write_text(json.dumps(report, indent=2) + "\n")
+    (out / ("baseline_checks.json" if not permit else f"{scene_name}_checks.json")).write_text(json.dumps(report, indent=2) + "\n")
     print(f"BASELINE {'PASSED' if passed else 'FAILED'}: {blend}")
     if not passed:
         sys.exit(1)

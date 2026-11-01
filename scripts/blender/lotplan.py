@@ -794,6 +794,117 @@ def permit_layout(context, water, grid, sampler, record):
     return paths
 
 
+def permit_layout_five(record):
+    """Owner, 1 Nov 2026: two 5 ac lots per parcel (scripts/dock_permit.py, five_acre),
+    each with its own dock - a boat dock where the lot's frontage allows one, else a
+    fishing/patio dock - and a 6 ft path from the lot's lake-side line to the dock's
+    landing (the 554 ft gangway landing, or the shoreline for a fixed fishing dock)."""
+    src, data = dock_permit_data()
+    five = data["five_acre"]
+    paths = []
+    for label, r in five["docks"].items():
+        lot = Polygon(five["lots"][label]["polygon"])
+        top = tuple(r.get("gangway_top") or r["base"])
+        start = shapely.ops.nearest_points(lot.exterior, Point(top))[0].coords[0]
+        paths.append({"name": label.replace(" ", "_"), "label": label, "path_from": start, "path_to": top,
+                      "path_line": [start, top], "base": tuple(r["base"]), "end": tuple(r["end"]),
+                      "dir": tuple(r["dir"]), "length": r["length_ft"] * FT,
+                      "end_depth_m": r.get("slip_min_depth_ft", r["end_depth_ft"]) * FT,
+                      "cove_width_m": (r["cove_width_ft"] or 0) * FT,
+                      "aim": "square to shore", "dock": r})
+    for label, a in five.get("access_only", {}).items():
+        to = tuple(a["path_to"])
+        paths.append({"name": label.replace(" ", "_"), "label": label, "path_from": tuple(a["path_from"]),
+                      "path_to": to, "path_line": [tuple(a["path_from"]), to], "base": to, "end": to,
+                      "dir": (-1.0, 0.0), "length": 0.0, "end_depth_m": 0.0, "cove_width_m": 0.0,
+                      "aim": "shoreline access only (no dock site meets the rules)", "dock": None})
+    feet = [Polygon(r["footprint"]) for r in five["docks"].values()]
+    spacing = min(feet[i].distance(feet[j]) for i in range(len(feet)) for j in range(i)) / FT
+    record("permit5_docks_lsmp", all(r["ok"] for r in five["docks"].values()) and spacing >= 300,
+           source=str(src.relative_to(lrh.ROOT)), min_spacing_ft=round(spacing),
+           docks={k: {"type": r.get("type", "boat"), "length_ft": r["length_ft"],
+                      "depth_ft": r.get("slip_min_depth_ft", r["end_depth_ft"]),
+                      "admin_line_ft": r["admin_line_ft"], "trees_in_footprint": r["trees_in_footprint"]}
+                  for k, r in five["docks"].items()},
+           lots={k: {"acres_cad": v["acres_cad"], "acres_survey_scaled": v["acres_survey_scaled"]}
+                 for k, v in five["lots"].items()})
+    return paths, five
+
+
+def build_redline_five(five, context, sampler, coll):
+    """Parcel outlines, the 5 ac lot lines and each lot's letter and acreage."""
+    red = material("Redline_Parcel", (0.85, 0.05, 0.03), 0.5, emission=1.5)
+    white = material("Redline_Lot", (0.95, 0.95, 0.92), 0.5, emission=1.0)
+    for b in context["boundaries"]:
+        if b["kind"] == "owner_parcel_boundary":
+            strip(f"Redline_Parcel_{b['prop_id']}", np.array(b["lines_local_m"][0])[:, :2], 1.6,
+                  sampler, 0.35, red, coll)
+    lots = {k: Polygon(v["polygon"]) for k, v in five["lots"].items()}
+    for a, b in (("Lot A", "Lot B"), ("Lot C", "Lot D")):
+        pa, pb = lots[a].exterior, lots[b].exterior
+        common = [c for c in pa.coords if pb.distance(Point(c)) < 0.2]
+        if len(common) >= 2:
+            common.sort(key=lambda c: c[0])
+            strip(f"Redline_LotLine_{a[-1]}{b[-1]}", [common[0], common[-1]], 0.9, sampler, 0.3, white, coll)
+    for label, poly in lots.items():
+        cy = poly.centroid.y
+        row = LineString([(-1e4, cy), (1e4, cy)]).intersection(poly)
+        cx = row.bounds[0] + 30.0
+        info = five["lots"][label]
+        acres = info["acres_survey_scaled"] or info["acres_cad"]
+        for name, body, size, dy, op in (("Number", label.split()[-1], 16.0, 0.0, 0.45),
+                                         ("Acres", f"{acres:.2f} ac", 4.5, -11.0, 0.8)):
+            text = bpy.data.curves.new(f"Redline_{label}_{name}", "FONT")
+            text.body = body
+            text.size = size
+            text.align_x, text.align_y = "CENTER", "CENTER"
+            obj = bpy.data.objects.new(f"Redline_{label.replace(' ', '_')}_{name}", text)
+            obj.location = (cx, cy + dy, (sampler(cx, cy + dy) or lrh.POOL_M) + 0.6)
+            obj.data.materials.append(number_material(op))
+            coll.objects.link(obj)
+
+
+def fishing_dock_mesh(name, rec, coll, sampler):
+    """A fixed-pole fishing/patio dock (pedestrian only): a 10 x 20 ft deck about 3 ft
+    above the pool on galvanized poles, 42 in rails on three sides and a short ramp from
+    the bank. Local frame as dock_mesh."""
+    deck_mat = material("Dock_Composite", (0.24, 0.21, 0.17), 0.8)
+    metal = material("Dock_Galvanized", (0.55, 0.56, 0.55), 0.35)
+    bm = bmesh.new()
+
+    def box(x0, x1, y0, y1, z0, z1):
+        bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.Translation(
+            ((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)) @ Matrix.Diagonal(
+            Vector((x1 - x0, y1 - y0, z1 - z0, 1.0))))
+    L, hw, top = rec["length_ft"] * FT, rec["width_ft"] * FT / 2, 0.95
+    b, n = np.array(rec["base"]), np.array(rec["dir"])
+    bank = (sampler(*(b - n * 3.0)) or lrh.POOL_M) - lrh.POOL_M
+    box(0.0, L, -hw, hw, top - 0.15, top)                          # deck
+    v = [bm.verts.new(p) for p in ((-3.0, -0.6, bank + 0.05), (0.0, -0.6, top), (0.0, 0.6, top), (-3.0, 0.6, bank + 0.05),
+                                   (-3.0, -0.6, bank - 0.1), (0.0, -0.6, top - 0.15), (0.0, 0.6, top - 0.15), (-3.0, 0.6, bank - 0.1))]
+    for f in ((0, 1, 2, 3), (7, 6, 5, 4), (0, 4, 5, 1), (2, 6, 7, 3), (1, 5, 6, 2), (0, 3, 7, 4)):
+        bm.faces.new([v[i] for i in f])                            # ramp from the bank
+    deck_faces = len(bm.faces)
+    for x in np.linspace(0.15, L - 0.15, 4):                       # poles
+        for y in (-hw + 0.15, hw - 0.15):
+            box(x - 0.07, x + 0.07, y - 0.07, y + 0.07, -2.0, top + 1.07)
+    for y in (-hw + 0.03, hw - 0.03):                              # rails
+        box(0.0, L, y - 0.03, y + 0.03, top + 1.0, top + 1.07)
+    box(L - 0.06, L, -hw, hw, top + 1.0, top + 1.07)
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.materials.append(deck_mat)
+    mesh.materials.append(metal)
+    for poly in mesh.polygons:
+        poly.material_index = 0 if poly.index < deck_faces else 1
+    obj = bpy.data.objects.new(name, mesh)
+    coll.objects.link(obj)
+    obj.location = (b[0], b[1], lrh.POOL_M)
+    obj.rotation_euler = (0, 0, math.atan2(n[1], n[0]))
+    return obj
+
+
 PERMIT_DOCK_FLOAT_M = (0.30, 0.55)   # deck at least 12 in above the water (LSMP 6.1.1)
 
 
@@ -915,8 +1026,11 @@ def meander_path(start, end, trunks, blocked, seed=0):
     def ok(line):
         if trunk_pts is not None and line.distance(trunk_pts) < hard - 0.05:
             return False
-        inner = LineString(line.coords).difference(Point(start).buffer(2.0)).difference(Point(end).buffer(2.0))
-        return inner.intersection(blocked).length < 0.3
+        try:
+            inner = line.difference(Point(start).buffer(2.0)).difference(Point(end).buffer(2.0))
+            return inner.intersection(blocked).length < 0.3
+        except shapely.errors.GEOSException:     # degenerate candidate (repeated vertex): reject
+            return False
 
     base = LineString(pts).simplify(0.4)
     for _ in range(3):                         # Chaikin corner cutting, ends kept

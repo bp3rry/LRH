@@ -718,3 +718,139 @@ shots:
     hay: true
     permit_paths: true
     collections: [Terrain, Water, Roads, Landmarks, Vegetation, Neighbour_Dock]
+
+  # --- 5 ac lots (owner, 1 Nov 2026; scene permit5): two lots per parcel, each with its
+  # own dock and path. For owner review before the marketing scenes change.
+  check_permit5_overview:
+    kind: check
+    scene: permit5
+    description: North-up base for the 5 ac lot plan - four lots, their docks and paths (overlays by scripts/plot_dock_permit.py).
+    camera: {type: ortho, center: [-110.0, 30.0], ortho_scale_m: 620.0}
+    haze_visibility_km: 0
+    resolution: [1600, 1600]
+    sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
+    cleared_ground: grassed
+    hay: true
+    permit_paths: true
+    collections: [Terrain, Water, Roads, Vegetation, Redline]
+
+  check_permit5_oblique:
+    kind: check
+    scene: permit5
+    description: High oblique from over CR 3635, looking west across the four 5 ac lots (lot lines shown) to the creek arm and the four docks.
+    camera: {position: [260.0, 10.0, 330.0], target: [-150.0, 10.0, 168.0], lens_mm: 24.0}
+    sun: {datetime: "2026-10-14T10:30", utc_offset_h: -5}
+    haze_visibility_km: 30
+    resolution: [1920, 1080]
+    cleared_ground: grassed
+    hay: true
+    permit_paths: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation, Redline]
+
+  check_permit5_dock_a:
+    kind: check
+    scene: permit5
+    description: Lot A's boat dock from above the woods to the east, looking west down the path and gangway to the float.
+    camera: {position: [-128.0, 222.0, 206.0], target: [-172.0, 201.0, 168.5], lens_mm: 30.0}
+    sun: {datetime: "2026-10-14T15:30", utc_offset_h: -5}
+    haze_visibility_km: 25
+    resolution: [1920, 1080]
+    cleared_ground: grassed
+    ground_detail: true
+    hay: true
+    permit_paths: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_permit5_dock_b:
+    kind: check
+    scene: permit5
+    description: Lot B's boat dock from over the water to the north-west.
+    camera: {position: [-172.0, 86.0, 190.0], target: [-135.0, 52.0, 169.0], lens_mm: 32.0}
+    sun: {datetime: "2026-10-14T15:30", utc_offset_h: -5}
+    haze_visibility_km: 25
+    resolution: [1920, 1080]
+    cleared_ground: grassed
+    ground_detail: true
+    hay: true
+    permit_paths: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_permit5_dock_c:
+    kind: check
+    scene: permit5
+    description: Lot C's fishing/patio dock from above the woods to the east, looking west down the path to the dock.
+    camera: {position: [-133.0, -60.0, 204.0], target: [-176.0, -81.0, 169.0], lens_mm: 30.0}
+    sun: {datetime: "2026-10-14T15:30", utc_offset_h: -5}
+    haze_visibility_km: 25
+    resolution: [1920, 1080]
+    cleared_ground: grassed
+    ground_detail: true
+    hay: true
+    permit_paths: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_permit5_dock_d:
+    kind: check
+    scene: permit5
+    description: Lot D's fishing/patio dock (in front of old Lot 10) from over the water to the north-west.
+    camera: {position: [-222.0, -152.0, 188.0], target: [-189.0, -183.0, 169.5], lens_mm: 32.0}
+    sun: {datetime: "2026-10-14T15:30", utc_offset_h: -5}
+    haze_visibility_km: 25
+    resolution: [1920, 1080]
+    cleared_ground: grassed
+    ground_detail: true
+    hay: true
+    permit_paths: true
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_permit5_detail_a:
+    kind: check
+    scene: permit5
+    description: North-up detail of Lot A's dock, landing and path end (overlays by scripts/plot_dock_permit.py).
+    camera: {type: ortho, center: [-171.9, 202.2], ortho_scale_m: 60.0}
+    haze_visibility_km: 0
+    resolution: [1000, 1000]
+    sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
+    cleared_ground: grassed
+    hay: true
+    permit_paths: true
+    collections: [Terrain, Water, Roads, Vegetation]
+
+  check_permit5_detail_b:
+    kind: check
+    scene: permit5
+    description: North-up detail of Lot B's dock, landing and path end (overlays by scripts/plot_dock_permit.py).
+    camera: {type: ortho, center: [-140.5, 54.2], ortho_scale_m: 60.0}
+    haze_visibility_km: 0
+    resolution: [1000, 1000]
+    sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
+    cleared_ground: grassed
+    hay: true
+    permit_paths: true
+    collections: [Terrain, Water, Roads, Vegetation]
+
+  check_permit5_detail_c:
+    kind: check
+    scene: permit5
+    description: North-up detail of Lot C's shoreline access path (no dock site meets the rules), the slough and the cut-off strip (overlays by scripts/plot_dock_permit.py).
+    camera: {type: ortho, center: [-150.0, -67.0], ortho_scale_m: 60.0}
+    haze_visibility_km: 0
+    resolution: [1000, 1000]
+    sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
+    cleared_ground: grassed
+    hay: true
+    permit_paths: true
+    collections: [Terrain, Water, Roads, Vegetation]
+
+  check_permit5_detail_d:
+    kind: check
+    scene: permit5
+    description: North-up detail of Lot D's dock, landing and path end (overlays by scripts/plot_dock_permit.py).
+    camera: {type: ortho, center: [-197.8, -179.7], ortho_scale_m: 60.0}
+    haze_visibility_km: 0
+    resolution: [1000, 1000]
+    sun: {datetime: "2026-10-14T12:30", utc_offset_h: -5}
+    cleared_ground: grassed
+    hay: true
+    permit_paths: true
+    collections: [Terrain, Water, Roads, Vegetation]
