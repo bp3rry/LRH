@@ -216,9 +216,10 @@ class BoatOnly:
 
     MARGIN_DEG = 10.0
 
-    def __init__(self, total, lens_mm):
+    def __init__(self, total, lens_mm, start=0):
         self.boat = bpy.data.objects.get("Ski_Boat")
         self.total = total
+        self.start = start          # the boat's clock starts with the main flight (after the sign intro)
         self.half_fov = math.degrees(math.atan(18.0 / lens_mm)) + self.MARGIN_DEG  # 36 mm sensor
         self.placed = False
 
@@ -227,7 +228,7 @@ class BoatOnly:
             return
         h = math.radians(BOAT_ROUTE["heading_deg"])
         x0, y0 = BOAT_ROUTE["start"]
-        dist = BOAT_ROUTE["speed_ms"] * frame / FPS
+        dist = BOAT_ROUTE["speed_ms"] * (frame - self.start) / FPS
         bx, by = x0 + math.sin(h) * dist, y0 + math.cos(h) * dist
         cam, look = pose(frame, self.total)
         view = math.atan2(look[0] - cam[0], look[1] - cam[1])
@@ -247,14 +248,13 @@ class BoatOnly:
 class LotLineFade:
     """Wraps the per-frame scene life: the red lot lines (Lot_Line_Red) fade in over the
     8 s before each lot-line hover (H1 over the creek, S1 north-east of the property, P1
-    at the point of beginning), hold to its second key (H2, S2) and fade out over the
-    next 4 s; at P1 they stay in to the last frame."""
+    at the point of beginning), hold to its second key (H2, S2, P2) and fade out over the
+    next 4 s (after P2, as the drone comes down to the for-sale sign)."""
 
     def __init__(self, inner, bench):
         self.inner = inner
         self.node = bpy.data.materials["Lot_Line_Red"].node_tree.nodes["LRH_LotLine_Alpha"]
-        self.windows = [(bench[f"{k}1"] - 8 * FPS, bench[f"{k}1"],
-                         bench[f"{k}2"] if k != "P" else math.inf, 4 * FPS)
+        self.windows = [(bench[f"{k}1"] - 8 * FPS, bench[f"{k}1"], bench[f"{k}2"], 4 * FPS)
                         for k in ("H", "S", "P") if f"{k}1" in bench]
 
     def alpha(self, f):
@@ -277,7 +277,7 @@ def main():
     SECONDS, SAMPLES, KEYS = VARIANTS[variant]
     fps, step, exposure, cabins = FPS, 1, None, []
     if variant == "low":
-        flight = json.loads((lrh.ROOT / "out/derived/flight_low.json").read_text())
+        flight = json.loads(lrh.FLIGHT_JSON.read_text())
         if not flight["checks"]["passed"]:
             lrh.fail(f"flight_low.json failed its clearance checks: {flight['checks']}")
         POSES = flight["poses"]
@@ -350,12 +350,12 @@ def main():
         elif variant == "low" and permit:
             render.apply_collections(scene, set(COLLECTIONS) - {"Site_Works", "Planting", "Beach", "Docks", "Shoreline"}
                                      | {"Landmarks", "Permit_Paths", "Hay"}
-                                     | ({"Lot_Lines"} if scene_arg == "permit5" else set()))
+                                     | ({"Lot_Lines", "Sale_Sign"} if scene_arg == "permit5" else set()))
             hay = bpy.data.materials["Ground_Site"].node_tree.nodes.get("LRH_Hay")
             if hay is None:
                 lrh.fail("the permit .blend has no hay fields; rebuild it with --scene permit")
             hay.outputs[0].default_value = 1.0
-            life = BoatOnly(total, LENS_MM)
+            life = BoatOnly(total, LENS_MM, flight.get("main_start", 0))
             if scene_arg == "permit5":
                 life = LotLineFade(life, flight["benchmarks"])
         elif variant == "low":

@@ -72,7 +72,8 @@ def fail(message):
 
 
 def out_dir(day=None):
-    path = OUT_ROOT / (day or date.today().isoformat())
+    """out/<day>; LRH_DAY names another folder (a test build beside a running render)."""
+    path = OUT_ROOT / (day or os.environ.get("LRH_DAY") or date.today().isoformat())
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -125,13 +126,16 @@ def load_context():
 # seen, and every instance costs Cycles object sync on every frame (owner, 2 Nov 2026:
 # the longer flight doubled the frame time).
 LOW_FLIGHT_Z = POOL_M + 75.0
+# The low flyover's per-frame poses (scripts/flight_path.py); LRH_FLIGHT points a test run
+# at another file.
+FLIGHT_JSON = Path(os.environ.get("LRH_FLIGHT") or ROOT / "out/derived/flight_low.json")
 
 
 def low_flight_line(stride):
-    """The low-altitude runs of out/derived/flight_low.json (every stride-th pose) as a
+    """The low-altitude runs of the flight (FLIGHT_JSON, every stride-th pose) as a
     MultiLineString, or None without a flight."""
     import shapely
-    flight = ROOT / "out/derived/flight_low.json"
+    flight = FLIGHT_JSON
     if not flight.is_file():
         return None
     cams = np.array([p[0] for p in json.loads(flight.read_text())["poses"][::stride]])

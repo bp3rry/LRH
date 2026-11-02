@@ -36,6 +36,7 @@ import frontage  # noqa: E402
 import ground_detail  # noqa: E402
 import hay  # noqa: E402
 import planting3d  # noqa: E402
+import sale_sign  # noqa: E402
 import site_works  # noqa: E402
 import sky  # noqa: E402
 import infrastructure  # noqa: E402
@@ -990,6 +991,8 @@ def build_permit(colls, context, grid, sampler, pooled, road_lines, zone, timber
         lotplan.build_redline_five(five_data, context, sampler, colls["Redline"])
         colls["Lot_Lines"] = collection("Lot_Lines")       # red, faded in by flyover.py
         lotplan.build_lot_lines_red(five_data, sampler, colls["Lot_Lines"])
+        colls["Sale_Sign"] = collection("Sale_Sign")        # the flyover starts and ends on it
+        sale_sign.build(colls["Sale_Sign"], sampler, record)
     else:
         lotplan.build_redline(context, sampler, colls["Redline"])
         paths = lotplan.permit_layout(context, pooled, grid, sampler, record)

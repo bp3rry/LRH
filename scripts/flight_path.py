@@ -9,7 +9,13 @@ open water. Every frame is checked:
 - heading turn rate at most 10 deg/s (gentle drone pan) and down-tilt at most 35 deg.
 Benchmark frames B1-B7 (PLAN.md Phase 3a) are picked at named keys.
 
-Writes out/derived/flight_low.json (per-frame poses, checks, benchmark frames) and
+Owner, 2 Nov 2026: the video starts and ends on the for-sale sign at the CR 3635 /
+CR 3640 corner (scripts/blender/sale_sign.py). The intro (close on the sign, then a low
+glide to the takeoff point) and the outro (down from the last hover onto the sign) are
+eased segments of their own either side of the main flight, so the main flight's frames
+do not change when they do; near the sign the clearance minimums do not apply.
+
+Writes out/derived/flight_low.json (LRH_FLIGHT overrides) (per-frame poses, checks, benchmark frames) and
 out/derived/flight_low_plan.png (plan view over the NAIP site image).
 
 Usage (Blender's Python): python3.11 scripts/flight_path.py
@@ -23,9 +29,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(ROOT / ".blender-site"))
 sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT / "scripts/blender"))
 
 import numpy as np  # noqa: E402
 
+import lrh  # noqa: E402
+import sale_sign  # noqa: E402
 from kwik_ortho import Surface  # noqa: E402
 
 FPS = 30
@@ -82,6 +91,53 @@ KEYS = [
 # overhead) for its first TAKEOFF_S seconds; everything after must meet them.
 TAKEOFF_S = 10.0
 TAKEOFF_MIN_AGL = 1.5
+# Within SIGN_ZONE_M of the sign the camera is down at the placards: it only has to stay
+# SIGN_MIN_AGL up. SIGN_DIST_M: camera to placards for the close-ups.
+SIGN_ZONE_M, SIGN_MIN_AGL, SIGN_DIST_M = 30.0, 1.0, 2.4
+
+
+def sign_keys(dtm):
+    """Intro and outro keys around the for-sale sign."""
+    base = sale_sign.layout(0.0)["base"]
+    g = sale_sign.layout(float(dtm(np.array([base[0]]), np.array([base[1]]))[0]))
+    c, o = g["centre"], np.append(g["out"], 0.0)
+    at = lambda d, dz: tuple(float(v) for v in c + o * d + (0.0, 0.0, dz))
+
+    def sign_key(name, d, dz, speed):
+        # Look along the ray through the placards' centre, 300 m out: look-at points as far
+        # as the main flight's interpolate as an even pan (a point 2 m away swings the view).
+        cam = np.array(at(d, dz))
+        ray = (c - cam) / np.linalg.norm(c - cam)
+        return (name, tuple(cam), tuple(float(v) for v in cam + ray * 300.0), speed)
+    intro = [
+        sign_key("SIGN", SIGN_DIST_M, 0.1, 0.3),                         # close on the placards
+        sign_key("", SIGN_DIST_M + 0.8, 0.15, 0.3),
+        sign_key("", SIGN_DIST_M + 1.8, 0.3, 0.4),                       # easing back
+        ("", at(6.5, 0.8), (5.0, 75.0, 186.0), 0.5),                           # turning toward the corner
+        ("", (136.0, -203.0, 186.8), (-155.0, -133.0, 182.0), 0.6),         # gliding to the takeoff point
+        ("", KEYS[0][1], KEYS[0][2], 2.0),                               # takeoff pose
+    ]
+    end = KEYS[-1]
+    outro = [
+        ("", end[1], end[2], end[3]),
+        sign_key("", 150.0, 55.0, 9.0),                                  # swinging onto the sign's axis
+        sign_key("", 60.0, 30.0, 6.0),                                   # down toward the sign
+        sign_key("", 22.0, 15.0, 4.5),
+        sign_key("", 10.0, 3.0, 3.0),
+        sign_key("", SIGN_DIST_M + 1.2, 0.2, 0.8),
+        sign_key("SIGN_END", SIGN_DIST_M, 0.1, 0.4),                     # end on the placards
+    ]
+    return intro, outro, g["base"]
+
+
+def segment(keys):
+    frames, _, key_u = poses(keys)
+    frames = eased(frames)
+    cams = np.array([f[0] for f in frames])
+    looks = gimbal(cams, np.array([f[1] for f in frames]))
+    us = np.array([f[2] for f in frames])
+    bench = {k[0]: int(np.argmin(np.abs(us - key_u[i]))) for i, k in enumerate(keys) if k[0]}
+    return cams, looks, bench
 
 
 def catmull_rom(points, t):
@@ -154,32 +210,53 @@ def gimbal(cams, looks, sigma_s=2.0):
 def main():
     dtm = Surface(ROOT / "out/derived/lidar_dtm_1m.tif")
     dsm = Surface(ROOT / "out/derived/lidar_dsm_1m.tif")
-    frames, _, key_u = poses(KEYS)
-    frames = eased(frames)
-    cams = np.array([f[0] for f in frames])
-    looks = gimbal(cams, np.array([f[1] for f in frames]))
-    frames = [(c, lk, f[2]) for c, lk, f in zip(cams, looks, frames)]
+    intro, outro, sign_base = sign_keys(dtm)
+    parts = [segment(k) for k in (intro, KEYS, outro)]
+    # The intro's last frame is the main flight's first and the outro's first its last;
+    # the intro is padded at the start so the main flight begins on a multiple of 3 (the
+    # preview renders every third frame and its frames can be reused).
+    pad = (-(len(parts[0][0]) - 1)) % 3
+    ic, il, ib = parts[0]
+    # Each segment is gimballed on its own, so the look directions at the joins differ by
+    # up to a degree: blend the intro's last and the outro's first 2 s onto the main flight's.
+    ramp = np.linspace(0, 1, 2 * FPS)[:, None] ** 2 * (3 - 2 * np.linspace(0, 1, 2 * FPS)[:, None])
+    il = il.copy()
+    il[-len(ramp):] = il[-len(ramp):] * (1 - ramp) + parts[1][1][0] * ramp
+    ol = parts[2][1].copy()
+    ol[:len(ramp)] = ol[:len(ramp)] * ramp + parts[1][1][-1] * (1 - ramp)
+    parts[2] = (parts[2][0], ol, parts[2][2])
+    ic, il = np.concatenate([ic[:1]] * pad + [ic[:-1]]), np.concatenate([il[:1]] * pad + [il[:-1]])
+    main_start = len(ic)
+    cams = np.concatenate([ic, parts[1][0], parts[2][0][1:]])
+    looks = np.concatenate([il, parts[1][1], parts[2][1][1:]])
+    outro_start = main_start + len(parts[1][0]) - 1
+    bench = {k: v + pad for k, v in ib.items()}
+    bench.update({k: v + main_start for k, v in parts[1][2].items()})
+    bench.update({k: v + outro_start for k, v in parts[2][2].items()})
+    frames = list(zip(cams, looks))
     ground = np.maximum(dtm(cams[:, 0], cams[:, 1]), POOL_M)
-    takeoff = np.arange(len(cams)) < TAKEOFF_S * FPS
+    idx = np.arange(len(cams))
+    takeoff = (idx >= main_start) & (idx < main_start + TAKEOFF_S * FPS)
+    near_sign = np.hypot(cams[:, 0] - sign_base[0], cams[:, 1] - sign_base[1]) < SIGN_ZONE_M
+    exempt = takeoff | near_sign
     canopy = np.maximum(dsm(cams[:, 0], cams[:, 1]), ground)
     agl = cams[:, 2] - ground
     above_canopy = cams[:, 2] - canopy
-    # Clearance is checked after the takeoff; the takeoff itself only has to stay above
-    # TAKEOFF_MIN_AGL.
-    agl_flight, canopy_flight = agl[~takeoff], above_canopy[~takeoff]
+    # Clearance is checked away from the takeoff and the sign; those only have to stay
+    # above TAKEOFF_MIN_AGL and SIGN_MIN_AGL.
+    agl_flight, canopy_flight = agl[~exempt], above_canopy[~exempt]
     d = looks - cams
     heading = np.degrees(np.unwrap(np.arctan2(d[:, 0], d[:, 1])))
     turn = np.abs(np.gradient(heading)) * FPS
     tilt = np.degrees(np.arctan2(-d[:, 2], np.hypot(d[:, 0], d[:, 1])))
     speed = np.linalg.norm(np.gradient(cams, axis=0), axis=1) * FPS
-    us = np.array([f[2] for f in frames])
-    bench = {k[0]: int(np.argmin(np.abs(us - key_u[i]))) for i, k in enumerate(KEYS) if k[0]}
     checks = {
         "min_agl_m": round(float(agl_flight.min()), 1),
-        "min_agl_frame": int(agl_flight.argmin()) + int(takeoff.sum()),
+        "min_agl_frame": int(idx[~exempt][agl_flight.argmin()]),
         "min_above_canopy_m": round(float(canopy_flight.min()), 1),
-        "min_above_canopy_frame": int(canopy_flight.argmin()) + int(takeoff.sum()),
+        "min_above_canopy_frame": int(idx[~exempt][canopy_flight.argmin()]),
         "takeoff_s": TAKEOFF_S, "takeoff_min_agl_m": round(float(agl[takeoff].min()), 1),
+        "sign_min_agl_m": round(float(agl[near_sign].min()), 2),
         "max_turn_deg_s": round(float(turn.max()), 2), "max_turn_frame": int(turn.argmax()),
         "max_tilt_deg": round(float(tilt.max()), 1),
         "max_agl_ft": round(float(agl.max() / 0.3048)),
@@ -187,14 +264,16 @@ def main():
     }
     checks["passed"] = bool(agl_flight.min() >= MIN_AGL and canopy_flight.min() >= MIN_CANOPY
                             and agl[takeoff].min() >= TAKEOFF_MIN_AGL
+                            and agl[near_sign].min() >= SIGN_MIN_AGL
                             and turn.max() <= MAX_TURN_DEG_S and tilt.max() <= MAX_TILT_DEG
                             and agl.max() < 400 * 0.3048)
     out = {"schema": "lrh.flight/1", "fps": FPS, "frames": len(frames),
-           "seconds": round(len(frames) / FPS, 1), "keys": KEYS, "benchmarks": bench,
+           "seconds": round(len(frames) / FPS, 1), "keys": intro + KEYS + outro, "benchmarks": bench,
+           "main_start": main_start,
            "checks": checks,
            "poses": [[[round(float(v), 3) for v in c], [round(float(v), 3) for v in lk]]
-                     for c, lk, _ in frames]}
-    (ROOT / "out/derived/flight_low.json").write_text(json.dumps(out) + "\n")
+                     for c, lk in frames]}
+    lrh.FLIGHT_JSON.write_text(json.dumps(out) + "\n")
     print(json.dumps({k: v for k, v in out.items() if k not in ("poses", "keys")}, indent=1))
     plot(cams, bench)
 
