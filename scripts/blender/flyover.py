@@ -247,16 +247,20 @@ class BoatOnly:
 class LotLineFade:
     """Wraps the per-frame scene life: the red lot lines (Lot_Line_Red) fade in from
     midway between N1 and N2 to N2 (the whole property, facing north), hold to N3, and
-    fade out over the first 4 s of the turn west."""
+    fade out over the first 4 s of the turn west; they fade in again from E0 to E1 as the
+    closing climb backs away over the cove, and hold to the last frame."""
 
     def __init__(self, inner, bench):
         self.inner = inner
         self.node = bpy.data.materials["Lot_Line_Red"].node_tree.nodes["LRH_LotLine_Alpha"]
         n1, n2, n3 = bench["N1"], bench["N2"], bench["N3"]
         self.a0, self.a1, self.b0, self.b1 = (n1 + n2) / 2, n2, n3, n3 + 4 * FPS
+        self.c0, self.c1 = bench.get("E0", math.inf), bench.get("E1", math.inf)
 
     def alpha(self, f):
         s = lambda x: min(max(x, 0.0), 1.0) ** 2 * (3 - 2 * min(max(x, 0.0), 1.0))
+        if f >= self.c0:
+            return s((f - self.c0) / (self.c1 - self.c0))
         return s((f - self.a0) / (self.a1 - self.a0)) * (1 - s((f - self.b0) / (self.b1 - self.b0)))
 
     def __call__(self, f):

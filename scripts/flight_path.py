@@ -68,6 +68,16 @@ KEYS = [
     ("", (-400.0, 430.0, 224.0), (-100.0, 250.0, 172.0), 8.0),        # swinging back to the property
     ("B7", (-315.0, 340.0, 230.0), (-20.0, 30.0, 176.0), 3.5),        # hover: shore, docks, cabins
 ]
+# Owner, 1 Nov 2026: after the B7 hover the drone climbs and backs away over the cove,
+# still looking at the property, and the proposed lot lines fade in again (E1-E2), as in
+# the opening. Flown as its own eased segment from rest at B7, so every frame up to B7
+# is unchanged.
+CLOSING_KEYS = [
+    ("", KEYS[-1][1], KEYS[-1][2], 3.5),
+    ("E0", (-345.0, 372.0, 258.0), (-22.0, 28.0, 174.0), 7.0),       # climbing, backing away
+    ("E1", (-370.0, 398.0, 282.0), (-25.0, 25.0, 172.0), 2.0),       # whole property; lot lines in
+    ("E2", (-380.0, 410.0, 286.0), (-25.0, 25.0, 172.0), 2.0),       # hold
+]
 # The takeoff is exempt from the clearance minimums (open road intersection, nothing
 # overhead) for its first TAKEOFF_S seconds; everything after must meet them.
 TAKEOFF_S = 10.0
@@ -85,15 +95,15 @@ def catmull_rom(points, t):
                   + (-p0 + 3 * p1 - 3 * p2 + p3) * u ** 3)
 
 
-def poses():
-    cams = np.array([k[1] for k in KEYS])
-    looks = np.array([k[2] for k in KEYS])
-    speeds = np.array([k[3] for k in KEYS])
+def poses(keys):
+    cams = np.array([k[1] for k in keys])
+    looks = np.array([k[2] for k in keys])
+    speeds = np.array([k[3] for k in keys])
     u = np.linspace(0, 1, 20001)
     pts = np.array([catmull_rom(cams, x) for x in u])
     ds = np.linalg.norm(np.diff(pts, axis=0), axis=1)
     s = np.concatenate([[0], np.cumsum(ds)])
-    key_u = np.linspace(0, 1, len(KEYS))
+    key_u = np.linspace(0, 1, len(keys))
     v = np.interp(u, key_u, speeds)
     v = np.maximum(v, 0.5)
     t = np.concatenate([[0], np.cumsum(ds / (0.5 * (v[1:] + v[:-1])))])
@@ -144,11 +154,20 @@ def gimbal(cams, looks, sigma_s=2.0):
 def main():
     dtm = Surface(ROOT / "out/derived/lidar_dtm_1m.tif")
     dsm = Surface(ROOT / "out/derived/lidar_dsm_1m.tif")
-    frames, seconds, key_u = poses()
-    frames = eased(frames)
+    frames, bench = [], {}
+    for keys in (KEYS, CLOSING_KEYS):          # each segment eased and gimballed on its own
+        seg, _, key_u = poses(keys)
+        seg = eased(seg)
+        if frames:
+            seg = seg[1:]                      # its first frame is the B7 hover frame
+        c = np.array([f[0] for f in seg])
+        lk = gimbal(c, np.array([f[1] for f in seg]))
+        us = np.array([f[2] for f in seg])
+        bench.update({k[0]: len(frames) + int(np.argmin(np.abs(us - key_u[i])))
+                      for i, k in enumerate(keys) if k[0]})
+        frames += [(ci, li, f[2]) for ci, li, f in zip(c, lk, seg)]
     cams = np.array([f[0] for f in frames])
-    looks = gimbal(cams, np.array([f[1] for f in frames]))
-    frames = [(c, lk, f[2]) for c, lk, f in zip(cams, looks, frames)]
+    looks = np.array([f[1] for f in frames])
     ground = np.maximum(dtm(cams[:, 0], cams[:, 1]), POOL_M)
     takeoff = np.arange(len(cams)) < TAKEOFF_S * FPS
     canopy = np.maximum(dsm(cams[:, 0], cams[:, 1]), ground)
@@ -162,8 +181,6 @@ def main():
     turn = np.abs(np.gradient(heading)) * FPS
     tilt = np.degrees(np.arctan2(-d[:, 2], np.hypot(d[:, 0], d[:, 1])))
     speed = np.linalg.norm(np.gradient(cams, axis=0), axis=1) * FPS
-    us = np.array([f[2] for f in frames])
-    bench = {k[0]: int(np.argmin(np.abs(us - key_u[i]))) for i, k in enumerate(KEYS) if k[0]}
     checks = {
         "min_agl_m": round(float(agl_flight.min()), 1),
         "min_agl_frame": int(agl_flight.argmin()) + int(takeoff.sum()),
@@ -180,7 +197,7 @@ def main():
                             and turn.max() <= MAX_TURN_DEG_S and tilt.max() <= MAX_TILT_DEG
                             and agl.max() < 400 * 0.3048)
     out = {"schema": "lrh.flight/1", "fps": FPS, "frames": len(frames),
-           "seconds": round(len(frames) / FPS, 1), "keys": KEYS, "benchmarks": bench,
+           "seconds": round(len(frames) / FPS, 1), "keys": KEYS + CLOSING_KEYS[1:], "benchmarks": bench,
            "checks": checks,
            "poses": [[[round(float(v), 3) for v in c], [round(float(v), 3) for v in lk]]
                      for c, lk, _ in frames]}
