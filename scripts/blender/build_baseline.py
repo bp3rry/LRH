@@ -1166,9 +1166,7 @@ def main():
     cr3640_line = LineString(np.array(json.loads((lrh.INPUTS / "geometry/cr3640-composite-context-route-epsg6344.geojson")
                                                  .read_text())["features"][0]["geometry"]["coordinates"])[:, :2]
                              - [lrh.ORIGIN_E, lrh.ORIGIN_N])
-    flight = lrh.ROOT / "out/derived/flight_low.json"
-    path = LineString([p[0][:2] for p in json.loads(flight.read_text())["poses"][::15]]) \
-        if flight.is_file() else None
+    path = lrh.low_flight_line(15)
     cover = vegetation.Raster(derived / "cover_site_drone.tif")
     if permit:
         build_permit(colls, context, grid, sampler, pooled, road_lines, zone, timber_zone,

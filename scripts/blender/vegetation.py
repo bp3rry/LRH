@@ -380,10 +380,7 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
 
     counts, build_counts = {}, {}
     # Phase 3a R3: photoreal models near the low flight path.
-    near_line = None
-    flight = lrh.ROOT / "out/derived/flight_low.json"
-    if flight.is_file():
-        near_line = shapely.LineString([p[0][:2] for p in json.loads(flight.read_text())["poses"][::10]])
+    near_line = lrh.low_flight_line(10)
     photo = trees.load_photoreal(proto_coll) if near_line is not None else {}
     photo_counts = {}
     for species, rows in placed.items():

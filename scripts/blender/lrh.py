@@ -120,6 +120,27 @@ def load_context():
     return json.loads((INPUTS / "context/site-review-context-regional.json").read_text())
 
 
+# Ground detail and photoreal trees follow only the low parts of the flight: from the
+# lot-line hovers and the transit legs (more than ~75 m above the pool) they cannot be
+# seen, and every instance costs Cycles object sync on every frame (owner, 2 Nov 2026:
+# the longer flight doubled the frame time).
+LOW_FLIGHT_Z = POOL_M + 75.0
+
+
+def low_flight_line(stride):
+    """The low-altitude runs of out/derived/flight_low.json (every stride-th pose) as a
+    MultiLineString, or None without a flight."""
+    import shapely
+    flight = ROOT / "out/derived/flight_low.json"
+    if not flight.is_file():
+        return None
+    cams = np.array([p[0] for p in json.loads(flight.read_text())["poses"][::stride]])
+    low = cams[:, 2] < LOW_FLIGHT_Z
+    edges = np.flatnonzero(np.diff(np.concatenate([[0], low.astype(int), [0]])))
+    runs = [cams[a:b, :2] for a, b in zip(edges[::2], edges[1::2]) if b - a >= 2]
+    return shapely.MultiLineString(runs) if runs else None
+
+
 def git_commit():
     def git(*args):
         return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True,

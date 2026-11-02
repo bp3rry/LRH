@@ -41,21 +41,24 @@ SE_CORNER = (140.0, -210.0)        # CR 3635 x relocated CR 3640, ground 184.7 m
 # Owner, 25 Oct 2026 (replaces the POB start and the cabin close-ups): take off at the SE
 # corner; at the SW corner pan north to the cleared shoreline and run up it (docks and
 # riprap ahead, lots on the right); out past the flooded timber to the open lake; a
-# left-hand turn over the western open water ending in a hover that looks back at the
-# property in golden light. Owner, 1 Nov 2026: the drone climbs facing north and backs
-# away south along CR 3635 until the whole property fills the frame (N2-N3: the proposed
-# lot lines fade in, in red), then turns west to the shoreline. (name, camera, look-at,
-# ground speed m/s)
+# left-hand turn over the western open water. Owner, 2 Nov 2026 (replaces the 1 Nov
+# north-facing climb and cove ending): the drone climbs looking west down relocated
+# CR 3640, pivots north-west, and hovers over the creek arm looking north-east at the
+# property (H1-H2: the proposed lot lines fade in, hold, fade out); pivots north up the
+# shoreline as before; after the lake turn it flies east past the north end and hovers
+# looking south-west (S1-S2: lot lines in and out); then flies south down CR 3635 to the
+# point of beginning at the CR 3640 corner, pivots north-west and the lot lines fade in
+# for the end (P1-P2, held to the last frame). (name, camera, look-at, ground speed m/s)
 KEYS = [
-    ("T0", (SE_CORNER[0], SE_CORNER[1], 187.0), (60.0, 140.0, 182.0), 2.0),     # takeoff, facing north
-    ("", (142.0, -216.0, 212.0), (30.0, 110.0, 178.0), 5.5),          # climbing, facing north
-    ("N1", (152.0, -320.0, 262.0), (-20.0, 60.0, 175.0), 8.5),        # backing south along CR 3635
-    ("N2", (162.0, -410.0, 284.0), (-35.0, 45.0, 172.0), 2.0),        # whole property; lot lines in
-    ("N3", (158.0, -418.0, 285.0), (-35.0, 45.0, 172.0), 2.0),        # hold
-    ("", (120.0, -395.0, 270.0), (-160.0, -330.0, 170.0), 6.5),       # turning west
-    ("W1", (30.0, -320.0, 245.0), (-200.0, -230.0, 170.0), 12.0),     # west, south of the lots
-    ("", (-130.0, -244.0, 226.0), (-195.0, -120.0, 168.0), 9.0),      # SW corner, pan north
-    ("B3", (-178.0, -185.0, 216.0), (-160.0, -50.0, 168.0), 7.5),     # lined up on the shore
+    ("T0", (SE_CORNER[0], SE_CORNER[1], 187.0), (-300.0, -228.0, 180.0), 2.0),  # takeoff, facing west down CR 3640
+    ("", (122.0, -214.0, 206.0), (-300.0, -236.0, 178.0), 5.5),       # climbing, facing west
+    ("", (20.0, -224.0, 232.0), (-380.0, -150.0, 172.0), 12.0),        # west along CR 3640
+    ("", (-140.0, -252.0, 258.0), (-420.0, 40.0, 170.0), 11.0),      # pivoting north-west
+    ("", (-240.0, -266.0, 272.0), (-160.0, -80.0, 172.0), 6.5),       # over the creek, pivoting north-east
+    ("H1", (-285.0, -274.0, 280.0), (-20.0, 20.0, 175.0), 2.0),       # whole property; lot lines in
+    ("H2", (-291.0, -280.0, 281.0), (-20.0, 20.0, 175.0), 2.0),       # hold
+    ("", (-250.0, -250.0, 245.0), (-170.0, -40.0, 170.0), 6.0),       # pivoting north
+    ("B3", (-190.0, -180.0, 216.0), (-160.0, -50.0, 168.0), 7.5),     # lined up on the shore
     ("", (-182.0, -120.0, 210.0), (-140.0, 20.0, 172.0), 8.5),        # shoreline run: lots right
     ("B4", (-178.0, -20.0, 208.0), (-130.0, 110.0, 172.0), 8.5),      # beach and Lot 5-6 dock
     ("", (-170.0, 80.0, 206.0), (-130.0, 210.0, 172.0), 8.5),
@@ -63,20 +66,17 @@ KEYS = [
     ("B6", (-195.0, 270.0, 206.0), (-235.0, 390.0, 168.5), 13.0),     # Lot 1-2 dock, timber
     ("", (-238.0, 390.0, 206.0), (-280.0, 600.0, 168.0), 15.0),       # out the boat channel
     ("", (-290.0, 480.0, 212.0), (-380.0, 640.0, 168.0), 13.0),       # open lake to the north-west
-    ("", (-340.0, 555.0, 216.0), (-520.0, 520.0, 168.0), 10.0),        # left-hand turn begins
+    ("", (-340.0, 555.0, 216.0), (-520.0, 520.0, 168.0), 10.0),       # left-hand turn begins
     ("", (-405.0, 520.0, 220.0), (-430.0, 300.0, 168.0), 9.0),        # over the western open water
-    ("", (-400.0, 430.0, 224.0), (-100.0, 250.0, 172.0), 8.0),        # swinging back to the property
-    ("B7", (-315.0, 340.0, 230.0), (-20.0, 30.0, 176.0), 3.5),        # hover: shore, docks, cabins
-]
-# Owner, 1 Nov 2026: after the B7 hover the drone climbs and backs away over the cove,
-# still looking at the property, and the proposed lot lines fade in again (E1-E2), as in
-# the opening. Flown as its own eased segment from rest at B7, so every frame up to B7
-# is unchanged.
-CLOSING_KEYS = [
-    ("", KEYS[-1][1], KEYS[-1][2], 3.5),
-    ("E0", (-345.0, 372.0, 258.0), (-22.0, 28.0, 174.0), 7.0),       # climbing, backing away
-    ("E1", (-370.0, 398.0, 282.0), (-25.0, 25.0, 172.0), 2.0),       # whole property; lot lines in
-    ("E2", (-380.0, 410.0, 286.0), (-25.0, 25.0, 172.0), 2.0),       # hold
+    ("", (-370.0, 440.0, 232.0), (-120.0, 330.0, 172.0), 12.0),       # turning east
+    ("", (-150.0, 455.0, 250.0), (200.0, 420.0, 178.0), 15.0),        # east past the north end
+    ("", (60.0, 470.0, 268.0), (150.0, 120.0, 178.0), 10.0),         # pivoting south-west
+    ("S1", (190.0, 420.0, 282.0), (-70.0, 30.0, 175.0), 2.0),         # whole property; lot lines in
+    ("S2", (194.0, 412.0, 283.0), (-70.0, 30.0, 175.0), 2.0),         # hold
+    ("", (222.0, 270.0, 262.0), (60.0, -150.0, 176.0), 15.0),         # south down CR 3635
+    ("", (220.0, -120.0, 270.0), (-20.0, -150.0, 175.0), 11.0),      # nearing the corner, pivoting
+    ("P1", (212.0, -285.0, 285.0), (-80.0, -10.0, 175.0), 2.0),       # point of beginning, facing north-west
+    ("P2", (208.0, -292.0, 286.0), (-80.0, -10.0, 175.0), 2.0),       # end: lot lines held
 ]
 # The takeoff is exempt from the clearance minimums (open road intersection, nothing
 # overhead) for its first TAKEOFF_S seconds; everything after must meet them.
@@ -154,20 +154,11 @@ def gimbal(cams, looks, sigma_s=2.0):
 def main():
     dtm = Surface(ROOT / "out/derived/lidar_dtm_1m.tif")
     dsm = Surface(ROOT / "out/derived/lidar_dsm_1m.tif")
-    frames, bench = [], {}
-    for keys in (KEYS, CLOSING_KEYS):          # each segment eased and gimballed on its own
-        seg, _, key_u = poses(keys)
-        seg = eased(seg)
-        if frames:
-            seg = seg[1:]                      # its first frame is the B7 hover frame
-        c = np.array([f[0] for f in seg])
-        lk = gimbal(c, np.array([f[1] for f in seg]))
-        us = np.array([f[2] for f in seg])
-        bench.update({k[0]: len(frames) + int(np.argmin(np.abs(us - key_u[i])))
-                      for i, k in enumerate(keys) if k[0]})
-        frames += [(ci, li, f[2]) for ci, li, f in zip(c, lk, seg)]
+    frames, _, key_u = poses(KEYS)
+    frames = eased(frames)
     cams = np.array([f[0] for f in frames])
-    looks = np.array([f[1] for f in frames])
+    looks = gimbal(cams, np.array([f[1] for f in frames]))
+    frames = [(c, lk, f[2]) for c, lk, f in zip(cams, looks, frames)]
     ground = np.maximum(dtm(cams[:, 0], cams[:, 1]), POOL_M)
     takeoff = np.arange(len(cams)) < TAKEOFF_S * FPS
     canopy = np.maximum(dsm(cams[:, 0], cams[:, 1]), ground)
@@ -181,6 +172,8 @@ def main():
     turn = np.abs(np.gradient(heading)) * FPS
     tilt = np.degrees(np.arctan2(-d[:, 2], np.hypot(d[:, 0], d[:, 1])))
     speed = np.linalg.norm(np.gradient(cams, axis=0), axis=1) * FPS
+    us = np.array([f[2] for f in frames])
+    bench = {k[0]: int(np.argmin(np.abs(us - key_u[i]))) for i, k in enumerate(KEYS) if k[0]}
     checks = {
         "min_agl_m": round(float(agl_flight.min()), 1),
         "min_agl_frame": int(agl_flight.argmin()) + int(takeoff.sum()),
@@ -197,7 +190,7 @@ def main():
                             and turn.max() <= MAX_TURN_DEG_S and tilt.max() <= MAX_TILT_DEG
                             and agl.max() < 400 * 0.3048)
     out = {"schema": "lrh.flight/1", "fps": FPS, "frames": len(frames),
-           "seconds": round(len(frames) / FPS, 1), "keys": KEYS + CLOSING_KEYS[1:], "benchmarks": bench,
+           "seconds": round(len(frames) / FPS, 1), "keys": KEYS, "benchmarks": bench,
            "checks": checks,
            "poses": [[[round(float(v), 3) for v in c], [round(float(v), 3) for v in lk]]
                      for c, lk, _ in frames]}
