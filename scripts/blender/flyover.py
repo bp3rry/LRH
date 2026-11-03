@@ -8,11 +8,13 @@ Blender's built-in FFmpeg encoder. Interrupted runs resume: existing frames are 
 Usage:
   Blender -b out/<date>/lrh_baseline.blend --python scripts/blender/flyover.py -- \
       [--variant test|full|oval|low] [--frames 0,120,240,359] [--encode-only] [--preview]
-      [--4k] [--shard i/n] [--partial] [--profile] [--scene permit]
+      [--4k] [--shard i/n] [--partial] [--profile] [--scene permit] [--step n]
 
 Variant "low" (Phase 3a) reads its per-frame poses from out/derived/flight_low.json
 (scripts/flight_path.py), shows the Lot 5 cabin and the walking path, at golden hour.
 --preview renders the animatic: 960 x 540, 8 samples, every third frame, encoded at 10 fps.
+--step n renders every n-th frame, encoded at 30/n fps (--preview --step 1: the smooth 30 fps
+preview; it reuses the every-third frames already in the folder).
 --4k renders 3840 x 2160 into <variant>_4k/. --shard i/n renders one GPU's share and
 skips the encode (scripts/cloud/ runs one shard per GPU on a RunPod pod).
 Output: out/<date>/video/frames/f_NNNN.png, flyover_test.mp4, flyover_test.json
@@ -304,6 +306,9 @@ def main():
         variant_dir = f"{variant}{suffix}_preview"
     else:
         variant_dir = variant + suffix
+    if "--step" in argv:
+        step = int(argv[argv.index("--step") + 1])
+        fps = FPS // step
     if "--4k" in argv:
         RES = (3840, 2160)
         variant_dir += "_4k"

@@ -217,9 +217,16 @@ def main():
     # preview renders every third frame and its frames can be reused).
     pad = (-(len(parts[0][0]) - 1)) % 3
     ic, il, ib = parts[0]
+    # The eased segments end up to 9 cm off the shared key, a visible hop at the hover:
+    # ease the intro's last and the outro's first 2 s onto the main flight's end points.
+    ramp = np.linspace(0, 1, 2 * FPS)[:, None] ** 2 * (3 - 2 * np.linspace(0, 1, 2 * FPS)[:, None])
+    ic = ic.copy()
+    ic[-len(ramp):] += (parts[1][0][0] - ic[-1]) * ramp
+    oc = parts[2][0].copy()
+    oc[:len(ramp)] += (parts[1][0][-1] - oc[0]) * (1 - ramp)
+    parts[2] = (oc, parts[2][1], parts[2][2])
     # Each segment is gimballed on its own, so the look directions at the joins differ by
     # up to a degree: blend the intro's last and the outro's first 2 s onto the main flight's.
-    ramp = np.linspace(0, 1, 2 * FPS)[:, None] ** 2 * (3 - 2 * np.linspace(0, 1, 2 * FPS)[:, None])
     il = il.copy()
     il[-len(ramp):] = il[-len(ramp):] * (1 - ramp) + parts[1][1][0] * ramp
     ol = parts[2][1].copy()
