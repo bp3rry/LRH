@@ -9,12 +9,14 @@ Usage:
   Blender -b out/<date>/lrh_baseline.blend --python scripts/blender/flyover.py -- \
       [--variant test|full|oval|low] [--frames 0,120,240,359] [--encode-only] [--preview]
       [--4k] [--shard i/n] [--partial] [--profile] [--scene permit] [--step n]
+      [--clip a:b]
 
 Variant "low" (Phase 3a) reads its per-frame poses from out/derived/flight_low.json
 (scripts/flight_path.py), shows the Lot 5 cabin and the walking path, at golden hour.
 --preview renders the animatic: 960 x 540, 8 samples, every third frame, encoded at 10 fps.
 --step n renders every n-th frame, encoded at 30/n fps (--preview --step 1: the smooth 30 fps
 preview; it reuses the every-third frames already in the folder).
+--clip a:b renders and encodes only frames a to b-1 (a review clip: flyover_<dir>_clip_a_b.mp4).
 --4k renders 3840 x 2160 into <variant>_4k/. --shard i/n renders one GPU's share and
 skips the encode (scripts/cloud/ runs one shard per GPU on a RunPod pod).
 Output: out/<date>/video/frames/f_NNNN.png, flyover_test.mp4, flyover_test.json
@@ -315,6 +317,10 @@ def main():
     only = None
     if "--frames" in argv:
         only = [int(f) for f in argv[argv.index("--frames") + 1].split(",")]
+    clip = range(0, total)
+    if "--clip" in argv:
+        a, b = (int(v) for v in argv[argv.index("--clip") + 1].split(":"))
+        clip = range(a, min(b, total))
     # --shard i/n: this process renders every n-th frame from i (one process per cloud
     # GPU; interleaved so each gets its share of the heavy and light stretches). The
     # shards share one frames folder; encode afterwards with --encode-only.
@@ -411,7 +417,7 @@ def main():
                     print(f"PHASE {now - phase['t']:7.1f}s  {phase['name']} -> {text.strip()[:110]}", flush=True)
                     phase["name"], phase["t"] = name, now
             bpy.app.handlers.render_stats.append(stats)
-        todo = only if only is not None else range(0, total, step)
+        todo = only if only is not None else clip[::step]
         if shard is not None:
             todo = [f for k, f in enumerate(todo) if k % shard[1] == shard[0]]
         caption = config["caption"] + (" " + config["caption_cabins"] if cabins and config.get("caption_cabins") else "")
@@ -447,11 +453,14 @@ def main():
     if only is not None or shard is not None:
         return
     # Encode with Blender's FFmpeg through the sequencer.
-    missing = [f for f in range(0, total, step) if not (frames_dir / f"f_{f:04d}.png").exists()]
+    missing = [f for f in clip[::step] if not (frames_dir / f"f_{f:04d}.png").exists()]
     name = f"flyover_{variant_dir}"
     files = sorted(p.name for p in frames_dir.glob("f_*.png"))
+    if "--clip" in argv:
+        files = [f"f_{f:04d}.png" for f in clip[::step]]
+        name += f"_clip_{clip.start}_{clip.stop}"
     if missing and "--partial" in argv:      # review cut of a paused render: frames before the first gap
-        files = [f"f_{f:04d}.png" for f in range(0, missing[0], step)]
+        files = [f"f_{f:04d}.png" for f in range(clip.start, missing[0], step)]
         name += f"_partial_{len(files)}"
     elif missing:
         lrh.fail(f"{len(missing)} frames missing, first {missing[0]}")
