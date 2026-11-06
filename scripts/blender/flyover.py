@@ -455,9 +455,10 @@ def main():
     # Encode with Blender's FFmpeg through the sequencer.
     missing = [f for f in clip[::step] if not (frames_dir / f"f_{f:04d}.png").exists()]
     name = f"flyover_{variant_dir}"
-    files = sorted(p.name for p in frames_dir.glob("f_*.png"))
+    # Frame order by number, never by file name: past f_9999 a name sort puts f_10000 after
+    # f_1000 (the 6 Nov 2026 encode came out scrambled from 33 s and ended at frame 9999).
+    files = [f"f_{f:04d}.png" for f in clip[::step]]
     if "--clip" in argv:
-        files = [f"f_{f:04d}.png" for f in clip[::step]]
         name += f"_clip_{clip.start}_{clip.stop}"
     if missing and "--partial" in argv:      # review cut of a paused render: frames before the first gap
         files = [f"f_{f:04d}.png" for f in range(clip.start, missing[0], step)]
@@ -490,6 +491,14 @@ def main():
         "samples": SAMPLES, "lens_mm": LENS_MM, "sun": SUN, "haze_km": HAZE_KM,
         "collections": COLLECTIONS, "keys": KEYS, "caption": config["caption"]}, indent=1) + "\n")
     print("ENCODED", out / f"{name}.mp4")
+    if "--clip" not in argv and "--partial" not in argv and step == 1:
+        # Decode sample frames and match them to their PNGs (a scrambled encode fails here).
+        check = subprocess.run([bpy.app.binary_path, "-b", "--python-exit-code", "1", "--python",
+                                str(Path(__file__).resolve().parent / "check_video.py"), "--",
+                                str(out / f"{name}.mp4"), str(frames_dir)], capture_output=True, text=True)
+        print("\n".join(l for l in check.stdout.splitlines() if l.startswith(("CHECK", "VIDEO OK", "LRH"))))
+        if check.returncode:
+            lrh.fail(f"{name}.mp4 does not match its frames (scripts/blender/check_video.py)")
 
 
 if __name__ == "__main__":
