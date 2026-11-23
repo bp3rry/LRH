@@ -986,6 +986,13 @@ trees and close-range textures. The plan, capture spec and import steps are in
 [docs/DRONE-CAPTURE-PLAN.md](docs/DRONE-CAPTURE-PLAN.md). The DJI Mini 5 Pro's lidar
 is for obstacle sensing only; the 3D scan comes from photogrammetry.
 
+**Ingest ready (23 Nov 2026).** New owner drone video is on its way. `import_drone_capture.py`
+and `extract_drone_frames.py` (capture plan §6.2 step 1) are built and tested on the 2023
+KwikImage clip and a synthetic DJI SRT. Next, once the footage is in: solve the frame
+cameras, update the clearing and trees inside the parcels where the footage is newer
+than the model, render matched side-by-sides, and render a test flyover from the
+updated scene.
+
 ### Phase 3a — Low-altitude drone flyover, refined toward photoreal (planned; owner direction, 19 Oct 2026)
 
 **Goal.** A drone-style flyover close to the ground, about 50–150 ft up, over the lake,

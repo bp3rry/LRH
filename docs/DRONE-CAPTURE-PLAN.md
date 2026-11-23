@@ -155,8 +155,16 @@ then, not the final layout.
 
 ### 6.2 Processing (LRH tasks, to be built)
 
-1. **`scripts/import_drone_capture.py`**: copies, hashes and checks the folder (photo
-   counts, GPS EXIF present, manifest fields).
+1. **`scripts/import_drone_capture.py`** (built 23 Nov 2026): copies the files unchanged
+   into `inputs/drone/<date>_<site>/raw/`, hashes them into the committed
+   `drone.lock.json`, and reads each video's format and colour transfer (HLG/D-Log
+   flagged for grading) and its telemetry from a DJI `.SRT` sidecar or the MP4's
+   embedded metadata, plus each still's GPS and gimbal. Telemetry or GPS more than 5 km
+   from the site origin fails the import. Footage without telemetry is marked for a
+   camera solve from the imagery.
+   **`scripts/extract_drone_frames.py`** then pulls full-resolution frames (one per 5 m
+   of flight, or 1 fps without telemetry) with each frame's interpolated pose, plus a
+   contact sheet, into `out/derived/drone/<capture>/frames/`.
 2. **Photogrammetry with WebODM** (free and open source; runs locally on this Mac). It
    produces an orthomosaic (GeoTIFF), a surface model (DSM), a dense point cloud
    (LAZ) and a textured mesh. The 24 GB machine should handle about 800 photos; larger
