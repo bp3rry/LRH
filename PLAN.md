@@ -1037,7 +1037,21 @@ almost the same position.
   channel. So the lake is still well below the 551 ft pool around the property.
 - **SH 34.** The bridge appears in two views: a long, low, white concrete deck on
   multi-column bents.
-- **Dam.** None of the three screenshots shows it; the gallery itself does.
+- **Wide panorama (third screenshot): property, bridge and dam in one view** (owner,
+  24 Nov 2026). It is taken from high above the CR 3635 / CR 3640 corner and sweeps from
+  west, through north, to east-north-east. Its landmarks fall where the model puts them,
+  measured from the corner:
+  - left (west): relocated CR 3640 runs straight away from the camera (model 266–272°),
+    with the SH 34 bridge on the horizon just right of where the road vanishes (the SH 34
+    lake crossing is at 237–335°);
+  - centre: the south parcel clearing and the woods, with CR 3635 running north between
+    its tree rows;
+  - right (east): the Leon Hurse Dam earthwork as a long pale embankment on the horizon
+    (the PTM dam marker spans 15–69°), with the bare graded basin in front of it and
+    pools of water collecting there.
+  It is not a close view, but it is the first photo with the dam and the bridge in the
+  same frame as the property: a reference for their scale and placement in wide
+  shots.
 
 **How the photos are used:**
 1. **Import.** Download the gallery to a folder, because Cloudflare blocks automated
