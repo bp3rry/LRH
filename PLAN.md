@@ -1016,6 +1016,29 @@ reference, camera solves, side-by-sides and measuring the clearing, as long as t
 watermark pixels are masked out. Watermarked photos do not go into marketing frames or
 textures; KwikImage can supply unwatermarked originals.
 
+**First look: three screenshots (24 Nov 2026).** The owner sent three screenshots
+from the gallery. They are imported as `inputs/drone/2026-11-24_kwik-gallery-screenshots/`
+(pinned in `drone.lock.json`; views described in its `capture_manifest.yaml`). They are
+590–1076 px wide, with no EXIF, GPS or capture date. The fall colour and overcast sky
+point to October–November 2026.
+`out/derived/drone/2026-11-24_kwik-gallery-screenshots/compare_2023_vs_2026.jpg` puts
+the first one beside the 2023 drone-match photo (LADONIA-18), which it repeats from
+almost the same position.
+- **CR 3640 is built.** The 2023 photo shows a graded dirt track. It is now a finished
+  white gravel road on the same line, meeting CR 3635 at the south-east corner.
+- **South parcel.** The 2023 brush piles have been burned and now show as round burn
+  scars, with one dark pile left near the middle of the clearing. There appear to be
+  fewer retained tree clumps inside the clearing than in 2023. The screenshot's
+  resolution and the watermark across the clearing are not enough to map the new edge
+  to the metre; that needs the originals.
+- **Water.** Seen from the site, the basin beyond the woods is still mostly dry, with
+  scattered pools. The creek arm in front of the lots shows no standing water. At the
+  SH 34 crossing (second screenshot), the water is held within the North Sulphur River
+  channel. So the lake is still well below the 551 ft pool around the property.
+- **SH 34.** The bridge appears in two views: a long, low, white concrete deck on
+  multi-column bents.
+- **Dam.** None of the three screenshots shows it; the gallery itself does.
+
 **How the photos are used:**
 1. **Import.** Download the gallery to a folder, because Cloudflare blocks automated
    download. Import it with `import_drone_capture.py` into

@@ -1,0 +1,30 @@
+{
+ "captures": {
+  "2026-11-24_kwik-gallery-screenshots": {
+   "files": {
+    "inputs/drone/2026-11-24_kwik-gallery-screenshots/raw/Screenshot 2026-11-24 at 10.38.29\u202fAM.png": {
+     "bytes": 672977,
+     "sha256": "9aaf284d91695594af502cdfffa9aeafda3115c5b44f06e02afb14c1bee97c8f"
+    },
+    "inputs/drone/2026-11-24_kwik-gallery-screenshots/raw/Screenshot 2026-11-24 at 10.39.08\u202fAM.png": {
+     "bytes": 410999,
+     "sha256": "ee73b43eaffeae40cb5a8abddadb93a905949ac83c7a853c09daa5aa6085a086"
+    },
+    "inputs/drone/2026-11-24_kwik-gallery-screenshots/raw/Screenshot 2026-11-24 at 10.39.30\u202fAM.png": {
+     "bytes": 810104,
+     "sha256": "6f14d0970365c58cdea00047c9318970cf666d5b2255c4976e3ebae08fcb2442"
+    }
+   },
+   "imported_utc": "2026-11-24T16:46:36Z",
+   "summary": {
+    "needs_grade": [],
+    "stills": 3,
+    "stills_with_gps": 0,
+    "video_seconds": 0,
+    "videos": 0,
+    "videos_with_telemetry": 0
+   }
+  }
+ },
+ "schema": "lrh.drone-lock/1"
+}
