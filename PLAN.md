@@ -1080,9 +1080,12 @@ video).**
   dam right). The differences are the lake (551 ft in the model; a filling basin in the
   photos) and the season (summer foliage in the model; fall colour and overcast in the
   photos).
-- **Test video:** the opening of the permit5 flyover (frames 0–930: the for-sale sign at
-  the corner and the climb over the south parcel), as a 10 fps preview, in
-  `out/2026-11-24/video/low_permit5_preview/`.
+- **Test video:** the first 90 s of the permit5 flyover (frames 0–2700) as a 10 fps
+  preview: `flyover_low_permit5_preview_clip_0_2700.mp4` in
+  `out/2026-11-24/video/low_permit5_preview/`. Frames 0–930 are the for-sale sign intro at
+  the corner. The camera then climbs west along CR 3640 and turns back east over the
+  parcels; the lot lines fade in near the end. `check_video.py`: 900 frames, every sample
+  matches its PNG.
 
 **How the photos are used:**
 1. **Import.** Download the gallery to a folder, because Cloudflare blocks automated
