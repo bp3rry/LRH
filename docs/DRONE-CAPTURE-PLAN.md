@@ -11,6 +11,10 @@ properties, flown either by the owner or by a contracted Part 107 pilot (§8).
 - **Existing aerials:** taken by **KwikImage** ([kwikimage.com](https://kwikimage.com/)),
   commissioned by the co-owner (a real estate agent): 42 stills and one video, in
   `inputs/drone/2023-08-11_pilot-existing/` (§6.3).
+- **New KwikImage gallery (late 2026, received 24 Nov 2026):** watermarked photos on
+  Pixieset, taken after the dam was finished while the lake was filling. They show the dam,
+  the SH 34 bridges, the built CR 3640 and new clearing on the south parcel. They go to
+  `inputs/drone/<capture date>_kwik-gallery/` (PLAN.md, "Updated imagery").
 - **New marketing capture (§4–§6):** a Part 107 pilot, for example the owner's local
   pilot or KwikImage again.
 - **Owner, recreational (TRUST):** practice flights for learning only, kept separate

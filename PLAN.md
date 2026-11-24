@@ -993,6 +993,50 @@ cameras, update the clearing and trees inside the parcels where the footage is n
 than the model, render matched side-by-sides, and render a test flyover from the
 updated scene.
 
+### Updated imagery: KwikImage gallery, late 2026 (owner, 24 Nov 2026)
+
+KwikImage has published a new gallery of drone photos of the property: "Rose Perry Ralph
+Hall" on Pixieset (`https://kwikimage.pixieset.com/roseperryralphhall/`). It is the
+first imagery taken after the dam was finished, and it replaces the August 2023 photos
+as the latest view of the site.
+
+**What it shows (owner):**
+- **The lake is filling.** Leon Hurse Dam is finished and the lake is filling. The water
+  in these photos is below the 551 ft conservation pool that the model shows. So the
+  photos show the shoreline as it is now, not at full pool.
+- **Dam and bridge.** Good views of the finished dam and the SH 34 bridges. Both are
+  schematic in the model (Phase 2a), so these photos are their first visual reference.
+- **Relocated CR 3640.** A clear view of the built road. It can be checked against
+  UTRWD's Road Plan alignment, which the model uses (Phase 2a).
+- **South parcel clearing.** Some clearing has been done on the south parcel. The model
+  still shows the clearing from the 2023 photo and the December 2025 lidar there.
+
+**Watermark.** The gallery images carry a KwikImage watermark. That is fine for
+reference, camera solves, side-by-sides and measuring the clearing, as long as the
+watermark pixels are masked out. Watermarked photos do not go into marketing frames or
+textures; KwikImage can supply unwatermarked originals.
+
+**How the photos are used:**
+1. **Import.** Download the gallery to a folder, because Cloudflare blocks automated
+   download. Import it with `import_drone_capture.py` into
+   `inputs/drone/<capture date>_kwik-gallery/`. Capture date, GPS and gimbal come from
+   EXIF if the gallery download keeps them; otherwise each camera is solved from the
+   image against the lidar, roads and dam.
+2. **Lake level now.** Solve the cameras of the photos that show the shoreline, then read
+   the current water elevation from where the waterline meets the lidar terrain. Record
+   it with the capture date. Matched side-by-sides render at that level; marketing frames
+   stay at 551 ft.
+3. **South parcel clearing.** Map the new clearing from the near-nadir and high oblique
+   photos, as the 2023 photo was mapped (`observed_cover_drone.py`). Then update the
+   cover mask and remove lidar trees on newly cleared ground.
+4. **CR 3640.** Compare the built road with the modelled alignment, and move the model
+   to the built road if they differ.
+5. **Dam and SH 34 bridges.** Use the photos as look references for the riprap face,
+   crest, downstream face, bridge deck, parapets and bents, and correct the schematic
+   geometry where the photos clearly show it.
+6. **Renders.** Rebuild the scene, render side-by-sides against the photos, then render a
+   test flyover preview from the updated scene.
+
 ### Phase 3a — Low-altitude drone flyover, refined toward photoreal (planned; owner direction, 19 Oct 2026)
 
 **Goal.** A drone-style flyover close to the ground, about 50–150 ft up, over the lake,
@@ -1876,6 +1920,7 @@ interior, rust fringe), and moss is on about an eighth of the dead trees.
 | Lot 10 barndominium: locate the old RV site's water and power (setback exception approved by owner, 20 Oct 2026) | Owner | Before construction planning |
 | Phase 4 "Perry Lakeside Resort": name check, caption wording for a concept resort, any rental-income claims, short-term-rental rules (County, UTRWD, deed) | Owner, co-owner/agent, counsel | Before Phase 4 publication |
 | **LSMP Water Quality Protection Criteria vs Lake Zoning OSSF exception:** would ten ~2 ac lots on septic still qualify for individual Shoreline Use Permits (docks, paths, shoreline clearing)? | Owner, UTRWD, attorney | **Before platting** |
+| KwikImage late-2026 gallery: download the full set (Cloudflare blocks automated download) and, for marketing use, request unwatermarked originals | Owner | Gallery import |
 | Drone capture: Part 107 or a contracted pilot for marketing imagery; UTRWD permission to fly over its land and water (docs/DRONE-CAPTURE-PLAN.md §3) | Owner | Before Phase 2c flights |
 | Commit or discard the uncommitted queue/sidecar changes in PTM | Owner | Any time (does not block LRH) |
 | Phase 2e: confirm the owner's lot numbers run from the south (owner Lot 1 = model Lot 10), as read from the 31 Oct field update | Owner | Phase 2e review |
