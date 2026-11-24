@@ -17,6 +17,10 @@ Variant "low" (Phase 3a) reads its per-frame poses from out/derived/flight_low.j
 --step n renders every n-th frame, encoded at 30/n fps (--preview --step 1: the smooth 30 fps
 preview; it reuses the every-third frames already in the folder).
 --clip a:b renders and encodes only frames a to b-1 (a review clip: flyover_<dir>_clip_a_b.mp4).
+--cut marketing (with --scene permit5; owner, 24 Nov 2026) flies out/derived/flight_marketing.json
+(scripts/flight_marketing.py): the first 90 s ending in the hover over the creek arm, held while
+the Lot D subdivision line draws in. No ski boat (its wake read as a dark square near the dam).
+Frames go to low_permit5_marketing[_preview]/.
 --4k renders 3840 x 2160 into <variant>_4k/. --shard i/n renders one GPU's share and
 skips the encode (scripts/cloud/ runs one shard per GPU on a RunPod pod).
 Output: out/<date>/video/frames/f_NNNN.png, flyover_test.mp4, flyover_test.json
@@ -249,6 +253,29 @@ class BoatOnly:
         self.placed = True
 
 
+class SplitReveal:
+    """Wraps the per-frame scene life: draws the Lot D subdivision line (Lot_Line_Split,
+    Value node LRH_Split_Reveal = the world x drawn to) from its lake-side (west) end to
+    CR 3635, eased, between the benchmarks SPLIT_START and SPLIT_END; hidden before."""
+
+    def __init__(self, inner, bench):
+        self.inner = inner
+        self.node = bpy.data.materials["Lot_Line_Split"].node_tree.nodes["LRH_Split_Reveal"]
+        obj = bpy.data.objects["Lot_Line_Split_D"]
+        xs = [(obj.matrix_world @ v.co).x for v in obj.data.vertices]
+        self.x0, self.x1 = min(xs) - 1.5, max(xs) + 1.5
+        self.f0, self.f1 = bench["SPLIT_START"], bench["SPLIT_END"]
+
+    def reveal(self, f):
+        t = min(max((f - self.f0) / (self.f1 - self.f0), 0.0), 1.0)
+        return self.x0 + (self.x1 - self.x0) * t * t * (3 - 2 * t)
+
+    def __call__(self, f):
+        if self.inner is not None:
+            self.inner(f)
+        self.node.outputs[0].default_value = round(self.reveal(f), 3)
+
+
 class LotLineFade:
     """Wraps the per-frame scene life: the red lot lines (Lot_Line_Red) fade in over the
     8 s before each lot-line hover (H1 over the creek, S1 north-east of the property, P1
@@ -280,8 +307,16 @@ def main():
     variant = argv[argv.index("--variant") + 1] if "--variant" in argv else "test"
     SECONDS, SAMPLES, KEYS = VARIANTS[variant]
     fps, step, exposure, cabins = FPS, 1, None, []
+    cut = argv[argv.index("--cut") + 1] if "--cut" in argv else None
+    if cut not in (None, "marketing"):
+        lrh.fail(f"unknown --cut {cut}")
     if variant == "low":
-        flight = json.loads(lrh.FLIGHT_JSON.read_text())
+        flight_path = lrh.FLIGHT_JSON
+        if cut == "marketing":
+            flight_path = lrh.ROOT / "out/derived/flight_marketing.json"
+            if not flight_path.is_file():
+                lrh.fail("no flight_marketing.json; run scripts/flight_marketing.py")
+        flight = json.loads(flight_path.read_text())
         if not flight["checks"]["passed"]:
             lrh.fail(f"flight_low.json failed its clearance checks: {flight['checks']}")
         POSES = flight["poses"]
@@ -303,6 +338,10 @@ def main():
             lrh.fail(f"--scene {scene_arg} renders out/<date>/lrh_{scene_arg}.blend "
                      f"(build_baseline.py -- --scene {scene_arg})")
         suffix = f"_{scene_arg}"
+    if cut is not None:
+        if scene_arg != "permit5" or variant != "low":
+            lrh.fail("--cut marketing is a cut of --variant low --scene permit5")
+        suffix += f"_{cut}"
     if "--preview" in argv:
         RES, SAMPLES, step, fps = (960, 540), 8, 3, FPS // 3
         variant_dir = f"{variant}{suffix}_preview"
@@ -360,15 +399,19 @@ def main():
             life = Life(total)
         elif variant == "low" and permit:
             render.apply_collections(scene, set(COLLECTIONS) - {"Site_Works", "Planting", "Beach", "Docks", "Shoreline"}
+                                     - ({"Lake_Life"} if cut == "marketing" else set())
                                      | {"Landmarks", "Permit_Paths", "Hay"}
-                                     | ({"Lot_Lines", "Sale_Sign"} if scene_arg == "permit5" else set()))
+                                     | ({"Lot_Lines", "Sale_Sign"} if scene_arg == "permit5" else set())
+                                     | ({"Lot_Split"} if cut == "marketing" else set()))
             hay = bpy.data.materials["Ground_Site"].node_tree.nodes.get("LRH_Hay")
             if hay is None:
                 lrh.fail("the permit .blend has no hay fields; rebuild it with --scene permit")
             hay.outputs[0].default_value = 1.0
-            life = BoatOnly(total, LENS_MM, flight.get("main_start", 0))
+            life = None if cut == "marketing" else BoatOnly(total, LENS_MM, flight.get("main_start", 0))
             if scene_arg == "permit5":
                 life = LotLineFade(life, flight["benchmarks"])
+            if cut == "marketing":
+                life = SplitReveal(life, flight["benchmarks"])
         elif variant == "low":
             render.apply_collections(scene, set(COLLECTIONS + ["Cabins"]))
             pads = []

@@ -302,6 +302,12 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
     if len(gone) and cleared_2026.sum() != len(gone):
         lrh.fail(f"clearing_2026.json lists {len(gone)} trees, {int(cleared_2026.sum())} matched")
     keep &= ~cleared_2026
+    owner_removed = np.zeros(len(x), bool)
+    for gxy in lrh.OWNER_REMOVED_TREES:
+        owner_removed |= np.hypot(x - gxy[0], y - gxy[1]) < 0.3
+    if owner_removed.sum() != len(lrh.OWNER_REMOVED_TREES):
+        lrh.fail(f"OWNER_REMOVED_TREES lists {len(lrh.OWNER_REMOVED_TREES)} trees, {int(owner_removed.sum())} matched")
+    keep &= ~owner_removed
     # Owner, 15 Oct 2026: brush piles burned and scrub cleared inside the parcels.
     scrub = np.zeros(len(x), bool)
     if scrub_zone is not None:
@@ -321,6 +327,7 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
         keep &= ~over
     lstats = {"lidar_detected": len(lidar), "lidar_cleared_for_boats": boat_overhang, "lidar_brush_piles_omitted": int(brush_piles.sum()),
               "lidar_cleared_2026": int(cleared_2026.sum()),
+              "lidar_owner_removed": int(owner_removed.sum()),
               "lidar_scrub_cleared": int(scrub.sum()),
               "lidar_cleared_for_paths": lstats_overhang}
     x, y, height, crown, evergreen = (a[keep] for a in (x, y, height, crown, evergreen))

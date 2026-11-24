@@ -991,6 +991,10 @@ def build_permit(colls, context, grid, sampler, pooled, road_lines, zone, timber
         lotplan.build_redline_five(five_data, context, sampler, colls["Redline"])
         colls["Lot_Lines"] = collection("Lot_Lines")       # red, faded in by flyover.py
         lotplan.build_lot_lines_red(five_data, sampler, colls["Lot_Lines"])
+        # Owner, 24 Nov 2026: Lot D to be subdivided into two ~2.5 ac lots (marketing cut).
+        colls["Lot_Split"] = collection("Lot_Split")       # drawn in by flyover.SplitReveal
+        split = lotplan.build_lot_split_red(five_data, sampler, colls["Lot_Split"])
+        record("lot_d_split", all(2.4 <= a <= 2.7 for a in split["acres_record_north_south"]), **split)
         colls["Sale_Sign"] = collection("Sale_Sign")        # the flyover starts and ends on it
         sale_sign.build(colls["Sale_Sign"], sampler, record)
     else:

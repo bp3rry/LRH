@@ -1087,6 +1087,31 @@ video).**
   parcels; the lot lines fade in near the end. `check_video.py`: 900 frames, every sample
   matches its PNG.
 
+**Marketing video (owner, 24 Nov 2026).** The 90 s test video becomes the main marketing
+video. It is short and it shows the two listed lots: the southern 5 ac (Lot D, to be
+subdivided into two lots of about 2.5 ac) and the 5 ac lot next to it (Lot C).
+- **Cut** (`scripts/flight_marketing.py` → `out/derived/flight_marketing.json`):
+  - frames 0–2699 are the low flight unchanged;
+  - from 2700 the camera and look-at keep their velocity, decaying over 3 s, so the hover
+    over the creek arm eases to a near-stop;
+  - the lot lines fade in before H1 as before and hold to the end;
+  - 99 s in all (2970 frames).
+- **Lot D subdivision line** (`lotplan.lot_d_split`, collection `Lot_Split`, material
+  `Lot_Line_Split`):
+  - runs east-west, parallel to the D/C line, from the lake-side lot line to CR 3635, at
+    y = -163.9 m, where it halves the lot's area: 2.58 + 2.58 record acres;
+  - each half keeps CR 3635 frontage and the lake-side line; the fishing dock's path
+    starts in the south half;
+  - it draws in from the lake-side end, eased, from 91 s to 95 s (`flyover.SplitReveal`,
+    Value node `LRH_Split_Reveal`) and holds to the end.
+- **Polish:**
+  - the lone tree in the middle of the Lot D clearing near the corner, lidar tree
+    (59.5, -155.5), is removed (`lrh.OWNER_REMOVED_TREES`);
+  - the ski boat is left out. At the hover its 160 m wake mesh lay about 1.4 km off,
+    near the dam, and read as a dark square on the lake.
+- **Render:** `flyover.py -- --variant low --scene permit5 --cut marketing [--preview]`
+  writes `video/low_permit5_marketing[_preview]/`.
+
 **How the photos are used:**
 1. **Import.** Download the gallery to a folder, because Cloudflare blocks automated
    download. Import it with `import_drone_capture.py` into

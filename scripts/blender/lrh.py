@@ -46,6 +46,11 @@ def clearing_2026():
     return [(t["x"], t["y"]) for t in json.loads(path.read_text())["removed_trees"]]
 
 
+# Owner, 24 Nov 2026 (marketing video review): the lone tree in the middle of the Lot D
+# clearing near the CR 3635 / CR 3640 corner is removed. Lidar tree positions (x, y).
+OWNER_REMOVED_TREES = [(59.5, -155.5)]
+
+
 CAPTION_FONTS = [os.environ.get("LRH_FONT", ""), "/System/Library/Fonts/Helvetica.ttc",
                  "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
                  "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"]

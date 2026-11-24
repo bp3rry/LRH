@@ -900,6 +900,67 @@ def build_lot_lines_red(five, sampler, coll, width=2.2):
         strip(f"Lot_Line_Red_{i:02d}", list(line.coords), width, sampler, 0.6, mat, coll, step=1.0)
 
 
+def lot_d_split(five):
+    """Owner, 24 Nov 2026: the southern 5 ac lot (Lot D) is to be subdivided into two lots
+    of about 2.5 ac. The dividing line runs east-west, parallel to the D/C line, from the
+    lake-side lot line to CR 3635, at the y that halves the lot's area, so each half keeps
+    road frontage and the lake-side line; the fishing dock's path starts in the south half.
+    Returns (line, north half, south half, acres each by the lot's record acreage)."""
+    lot = Polygon(five["lots"]["Lot D"]["polygon"])
+    _, y0, _, y1 = lot.bounds
+    ys = np.linspace(y0, y1, 2001)
+    below = [lot.intersection(shapely.geometry.box(-1e4, -1e4, 1e4, y)).area for y in ys]
+    y = float(np.interp(lot.area / 2, below, ys))
+    line = LineString([(-1e4, y), (1e4, y)]).intersection(lot)
+    if line.geom_type != "LineString":
+        lrh.fail(f"Lot D split at y={y:.1f} is not a single line ({line.geom_type})")
+    south = lot.intersection(shapely.geometry.box(-1e4, -1e4, 1e4, y))
+    north = lot.difference(south)
+    record_ac = five["lots"]["Lot D"]["acres_record"]
+    return line, north, south, [round(record_ac * p.area / lot.area, 2) for p in (north, south)]
+
+
+def build_lot_split_red(five, sampler, coll, width=2.2):
+    """The Lot D subdivision line in the lot-line red. Its material draws it in from the
+    west (lake-side) end: the Value node LRH_Split_Reveal is the world x the line is drawn
+    to (flyover.SplitReveal sets it per frame; the default shows the whole line)."""
+    line, north, south, acres = lot_d_split(five)
+    mat = bpy.data.materials.get("Lot_Line_Split")
+    if mat is None:
+        mat = bpy.data.materials.new("Lot_Line_Split")
+        mat.use_nodes = True
+        nt = mat.node_tree
+        nt.nodes.clear()
+        out = nt.nodes.new("ShaderNodeOutputMaterial")
+        mix = nt.nodes.new("ShaderNodeMixShader")
+        clear = nt.nodes.new("ShaderNodeBsdfTransparent")
+        glow = nt.nodes.new("ShaderNodeEmission")
+        glow.inputs["Color"].default_value = (0.95, 0.04, 0.02, 1.0)
+        glow.inputs["Strength"].default_value = 4.0
+        geo = nt.nodes.new("ShaderNodeNewGeometry")
+        xyz = nt.nodes.new("ShaderNodeSeparateXYZ")
+        reveal = nt.nodes.new("ShaderNodeValue")
+        reveal.name = reveal.label = "LRH_Split_Reveal"
+        reveal.outputs[0].default_value = 1e4
+        ahead = nt.nodes.new("ShaderNodeMath")          # (reveal - x), 1 m soft leading edge
+        ahead.operation = "SUBTRACT"
+        fac = nt.nodes.new("ShaderNodeMath")
+        fac.operation, fac.use_clamp = "MULTIPLY", True
+        fac.inputs[1].default_value = 1.0
+        nt.links.new(geo.outputs["Position"], xyz.inputs[0])
+        nt.links.new(reveal.outputs[0], ahead.inputs[0])
+        nt.links.new(xyz.outputs["X"], ahead.inputs[1])
+        nt.links.new(ahead.outputs[0], fac.inputs[0])
+        nt.links.new(fac.outputs[0], mix.inputs["Fac"])
+        nt.links.new(clear.outputs[0], mix.inputs[1])
+        nt.links.new(glow.outputs[0], mix.inputs[2])
+        nt.links.new(mix.outputs[0], out.inputs["Surface"])
+    strip("Lot_Line_Split_D", list(line.coords), width, sampler, 0.6, mat, coll, step=1.0)
+    x0, x1 = sorted(c[0] for c in line.coords)
+    return {"y": round(line.coords[0][1], 2), "x_west": round(x0, 2), "x_east": round(x1, 2),
+            "length_m": round(line.length, 1), "acres_record_north_south": acres}
+
+
 def fishing_dock_mesh(name, rec, coll, sampler):
     """A fixed-pole fishing/patio dock (pedestrian only): a 10 x 20 ft deck about 3 ft
     above the pool on galvanized poles, 42 in rails on three sides and a short ramp from
