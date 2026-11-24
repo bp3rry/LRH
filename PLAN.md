@@ -1053,6 +1053,37 @@ almost the same position.
   same frame as the property: a reference for their scale and placement in wide
   shots.
 
+**First update from the screenshots (24 Nov 2026; owner: proceed to test frames and a test
+video).**
+- **Clearing** (`scripts/observed_clearing_2026.py`). The 2026 view is registered onto
+  LADONIA-18 (SIFT, 95 inlier matches, 0.77 px RMS) and read through its solved camera.
+  A parcel lidar tree counts as cleared when at least 60% of its crown in the 2026 view
+  is freshly scraped ground. Result: 10 of 191 parcel trees, 533 m², all in the clump the
+  2023 photo shows by CR 3640 in the south-west of the clearing. Leafless deciduous trees
+  cannot be told from cleared ground at screenshot resolution, so the rule keeps them;
+  the originals may show a few more trees gone. The build drops the 10 trees by position
+  and uses `cover_site_2026.tif` and `ground_mask_2026.png` when present. Check image:
+  `out/derived/clearing_2026_check.jpg`.
+- **Roads.** Projected into the 2026 view, the model's CR 3640 and CR 3635 centrelines
+  lie on the built roads, so the alignment stays. The built CR 3640 is neutral white
+  crushed stone, about 1.2× brighter than the tan CR 3635 in linear terms (sampled along
+  both centrelines), and now has its own material, `Road_CR3640`.
+- **Test frames** (`out/2026-11-24/`, permit5 scene):
+  - `check_kwik2026_match`: the drone-match camera, beside the 2026 view in
+    `kwik2026_match_side_by_side.jpg`;
+  - `check_kwik2026_wide`: a new equirectangular panorama camera (`type: panorama` in
+    `shots.yaml`), spanning 234 × 91° centred on 317°, worked out from the landmark
+    bearings in the gallery panorama. It is beside the photo in
+    `kwik2026_wide_side_by_side.jpg`.
+
+  Both frames match the photos' layout (roads, clearing outline, tree rows, bridge left,
+  dam right). The differences are the lake (551 ft in the model; a filling basin in the
+  photos) and the season (summer foliage in the model; fall colour and overcast in the
+  photos).
+- **Test video:** the opening of the permit5 flyover (frames 0–930: the for-sale sign at
+  the corner and the climb over the south parcel), as a 10 fps preview, in
+  `out/2026-11-24/video/low_permit5_preview/`.
+
 **How the photos are used:**
 1. **Import.** Download the gallery to a folder, because Cloudflare blocks automated
    download. Import it with `import_drone_capture.py` into

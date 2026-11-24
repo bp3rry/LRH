@@ -259,7 +259,7 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
     import shapely  # from .blender-site via lrh
 
     rng = np.random.default_rng(20261014)
-    site_cover = Raster(DERIVED / "cover_site_drone.tif")
+    site_cover = Raster(lrh.site_cover_path())
     site_frac = Raster(DERIVED / "tree_fraction_site.tif")
     regional_cover = Raster(DERIVED / "cover_regional.tif")
     regional_frac = Raster(DERIVED / "tree_fraction_regional.tif")
@@ -294,6 +294,14 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
                 near_woods |= site_cover.lookup(x + dx, y + dy)[0] == WOODS
     brush_piles = in_site & (cls == CLEARED) & ~near_woods
     keep = ~brush_piles & ~shapely.contains_xy(road_buffer, x, y)
+    # Fall 2026 KwikImage view (PLAN.md, "Updated imagery"): trees cleared since 2023.
+    gone = lrh.clearing_2026()
+    cleared_2026 = np.zeros(len(x), bool)
+    for gxy in gone:
+        cleared_2026 |= np.hypot(x - gxy[0], y - gxy[1]) < 0.3
+    if len(gone) and cleared_2026.sum() != len(gone):
+        lrh.fail(f"clearing_2026.json lists {len(gone)} trees, {int(cleared_2026.sum())} matched")
+    keep &= ~cleared_2026
     # Owner, 15 Oct 2026: brush piles burned and scrub cleared inside the parcels.
     scrub = np.zeros(len(x), bool)
     if scrub_zone is not None:
@@ -312,6 +320,7 @@ def scatter(coll, site_grid, sampler, road_lines, zone, timber_zone, record, cle
         boat_overhang = int((keep & over).sum())
         keep &= ~over
     lstats = {"lidar_detected": len(lidar), "lidar_cleared_for_boats": boat_overhang, "lidar_brush_piles_omitted": int(brush_piles.sum()),
+              "lidar_cleared_2026": int(cleared_2026.sum()),
               "lidar_scrub_cleared": int(scrub.sum()),
               "lidar_cleared_for_paths": lstats_overhang}
     x, y, height, crown, evergreen = (a[keep] for a in (x, y, height, crown, evergreen))

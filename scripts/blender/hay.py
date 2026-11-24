@@ -45,7 +45,7 @@ def fields(context, road_lines, extra_open=None):
     """Hayable ground inside the owner parcels (a Polygon or MultiPolygon)."""
     parcels = unary_union([Polygon(np.array(b["lines_local_m"][0])[:, :2])
                            for b in context["boundaries"] if b["kind"] == "owner_parcel_boundary"])
-    cover = vegetation.Raster(lrh.ROOT / "out/derived/cover_site_drone.tif")
+    cover = vegetation.Raster(lrh.site_cover_path())
     x0, y0, x1, y1 = parcels.bounds
     gx, gy = np.meshgrid(np.arange(x0, x1, CELL_M), np.arange(y0, y1, CELL_M))
     gx, gy = gx.ravel(), gy.ravel()

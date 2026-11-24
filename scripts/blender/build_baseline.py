@@ -1119,9 +1119,9 @@ def main():
         if not (derived / path).is_file():
             lrh.fail(f"missing out/derived/{path}; run the imagery and lidar steps in "
                      "README first")
-    ground_mask = derived / "ground_mask_leveled.png"   # cleared mask + levelled brush piles
-    if not ground_mask.is_file():
-        ground_mask = derived / "cleared_drone_mask.png"
+    # cleared mask + levelled brush piles (+ fall 2026 clearing, observed_clearing_2026.py)
+    ground_mask = next(p for p in (derived / "ground_mask_2026.png", derived / "ground_mask_leveled.png",
+                                   derived / "cleared_drone_mask.png") if p.is_file())
     terrain.data.materials.append(imagery_ground_material(
         "Ground_Site", imagery["site"], derived / "naip_site_rgb.png", cleared_mask=ground_mask))
     regional.data.materials.append(imagery_ground_material(
@@ -1131,6 +1131,9 @@ def main():
     build_far_ground(colls["Terrain"], regional)
     dam = build_dam(context, colls["Landmarks"])
     cabins._speckled("Road_Gravel", (0.17, 0.155, 0.13), (0.36, 0.34, 0.30), 30.0, 0.01)  # first, so all roads share it
+    # Built CR 3640 (KwikImage gallery, fall 2026): neutral white crushed stone, about 1.2x
+    # the tan CR 3635 gravel in linear luminance (sampled along both centrelines in the photo).
+    cabins._speckled("Road_CR3640", (0.21, 0.21, 0.205), (0.44, 0.44, 0.43), 30.0, 0.01)
     infrastructure.dam_materials(dam)
     sampler = HeightSampler([terrain, regional, dam])
     _, water_mask, pooled = build_water(grid, context, colls["Water"], sampler)
@@ -1170,7 +1173,7 @@ def main():
                                                  .read_text())["features"][0]["geometry"]["coordinates"])[:, :2]
                              - [lrh.ORIGIN_E, lrh.ORIGIN_N])
     path = lrh.low_flight_line(15)
-    cover = vegetation.Raster(derived / "cover_site_drone.tif")
+    cover = vegetation.Raster(lrh.site_cover_path())
     if permit:
         build_permit(colls, context, grid, sampler, pooled, road_lines, zone, timber_zone,
                      parcels, cr3635, cr3640_line, terrain, path, cover, out, five=scene_name == "permit5")

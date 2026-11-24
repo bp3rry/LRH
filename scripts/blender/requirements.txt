@@ -3,3 +3,4 @@
 pyyaml==6.0.2
 shapely==2.1.1
 pillow==11.3.0
+opencv-python-headless==4.11.0.86

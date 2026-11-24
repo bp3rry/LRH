@@ -28,6 +28,24 @@ if str(SITE_PACKAGES) not in sys.path:
 # (METAL, OPTIX, CUDA, HIP, ONEAPI).
 GPU_BACKEND = os.environ.get("LRH_GPU") or ("METAL" if sys.platform == "darwin" else "OPTIX")
 # Caption font: Helvetica on macOS; Liberation Sans (metric-compatible) on Linux pods.
+DERIVED = OUT_ROOT / "derived"
+
+
+def site_cover_path():
+    """Site ground cover: the fall 2026 KwikImage update when present
+    (scripts/observed_clearing_2026.py), else the August 2023 drone-photo cover."""
+    newer = DERIVED / "cover_site_2026.tif"
+    return newer if newer.is_file() else DERIVED / "cover_site_drone.tif"
+
+
+def clearing_2026():
+    """Lidar trees the fall 2026 gallery view shows cleared: [(x, y)], or [] if not run."""
+    path = DERIVED / "clearing_2026.json"
+    if not path.is_file():
+        return []
+    return [(t["x"], t["y"]) for t in json.loads(path.read_text())["removed_trees"]]
+
+
 CAPTION_FONTS = [os.environ.get("LRH_FONT", ""), "/System/Library/Fonts/Helvetica.ttc",
                  "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
                  "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"]
@@ -104,6 +122,18 @@ def camera_from_spec(name, spec, coll=None):
         cx, cy = spec["center"]
         cam.location = (cx, cy, 2000.0)
         cam.rotation_euler = (0.0, 0.0, math.radians(spec.get("rotation_deg", 0.0)))
+    elif spec.get("type") == "panorama":
+        # Level equirectangular panorama, like a stitched drone panorama (KwikImage gallery,
+        # fall 2026): centred on heading_deg, spanning longitude_deg x latitude_deg.
+        cam_data.type = "PANO"
+        cam_data.panorama_type = "EQUIRECTANGULAR"
+        lo, hi = spec["longitude_deg"]
+        cam_data.longitude_min, cam_data.longitude_max = math.radians(lo), math.radians(hi)
+        lo, hi = spec["latitude_deg"]
+        cam_data.latitude_min, cam_data.latitude_max = math.radians(lo), math.radians(hi)
+        cam.location = spec["position"]
+        h = math.radians(spec["heading_deg"])
+        cam.rotation_euler = Vector((math.sin(h), math.cos(h), 0.0)).to_track_quat("-Z", "Y").to_euler()
     else:
         cam_data.type = "PERSP"
         cam_data.lens = spec["lens_mm"]

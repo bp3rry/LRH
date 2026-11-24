@@ -734,6 +734,27 @@ shots:
     permit_paths: true
     collections: [Terrain, Water, Roads, Vegetation, Redline]
 
+  # --- Updated imagery (KwikImage gallery, fall 2026; PLAN.md "Updated imagery") ---
+  check_kwik2026_match:
+    kind: check
+    scene: permit5
+    description: The drone-match camera (LADONIA-18, which the 2026 gallery view repeats) on the permit5 scene with the fall 2026 clearing and the built CR 3640, for a side-by-side with the 2026 view. The model keeps the lake at 551 ft; the photo shows the basin still filling.
+    camera: {position: [312.77, -328.44, 374.01], target: [-76.74, -8.18, 175.00], lens_mm: 25.343, roll_deg: -0.206}
+    resolution: [2016, 1134]
+    sun: {datetime: "2026-11-15T12:30", utc_offset_h: -6}
+    haze_visibility_km: 25
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
+  check_kwik2026_wide:
+    kind: check
+    scene: permit5
+    description: Panorama from high above the CR 3635 / CR 3640 corner, matching the 2026 gallery panorama - CR 3640 running west with the SH 34 bridge beyond (left), the parcels and CR 3635 north (centre), the Leon Hurse Dam to the east (right). Its span (about 234 x 91 deg, centred on 317 deg) comes from the landmark bearings in the photo.
+    camera: {type: panorama, position: [150.0, -230.0, 300.0], heading_deg: 317.0, longitude_deg: [-117.0, 117.0], latitude_deg: [-50.0, 41.0]}
+    resolution: [2560, 996]
+    sun: {datetime: "2026-11-15T12:30", utc_offset_h: -6}
+    haze_visibility_km: 25
+    collections: [Terrain, Water, Roads, Landmarks, Vegetation]
+
   check_permit5_oblique:
     kind: check
     scene: permit5
