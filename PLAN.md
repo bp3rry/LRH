@@ -1111,6 +1111,9 @@ subdivided into two lots of about 2.5 ac) and the 5 ac lot next to it (Lot C).
     near the dam, and read as a dark square on the lake.
 - **Render:** `flyover.py -- --variant low --scene permit5 --cut marketing [--preview]`
   writes `video/low_permit5_marketing[_preview]/`.
+- **Preview for review:** `out/2026-11-24/video/low_permit5_marketing_preview/
+  flyover_low_permit5_marketing_preview.mp4` (10 fps, 990 frames). `check_video.py`: every
+  sample matches its PNG.
 
 **How the photos are used:**
 1. **Import.** Download the gallery to a folder, because Cloudflare blocks automated
