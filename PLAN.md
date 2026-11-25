@@ -1114,6 +1114,10 @@ subdivided into two lots of about 2.5 ac) and the 5 ac lot next to it (Lot C).
 - **Preview for review:** `out/2026-11-24/video/low_permit5_marketing_preview/
   flyover_low_permit5_marketing_preview.mp4` (10 fps, 990 frames). `check_video.py`: every
   sample matches its PNG.
+- **4K still (owner, 25 Nov 2026):** frame 2850 (95.0 s, Lot D split line fully drawn),
+  `--4k --frames 2850` on the Mac in 137 s: `out/2026-11-24/video/low_permit5_marketing_4k/
+  frames/f_2850.png` (3840x2160, caption in, luminance mean 0.30, nothing clipped or black).
+  It sits in the 4K master's frames folder, so the full 4K render skips it.
 
 **How the photos are used:**
 1. **Import.** Download the gallery to a folder, because Cloudflare blocks automated
